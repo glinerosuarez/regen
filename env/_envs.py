@@ -5,12 +5,14 @@ import numpy as np
 import pandas as pd
 from gym import spaces
 from env._consts import EnvConsts
+from env._render import StockTradingGraph
 
 
 class CryptoAssetTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface"""
 
-    metadata = {'render.modes': ['human']}
+    metadata = {'render.modes': ['live', 'file', 'none']}
+    visualization = None
 
     def __init__(self, df: pd.DataFrame):
         super(CryptoAssetTradingEnv, self).__init__()
@@ -68,6 +70,10 @@ class CryptoAssetTradingEnv(gym.Env):
             self.cost_basis = (prev_cost + additional_cost) / (self.shares_held + shares_bought)
             # Update the total number of shares we have
             self.shares_held += shares_bought
+            if shares_bought > 0:
+                self.trades.append({
+                    'step': self.current_step, 'shares': shares_bought, 'total': additional_cost, 'type': "buy"
+                })
 
         elif action_type < 2:
             # Sell amount % of shares held
@@ -82,6 +88,14 @@ class CryptoAssetTradingEnv(gym.Env):
             # update the sum of the money we've earned by selling
             self.total_sales_value += shares_sold * current_price
 
+            if shares_sold > 0:
+                self.trades.append({
+                    'step': self.current_step,
+                    'shares': shares_sold,
+                    'total': shares_sold * current_price,
+                    'type': "sell",
+                })
+
         # Update our net worth
         self.net_worth = self.balance + self.shares_held * current_price
 
@@ -92,6 +106,20 @@ class CryptoAssetTradingEnv(gym.Env):
         # If we don't have any shares, set cost_basis to 0
         if self.shares_held == 0:
             self.cost_basis = 0
+
+    def _render_to_file(self, filename='render.txt'):
+        profit = self.net_worth - EnvConsts.INITIAL_ACCOUNT_BALANCE
+
+        file = open(filename, 'a+')
+
+        file.write(f'Step: {self.current_step}\n')
+        file.write(f'Balance: {self.balance}\n')
+        file.write(f'Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})\n')
+        file.write(f'Avg cost for held shares: {self.cost_basis} (Total sales value: {self.total_sales_value})\n')
+        file.write(f'Net worth: {self.net_worth} (Max net worth: {self.max_net_worth})\n')
+        file.write(f'Profit: {profit}\n\n')
+
+        file.close()
 
     def step(self, action):
         # Execute one time step within the environment
@@ -118,19 +146,23 @@ class CryptoAssetTradingEnv(gym.Env):
         self.cost_basis = 0
         self.total_shares_sold = 0
         self.total_sales_value = 0
+        self.trades = []
 
         # Set the current step to a random point within the data frame
         self.current_step = random.randint(0, len(self.df.loc[:, 'Open'].values) - 6)
 
         return self._next_observation()
 
-    def render(self, mode='human', close=False):
+    def render(self, mode='live', **kwargs):
         # Render the environment to the screen
-        profit = self.net_worth - EnvConsts.INITIAL_ACCOUNT_BALANCE
+        if mode == 'file':
+            self._render_to_file(kwargs.get('filename', 'render.txt'))
 
-        print(f'Step: {self.current_step}')
-        print(f'Balance: {self.balance}')
-        print(f'Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})')
-        print(f'Avg cost for held shares: {self.cost_basis} (Total sales value: {self.total_sales_value})')
-        print(f'Net worth: {self.net_worth} (Max net worth: {self.max_net_worth})')
-        print(f'Profit: {profit}')
+        elif mode == 'live':
+            if self.visualization is None:
+                self.visualization = StockTradingGraph(self.df, kwargs.get('title', None))
+
+            if self.current_step > EnvConsts.LOOKBACK_WINDOW_SIZE:
+                self.visualization.render(
+                    self.current_step, self.net_worth, self.trades, window_size=EnvConsts.LOOKBACK_WINDOW_SIZE
+                )

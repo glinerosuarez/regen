@@ -9,3 +9,5 @@ class EnvConsts:
     MAX_NUM_SHARES = 10.0
 
     MAX_STEPS = 20000
+
+    LOOKBACK_WINDOW_SIZE = 40
