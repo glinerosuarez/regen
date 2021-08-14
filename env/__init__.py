@@ -1,3 +1,3 @@
-from ._envs import CryptoAssetTradingEnv
+from ._envs import CryptoTradingEnv
 
-__all__ = ["CryptoAssetTradingEnv"]
+__all__ = ["CryptoTradingEnv"]
