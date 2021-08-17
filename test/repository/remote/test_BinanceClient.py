@@ -1,4 +1,11 @@
+from datetime import datetime
+
+from consts import TradingPair
+from consts import CryptoAsset
+from repository import Interval
 from repository.remote import BinanceClient
+
+client = BinanceClient()
 
 
 def test_get_account_info():
@@ -26,4 +33,18 @@ def test_get_account_info():
             'permissions': ['SPOT']
         }""")
 
-    assert BinanceClient().get_account_info() == expected_account_info
+    assert client.get_account_info() == expected_account_info
+
+
+def test_get_klines_data():
+    print(
+        len(
+            client.get_klines_data(
+                TradingPair(CryptoAsset.BNB, CryptoAsset.USDT),
+                Interval.D_1,
+                start_time=int(datetime.timestamp(datetime(year=2021, month=5, day=1)) * 1000),
+                end_time=int(datetime.timestamp(datetime(year=2021, month=8, day=1)) * 1000),
+                #limit=100,
+            )
+        )
+    )
