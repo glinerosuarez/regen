@@ -1,9 +1,8 @@
 from datetime import datetime
-
-from consts import TradingPair
-from consts import CryptoAsset
-from repository import Interval
+from consts import CryptoAsset, TimeInForce
+from utils import datetime_to_ts_ms
 from repository.remote import BinanceClient
+from consts import TradingPair, Side, OrderType
 
 client = BinanceClient()
 
@@ -37,14 +36,45 @@ def test_get_account_info():
 
 
 def test_get_klines_data():
-    print(
-        len(
-            client.get_klines_data(
-                TradingPair(CryptoAsset.BNB, CryptoAsset.USDT),
-                Interval.D_1,
-                start_time=int(datetime.timestamp(datetime(year=2021, month=5, day=1)) * 1000),
-                end_time=int(datetime.timestamp(datetime(year=2021, month=8, day=1)) * 1000),
-                #limit=100,
-            )
-        )
+    # TODO: test this on the real net because test net seems inconsistent.
+    pass
+
+
+def test_place_test_order():
+    assert client.place_order(
+        pair=TradingPair(CryptoAsset.BNB, CryptoAsset.USDT),
+        side=Side.SELL,
+        type=OrderType.LIMIT,
+        quantity=0.1,
+        price=9000,
+    ) is False
+
+
+def test_place_order():
+
+    # Test fixed values
+    tp = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
+    clientid = "azouta"
+    tt = datetime_to_ts_ms(datetime.now())
+    price = 1000.0
+    qtty = 0.1
+    type = OrderType.LIMIT
+    side = Side.SELL
+    order_data = client.place_order(
+        pair=tp,
+        side=side,
+        type=type,
+        quantity=qtty,
+        price=price,
+        is_test=False,
+        new_client_order_id=clientid
     )
+
+    assert order_data.symbol == tp
+    assert order_data.clientOrderId == clientid
+    assert order_data.transactTime > tt
+    assert order_data.price == price
+    assert order_data.origQty == qtty
+    assert order_data.timeInForce == TimeInForce.GTC
+    assert order_data.type == type
+    assert order_data.side == side

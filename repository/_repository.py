@@ -7,8 +7,11 @@ class Repository:
 
     @classmethod
     def get_account_info(cls):
+        """
+         Get account information
+        """
         return cls.bnb_client.get_account_info()
 
-    @staticmethod
-    def get_klines_data():
-        pass
+    @classmethod
+    def get_klines_data(cls):
+        return cls.bnb_client.get_klines_data()

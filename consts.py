@@ -1,7 +1,6 @@
 import enum
-from attr import attrs, attrib
 from dataclasses import dataclass
-from attr.validators import instance_of
+from typing import Optional
 
 
 class EnvConsts:
@@ -20,13 +19,13 @@ class EnvConsts:
 
 
 class Side(enum.Enum):
-    """whether you want to BUY or SELL a base."""
+    """Whether you want to BUY or SELL a base."""
     BUY: str = 'BUY'
     SELL: str = 'SELL'
 
 
 class OrderType(enum.Enum):
-    """the type of order you want to submit."""
+    """The type of order you want to submit."""
     LIMIT: str = 'LIMIT'
     MARKET: str = 'MARKET'
     STOP_LOSS: str = 'STOP_LOSS'
@@ -63,22 +62,36 @@ class TradingPair:
     base: CryptoAsset
     quote: CryptoAsset
 
+    @classmethod
+    def from_str(cls, string: str) -> Optional['TradingPair']:
+        # First crypto asset str found
+        f1 = None
+        # Second crypto asset str found
+        f2 = None
+        # Index of the f1
+        first = None
+        # Index of the f2
+        second = None
+
+        for ca in CryptoAsset:
+            # Check if a crypto asset str is found
+            index = string.find(ca.value)
+            if index != -1:
+                # If the first crypto asset str has not been found yet, assign vars
+                if first is None:
+                    f1 = ca
+                    first = index
+                # Otherwise assign second finding vars
+                elif second is None:
+                    f2 = ca
+                    second = index
+                    # We have all what we need, stop searching
+                    break
+        else:
+            # Return None since we have not found a valid crypto pair
+            return None
+        # Instantiate TradingPair, first occurrence as base and the other as quote
+        return cls(base=f1, quote=f2) if first < second else cls(base=f2, quote=f1)
+
     def to_symbol(self):
         return self.base.value + self.quote.value
-
-
-@attrs
-class KlineRecord:
-    pair: TradingPair = attrib(validator=instance_of(TradingPair))
-    open_time: int = attrib(converter=int)
-    open_value: float = attrib(converter=float)
-    high: float = attrib(converter=float)
-    low: float = attrib(converter=float)
-    close_value: float = attrib(converter=float)
-    volume: float = attrib(converter=float)
-    close_time: int = attrib(converter=int)
-    quote_asset_vol: float = attrib(converter=float)  # Volume measured in the units of the second part of the pair.
-    trades: int = attrib(converter=int)
-    # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
-    taker_buy_base_vol: float = attrib(converter=float)
-    taker_buy_quote_vol: float = attrib(converter=float)
