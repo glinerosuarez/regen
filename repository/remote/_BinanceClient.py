@@ -3,11 +3,11 @@ from datetime import datetime
 from binance.spot import Spot
 from log import LoggerFactory
 from repository import Interval
-from repository._consts import OrderRecord, KlineRecord
+from typing import Optional, List
 from utils import remove_none_args
 from binance.error import ClientError
-from typing import Dict, Any, Optional, List
 from consts import TradingPair, Side, OrderType, TimeInForce
+from repository._consts import OrderRecord, KlineRecord, AccountInfo, AvgPrice
 
 
 class BinanceClient:
@@ -17,11 +17,19 @@ class BinanceClient:
 
     client = Spot(base_url=settings.bnb_base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
 
-    def get_account_info(self) -> Dict[str, Any]:
+    def get_account_info(self) -> AccountInfo:
         """
          Get account information
         """
-        return self.client.account()
+        return AccountInfo(**self.client.account())
+
+    def get_current_avg_price(self, pair: TradingPair) -> AvgPrice:
+        """
+        Get the average price of a base in the quote units within a predefined length of time.
+        :param pair: trading pair.
+        :return: AvgPrice record
+        """
+        return AvgPrice(**self.client.avg_price(pair.to_symbol()))
 
     def get_klines_data(
             self,

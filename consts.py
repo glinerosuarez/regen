@@ -53,6 +53,9 @@ class CryptoAsset(enum.Enum):
     BNB: str = 'BNB'
     ETH: str = 'ETH'
     BTC: str = 'BTC'
+    LTC: str = 'LTC'
+    TRX: str = 'TRX'
+    XRP: str = 'XRP'
     USDT: str = 'USDT'
     BUSD: str = 'BUSD'
 

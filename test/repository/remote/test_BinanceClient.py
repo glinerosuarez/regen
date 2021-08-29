@@ -1,5 +1,6 @@
 from datetime import datetime
 from consts import CryptoAsset, TimeInForce
+from repository._consts import AccountType, AccountPermission
 from utils import datetime_to_ts_ms
 from repository.remote import BinanceClient
 from consts import TradingPair, Side, OrderType
@@ -8,31 +9,38 @@ client = BinanceClient()
 
 
 def test_get_account_info():
-    expected_account_info = eval(
-        """{
-            'makerCommission': 0, 
-            'takerCommission': 0, 
-            'buyerCommission': 0, 
-            'sellerCommission': 0, 
-            'canTrade': True,
-            'canWithdraw': False, 
-            'canDeposit': False, 
-            'updateTime': 1628352426818, 
-            'accountType': 'SPOT', 
-            'balances': [
-                {'asset': 'BNB', 'free': '999.90000000', 'locked': '0.00000000'}, 
-                {'asset': 'BTC', 'free': '1.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'BUSD', 'free': '10011.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'ETH', 'free': '100.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'LTC', 'free': '500.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'TRX', 'free': '500000.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'USDT', 'free': '10000.00000000', 'locked': '0.00000000'}, 
-                {'asset': 'XRP', 'free': '50000.00000000', 'locked': '0.00000000'}
-            ],
-            'permissions': ['SPOT']
-        }""")
+    maker_commission = 0
+    taker_commission = 0
+    buyer_commission = 0
+    seller_commission = 0
+    can_trade = True
+    can_withdraw = False
+    can_deposit = False
+    account_type = AccountType.SPOT
+    balance_assets = [
+        CryptoAsset.BNB,
+        CryptoAsset.BTC,
+        CryptoAsset.BUSD,
+        CryptoAsset.ETH,
+        CryptoAsset.LTC,
+        CryptoAsset.TRX,
+        CryptoAsset.USDT,
+        CryptoAsset.XRP
+    ]
+    permissions = [AccountPermission.SPOT]
 
-    assert client.get_account_info() == expected_account_info
+    # Test fixed values
+    account_data = client.get_account_info()
+    assert account_data.makerCommission == maker_commission
+    assert account_data.takerCommission == taker_commission
+    assert account_data.buyerCommission == buyer_commission
+    assert account_data.sellerCommission == seller_commission
+    assert account_data.canTrade == can_trade
+    assert account_data.canWithdraw == can_withdraw
+    assert account_data.canDeposit == can_deposit
+    assert account_data.accountType == account_type
+    assert [b.asset for b in account_data.balances] == balance_assets
+    assert account_data.permissions == permissions
 
 
 def test_get_klines_data():
@@ -41,20 +49,22 @@ def test_get_klines_data():
 
 
 def test_place_test_order():
+    pair = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
+    price = int(client.get_current_avg_price(pair).price * 1.1)
+    print("price", price)
     assert client.place_order(
-        pair=TradingPair(CryptoAsset.BNB, CryptoAsset.USDT),
+        pair=pair,
         side=Side.SELL,
         type=OrderType.LIMIT,
         quantity=0.1,
-        price=9000,
-    ) is False
+        price=price,
+    ) is None
 
 
 def test_place_order():
-
     # Test fixed values
     tp = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
-    clientid = "azouta"
+    clientid = str(int(datetime.now().timestamp()))
     tt = datetime_to_ts_ms(datetime.now())
     price = 1000.0
     qtty = 0.1
