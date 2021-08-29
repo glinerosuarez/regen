@@ -1,38 +1,36 @@
 import random
-
 import gym
 import numpy as np
-import pandas as pd
 from gym import spaces
-from env._consts import EnvConsts
+from attr import attrs, attrib
+from consts import EnvConsts, CryptoAsset
 from env._render import StockTradingGraph
 
 
-class CryptoAssetTradingEnv(gym.Env):
-    """Crypto asset trading environment that follows gym interface"""
+@attrs(auto_attribs=True)
+class CryptoTradingEnv(gym.Env):
+    """Crypto asset trading environment that follows gym interface."""
 
-    metadata = {'render.modes': ['live', 'file', 'none']}
-    visualization = None
-
-    def __init__(self, df: pd.DataFrame):
-        super(CryptoAssetTradingEnv, self).__init__()
-        self.df = df
-        self.reward_range = (0, EnvConsts.MAX_ACCOUNT_BALANCE)
-
-        # Actions of the format Buy x%, Sell x%, Hold, etc.
-        self.action_space = spaces.Box(low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
-
-        # Prices contains the OHCL values for the last five prices
-        self.observation_space = spaces.Box(low=0, high=1, shape=(6, 6), dtype=np.float16)
+    # The crypto asset we want to accumulate
+    main_asset: CryptoAsset
+    # The crypto asset we trade our main asset against
+    asset_against: CryptoAsset
+    # Actions of the format Buy x%, Sell x%, Hold, etc.
+    action_space: spaces.Box = attrib(
+        init=False,
+        default=spaces.Box(low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
+    )
+    # Prices contains the OHCL values for the last five prices
+    observation_space: spaces.Box = spaces.Box(low=0, high=1, shape=(6, 6), dtype=np.float16)
 
     def _next_observation(self):
         # Get the data points for the last 5 days and scale to between 0-1
         frame = np.array([
-            self.df.loc[self.current_step : self.current_step + 5, 'Open'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step : self.current_step + 5, 'High'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step : self.current_step + 5, 'Low'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step : self.current_step + 5, 'Close'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step : self.current_step + 5, 'Volume'].values / EnvConsts.MAX_NUM_SHARES,
+            self.df.loc[self.current_step: self.current_step + 5, 'Open'].values / EnvConsts.MAX_SHARE_PRICE,
+            self.df.loc[self.current_step: self.current_step + 5, 'High'].values / EnvConsts.MAX_SHARE_PRICE,
+            self.df.loc[self.current_step: self.current_step + 5, 'Low'].values / EnvConsts.MAX_SHARE_PRICE,
+            self.df.loc[self.current_step: self.current_step + 5, 'Close'].values / EnvConsts.MAX_SHARE_PRICE,
+            self.df.loc[self.current_step: self.current_step + 5, 'Volume'].values / EnvConsts.MAX_NUM_SHARES,
         ])
         # Append additional data and scale each value to between 0-1
         obs = np.append(frame, [[
