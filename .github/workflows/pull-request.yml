@@ -8,5 +8,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Set up secrets
+        env:
+          BNB_CLIENT_KEY: ${{ secrets.BNB_CLIENT_KEY }}
+          BNB_CLIENT_SECRET: ${{ secrets.BNB_CLIENT_SECRET }}
+        run: bash test/create_secrets_file.sh
+
       - name: Tests
         run: bash test/ci.sh
