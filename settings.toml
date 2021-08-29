@@ -1,0 +1,4 @@
+[default]
+[development]
+bnb_base_url = "https://testnet.binance.vision" # The base endpoint this client will send requests to.
+[production]

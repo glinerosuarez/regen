@@ -1,0 +1,6 @@
+# IntelliJ files
+.idea
+# dynaconf secret files
+.secrets.*
+
+__pycache__
