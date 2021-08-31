@@ -1,0 +1,8 @@
+.dockerignore
+.git
+.github
+test
+.gitignore
+Dockerfile
+Makefile
+README.md
