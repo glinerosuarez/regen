@@ -13,7 +13,7 @@ jobs:
           terraform_version: 1.0.5
 
       - name: cd CI config dir
-        run: cd terraform/ci && pwd
+        run: cd terraform/ci && pwd && ls
 
       - name: Terraform Format
         id: fmt
