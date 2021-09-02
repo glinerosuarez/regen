@@ -13,7 +13,7 @@ jobs:
           terraform_version: 1.0.5
 
       - name: cd CI config dir
-        run: cd terraform/ci
+        run: cd terraform/ci && pwd
 
       - name: Terraform Format
         id: fmt
@@ -69,7 +69,7 @@ jobs:
         run: terraform apply
 
       - name: cd root dir
-        run: cd ../../
+        run: cd ../../ && pwd
 
       - name: Set up secrets
         env:
