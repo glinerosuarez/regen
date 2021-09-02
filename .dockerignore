@@ -6,3 +6,6 @@ test
 Dockerfile
 Makefile
 README.md
+terraform
+TODO
+__pycache__

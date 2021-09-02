@@ -8,11 +8,69 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.5
+
+      - name: Terraform Format
+        id: fmt
+        run: cd terraform/ci && terraform fmt -check
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color
+        continue-on-error: true
+
+      - name: Update Pull Request
+        uses: actions/github-script@0.9.0
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Terraform apply CI
+        run: terraform apply && cd ../../
+
       - name: Set up secrets
         env:
           BNB_CLIENT_KEY: ${{ secrets.BNB_CLIENT_KEY }}
           BNB_CLIENT_SECRET: ${{ secrets.BNB_CLIENT_SECRET }}
-        run: bash test/create_secrets_file.sh
+        run: bash test/bin/create_secrets_file.sh
 
       - name: Tests
-        run: bash test/ci.sh
+        run: docker exec regen_container bash test/bin/ci.sh

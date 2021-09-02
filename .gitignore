@@ -1,6 +1,14 @@
 # IntelliJ files
 .idea
+
 # dynaconf secret files
 .secrets.*
 
+# python
 __pycache__
+
+# Terraform files
+**/.terraform.lock.hcl
+**/.terraform/**
+**/terraform.tfstate
+**/terraform.tfstate.backup
