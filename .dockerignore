@@ -9,3 +9,6 @@ README.md
 terraform
 TODO
 __pycache__
+.idea
+.pytest_cache
+__pycache__
