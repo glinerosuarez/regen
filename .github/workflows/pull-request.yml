@@ -17,4 +17,4 @@ jobs:
         run: bash test/bin/create_secrets_file.sh
 
       - name: Tests
-        run: docker exec regen_container bash test/bin/ci.sh
+        run: bash test/bin/ci.sh
