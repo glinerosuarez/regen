@@ -16,6 +16,9 @@ jobs:
           BNB_CLIENT_SECRET: ${{ secrets.BNB_CLIENT_SECRET }}
         run: bash test/bin/create_secrets_file.sh
 
+      - name: check secrets file
+        run: pwd && ls
+
       - name: Terraform infrastructure
         run: bash terraform/ci/apply.sh
 
