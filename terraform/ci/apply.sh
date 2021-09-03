@@ -18,7 +18,7 @@ terraform validate -no-color
 # Terraform plan
 terraform plan -no-color
 # Terraform apply
-terraform apply
+terraform apply -auto-approve
 
 # Back to initial path
 cd "$starting_path"
