@@ -1,0 +1,26 @@
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: hashicorp/setup-terraform@v1
+
+      - name: Set up secrets
+        env:
+          BNB_CLIENT_KEY: ${{ secrets.BNB_CLIENT_KEY }}
+          BNB_CLIENT_SECRET: ${{ secrets.BNB_CLIENT_SECRET }}
+        run: bash test/bin/create_secrets_file.sh
+
+      - name: check secrets file
+        run: pwd && ls
+
+      - name: Terraform infrastructure
+        run: bash terraform/ci/apply.sh
+
+      - name: Tests
+        run: docker exec regen_container bash test/bin/ci.sh

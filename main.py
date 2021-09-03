@@ -1,7 +1,3 @@
-import gym
-import json
-import datetime as dt
-
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2

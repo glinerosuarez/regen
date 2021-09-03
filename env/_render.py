@@ -114,10 +114,8 @@ class StockTradingGraph:
 
         volume = np.array(self.df['Volume'].values[step_range])
 
-        pos = self.df['Open'].values[step_range] - \
-              self.df['Close'].values[step_range] < 0
-        neg = self.df['Open'].values[step_range] - \
-              self.df['Close'].values[step_range] > 0
+        pos = self.df['Open'].values[step_range] - self.df['Close'].values[step_range] < 0
+        neg = self.df['Open'].values[step_range] - self.df['Close'].values[step_range] > 0
 
         # Color volume bars based on price direction on that date
         self.volume_ax.bar(dates[pos], volume[pos], color=UP_COLOR,

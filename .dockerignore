@@ -1,0 +1,14 @@
+.dockerignore
+.git
+.github
+test
+.gitignore
+Dockerfile
+Makefile
+README.md
+terraform
+TODO
+__pycache__
+.idea
+.pytest_cache
+__pycache__
