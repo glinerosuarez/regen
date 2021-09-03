@@ -16,5 +16,8 @@ jobs:
           BNB_CLIENT_SECRET: ${{ secrets.BNB_CLIENT_SECRET }}
         run: bash test/bin/create_secrets_file.sh
 
+      - name: Terraform infrastructure
+        run: bash terraform/ci/apply.sh
+
       - name: Tests
-        run: bash test/bin/ci.sh
+        run: docker exec regen_container bash test/bin/ci.sh
