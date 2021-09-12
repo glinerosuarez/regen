@@ -10,6 +10,7 @@ settings = Dynaconf(
         Validator("bnb_base_url", is_type_of=str),
         Validator("bnb_client_key", is_type_of=str),
         Validator("bnb_client_secret", is_type_of=str),
+        Validator("app_name", is_type_of=str),
     ]
 )
 

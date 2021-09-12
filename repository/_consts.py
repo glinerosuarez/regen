@@ -1,8 +1,9 @@
+import attr
 from enum import Enum
 from attr import attrs, attrib
 from typing import List, Dict, Any
 from attr.validators import instance_of
-from consts import TradingPair, TimeInForce, OrderType, Side, CryptoAsset
+from consts import TradingPair, TimeInForce, OrderType, Side, CryptoAsset, DataClass
 
 
 class AccountType(Enum):
@@ -24,24 +25,17 @@ class Interval(Enum):
     D_1 = '1d'
 
 
-class DataClass:
-
-    @classmethod
-    def from_dicts(cls, dicts: List[Dict[str, Any]]) -> List['DataClass']:
-        return [cls(**d) for d in dicts]
-
-
 @attrs
 class Fill(DataClass):
     price: float = attrib(converter=float)
     qty: float = attrib(converter=float)
     commission: float = attrib(converter=float)
-    commissionAsset: CryptoAsset = attrib(converter=CryptoAsset.__getitem__)
+    commissionAsset: CryptoAsset = attrib(converter=CryptoAsset.converter)
 
 
 @attrs
 class Balance(DataClass):
-    asset: CryptoAsset = attrib(converter=CryptoAsset.__getitem__)
+    asset: CryptoAsset = attrib(converter=CryptoAsset.converter)
     free: float = attrib(converter=float)
     locked: float = attrib(converter=float)
 
@@ -89,8 +83,9 @@ class KlineRecord:
 
 
 @attrs
-class OrderRecord:
-    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.from_str)
+class OrderRecord(DataClass):
+    """Data of a placed order."""
+    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.from_str_or_dict)
     orderId: str = attrib(converter=str)
     orderListId: str = attrib(converter=str)  # Unless OCO, value will be -1
     clientOrderId: str = attrib(converter=str)
@@ -100,7 +95,7 @@ class OrderRecord:
     executedQty: float = attrib(converter=float)
     cummulativeQuoteQty: float = attrib(converter=float)
     status: str = attrib(converter=str)
-    timeInForce: TimeInForce = attrib(converter=TimeInForce.__getitem__)
-    type: OrderType = attrib(converter=OrderType.__getitem__)
-    side: Side = attrib(converter=Side.__getitem__)
-    fills: List[Fill] = attrib(converter=Fill.from_dicts)
+    timeInForce: TimeInForce = attrib(converter=TimeInForce.converter)
+    type: OrderType = attrib(converter=OrderType.converter)
+    side: Side = attrib(converter=Side.converter)
+    fills: list = attrib(converter=Fill.from_dicts)

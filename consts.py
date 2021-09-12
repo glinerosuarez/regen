@@ -1,6 +1,76 @@
+import attr
 import enum
-from dataclasses import dataclass
-from typing import Optional
+import sqlite3
+from attr import attrs
+from copy import deepcopy
+from attr.validators import instance_of
+from typing import Optional, List, Dict, Any, NamedTuple, Type, Tuple, Union
+
+
+@attrs
+class DataClass:
+
+    class Items(NamedTuple):
+        attrs: Tuple[str]
+        values: Tuple[Any]
+
+    class Types(NamedTuple):
+        attrs: Tuple[str]
+        types: Tuple[Type[Any]]
+
+    @classmethod
+    def from_dict(cls, d) -> 'DataClass':
+        return cls(**d)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Attributes and their corresponding values as a dict."""
+        return attr.asdict(self)
+
+    @classmethod
+    def from_dicts(cls, dicts: List[Dict[str, Any]]) -> List['DataClass']:
+        """Create a list of instances of this class from a list of dicts."""
+        return [cls.from_dict(d) for d in dicts]
+
+    @classmethod
+    def from_items(cls, items: 'DataClass.Items') -> List['DataClass']:
+        return [cls(**dict(zip(i.attrs, i.values))) for i in items]
+
+    @classmethod
+    def get_types(cls) -> Types:
+        """Get the types of each attribute."""
+        return DataClass.Types(*zip(*[(a.name, a.type) for a in attr.fields(cls)]))
+
+    def get_items(self) -> Items:
+        """Return a tuple that contains the names of the attributes and their corresponding values."""
+        return DataClass.Items(*zip(*self.to_dict().items()))
+
+    def copy(self, _with: dict) -> 'DataClass':
+        attribs = deepcopy(self.to_dict())
+        for k, v in _with.items():
+            attribs[k] = v
+        return self.__class__(**attribs)
+
+
+
+
+class SQLEnum(enum.Enum):
+
+    def __str__(self):
+        return self.value
+
+    def __conform__(self, protocol):
+        """Transforms an `Enum` object into a `str` for storing in a sql db."""
+        if protocol is sqlite3.PrepareProtocol:
+            return str(self)
+
+    @classmethod
+    def converter(cls, src: Union[str, 'SQLEnum']) -> 'SQLEnum':
+        if isinstance(src, str):
+            return cls[src]
+        elif isinstance(src, cls):
+            return src
+        else:
+            raise TypeError(f"type {type(src)} is not supported.")
 
 
 class EnvConsts:
@@ -18,13 +88,13 @@ class EnvConsts:
     LOOKBACK_WINDOW_SIZE = 40
 
 
-class Side(enum.Enum):
+class Side(SQLEnum):
     """Whether you want to BUY or SELL a base."""
     BUY: str = 'BUY'
     SELL: str = 'SELL'
 
 
-class OrderType(enum.Enum):
+class OrderType(SQLEnum):
     """The type of order you want to submit."""
     LIMIT: str = 'LIMIT'
     MARKET: str = 'MARKET'
@@ -35,7 +105,7 @@ class OrderType(enum.Enum):
     LIMIT_MAKER: str = 'LIMIT_MAKER'
 
 
-class TimeInForce(enum.Enum):
+class TimeInForce(SQLEnum):
     """Expresses how you want the order to execute."""
     # (good till canceled) – perhaps the most popular setup, GTC will ensure that your order is valid until it’s filled,
     # or until you cancel it.
@@ -48,7 +118,7 @@ class TimeInForce(enum.Enum):
     IOC: str = 'IOC'
 
 
-class CryptoAsset(enum.Enum):
+class CryptoAsset(SQLEnum):
 
     BNB: str = 'BNB'
     ETH: str = 'ETH'
@@ -60,10 +130,20 @@ class CryptoAsset(enum.Enum):
     BUSD: str = 'BUSD'
 
 
-@dataclass
-class TradingPair:
-    base: CryptoAsset
-    quote: CryptoAsset
+
+@attrs
+class TradingPair(DataClass):
+    base: CryptoAsset = attr.attrib(validator=instance_of(CryptoAsset), converter=CryptoAsset.converter)
+    quote: CryptoAsset = attr.attrib(validator=instance_of(CryptoAsset), converter=CryptoAsset.converter)
+
+    @staticmethod
+    def from_str_or_dict(source: Union[str, dict]) -> 'TradingPair':
+        if isinstance(source, str):
+            return TradingPair.from_str(source)
+        elif isinstance(source, dict):
+            return TradingPair.from_dict(source)
+        else:
+            raise TypeError(f"type {type(source)} is not supported.")
 
     @classmethod
     def from_str(cls, string: str) -> Optional['TradingPair']:
