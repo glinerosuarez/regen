@@ -1,4 +1,6 @@
 import sqlite3
+from enum import Enum
+from log import LoggerFactory
 from sqlite3 import Connection, Cursor
 from typing import List, Callable, Any, Type, Dict, Optional, Iterable
 
@@ -14,7 +16,11 @@ def _register_types() -> None:
 
     def _adapt_list(lst: list) -> str:
         """Adapt list objects to SQLite type."""
-        return f"[{','.join(_dict_to_str(e) if isinstance(e, dict) else str(e) for e in lst)}]"
+        lst_str = [
+            _dict_to_str(e) if isinstance(e, dict) else f"'{str(e)}'" if isinstance(e, Enum) else str(e)
+            for e in lst
+        ]
+        return f"[{','.join(lst_str)}]"
 
     def _convert_list(v: bytes) -> List[str]:
         """Convert SQLite string to python list."""
@@ -38,6 +44,7 @@ def _register_types() -> None:
         """
         sqlite3.register_adapter(_type, adapter)
         sqlite3.register_converter(sql_name, converter)
+        LoggerFactory.get_console_logger(__name__).info("types ARRAY and MAP successfully registered.")
 
     _register_type(list, adapter=_adapt_list, sql_name="ARRAY", converter=_convert_list)
     _register_type(dict, adapter=_adapt_dict, sql_name="MAP", converter=_convert_dict)
@@ -88,15 +95,40 @@ class SQLiteManager:
                 return conn.execute(sql)
 
     @staticmethod
-    def create_table(name: str, col_names: List[str], types: List[Type[Any]]) -> None:
+    def create_table(
+            name: str,
+            col_names: Iterable[str],
+            types: Iterable[Type[Any]],
+            primary_key: Optional[str] = None,
+            unique: Optional[Iterable[str]] = None,
+            exists_ok: bool = True,
+    ) -> None:
         """
         Create a new table in the current database.
         :param name: name of the table to create.
         :param col_names: a list of column names to define for the table.
         :param types: a list of corresponding types for the columns.
+        :param primary_key: name of the column that should be considered as the primary key.
+        :param unique:
+        :param exists_ok: True for aborting the operation if the table already exists.
         """
-        columns = ', '.join([c + ' ' + SQLiteManager._map_type(t) for c, t in zip(col_names, types)])
-        SQLiteManager._execute(f"""CREATE TABLE {name} ({columns})""")
+        if unique is None:
+            unique = []
+
+        columns = ', '.join(
+            [
+                (
+                    c
+                    + ' '
+                    + SQLiteManager._map_type(t)
+                    + f"{' NOT NULL PRIMARY KEY' if c == primary_key else ''}"
+                    + f"{' UNIQUE' if c in unique else ''}"
+                 )
+                for c, t in zip(col_names, types)
+            ]
+        )
+        sql = f"""CREATE TABLE {"IF NOT EXISTS" if exists_ok else ""} {name} ({columns});"""
+        SQLiteManager._execute(sql)
 
     @staticmethod
     def select(columns: List[str], table: str) -> Cursor:

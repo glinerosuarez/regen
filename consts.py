@@ -22,10 +22,6 @@ class DataClass:
     def from_dict(cls, d) -> 'DataClass':
         return cls(**d)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Attributes and their corresponding values as a dict."""
-        return attr.asdict(self)
-
     @classmethod
     def from_dicts(cls, dicts: List[Dict[str, Any]]) -> List['DataClass']:
         """Create a list of instances of this class from a list of dicts."""
@@ -36,9 +32,22 @@ class DataClass:
         return [cls(**dict(zip(i.attrs, i.values))) for i in items]
 
     @classmethod
+    def from_list(cls, values: Union[List[dict], List['DataClass']]) -> List['DataClass']:
+        if isinstance(values[0], dict):
+            return cls.from_dicts(values)
+        elif isinstance(values[0], cls):
+            return values
+        else:
+            TypeError(f"type {type(values)} is not supported.")
+
+    @classmethod
     def get_types(cls) -> Types:
         """Get the types of each attribute."""
         return DataClass.Types(*zip(*[(a.name, a.type) for a in attr.fields(cls)]))
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Attributes and their corresponding values as a dict."""
+        return attr.asdict(self)
 
     def get_items(self) -> Items:
         """Return a tuple that contains the names of the attributes and their corresponding values."""
@@ -49,8 +58,6 @@ class DataClass:
         for k, v in _with.items():
             attribs[k] = v
         return self.__class__(**attribs)
-
-
 
 
 class SQLEnum(enum.Enum):
@@ -71,6 +78,10 @@ class SQLEnum(enum.Enum):
             return src
         else:
             raise TypeError(f"type {type(src)} is not supported.")
+
+    @classmethod
+    def from_list(cls, sql_enums: List[Union[str, 'SQLEnum']]) -> List['SQLEnum']:
+        return [cls.converter(e) for e in sql_enums]
 
 
 class EnvConsts:
@@ -128,7 +139,6 @@ class CryptoAsset(SQLEnum):
     XRP: str = 'XRP'
     USDT: str = 'USDT'
     BUSD: str = 'BUSD'
-
 
 
 @attrs

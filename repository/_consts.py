@@ -1,21 +1,15 @@
-import attr
 from enum import Enum
 from attr import attrs, attrib
-from typing import List, Dict, Any
 from attr.validators import instance_of
-from consts import TradingPair, TimeInForce, OrderType, Side, CryptoAsset, DataClass
+from consts import TradingPair, TimeInForce, OrderType, Side, CryptoAsset, DataClass, SQLEnum
 
 
-class AccountType(Enum):
+class AccountType(SQLEnum):
     SPOT = 'SPOT'
 
 
-class AccountPermission(Enum):
+class AccountPermission(SQLEnum):
     SPOT = 'SPOT'
-
-    @staticmethod
-    def from_str_list(lst: List[str]) -> List['AccountPermission']:
-        return [AccountPermission[p_str] for p_str in lst]
 
 
 class Interval(Enum):
@@ -41,7 +35,7 @@ class Balance(DataClass):
 
 
 @attrs
-class AccountInfo:
+class AccountInfo(DataClass):
     # When you add an order that doesn't match existing offers, you add liquidity to the market and are charged a maker
     # fee
     makerCommission: float = attrib(converter=float)
@@ -54,9 +48,9 @@ class AccountInfo:
     canWithdraw: bool = attrib(converter=bool)
     canDeposit: bool = attrib(converter=bool)
     updateTime: int = attrib(converter=int)
-    accountType: AccountType = attrib(converter=AccountType.__getitem__)
-    balances: List[Balance] = attrib(converter=Balance.from_dicts)
-    permissions: List[AccountPermission] = attrib(converter=AccountPermission.from_str_list)
+    accountType: AccountType = attrib(converter=AccountType.converter)
+    balances: list = attrib(converter=Balance.from_list)
+    permissions: list = attrib(converter=AccountPermission.from_list)
 
 
 @attrs
