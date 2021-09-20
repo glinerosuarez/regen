@@ -1,15 +1,11 @@
 import pytest
-from consts import CryptoAsset
-from test import test_utils
-from test.test_utils import clean
-from sqlite3 import IntegrityError
-from repository._consts import OrderRecord, AccountInfo, AccountType, Balance, AccountPermission
-from repository.db._db_manager import DataBaseManager
+from sqlalchemy.exc import IntegrityError
+from repository.db._sqlalchemy import DataBaseManager, Order
 
 
 db_name = "test_db"
 
-data = OrderRecord(
+data = Order(
     symbol="BNBBUSD",
     orderId="12345",
     orderListId="-1",
@@ -25,12 +21,30 @@ data = OrderRecord(
     side="BUY",
     fills=[{"price": 400.0, "qty": 10.0, "commission": 0.001, "commissionAsset": "BUSD"}],
 )
-data_2 = data.copy(_with={"symbol": "ETHBUSD"})
-data_3 = data.copy(_with={"symbol": "BTCUSDT", "orderId": "67890"})
-data_4 = data.copy(_with={"symbol": "BTCUSDT", "orderId": "11121", "clientOrderId": "anyid"})
+data_2 = data.copy(with_={"symbol": "ETHBUSD"})
+data_3 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "67890"})
+data_4 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "11121", "clientOrderId": "anyid"})
 
 
-def tear_down():
+def test_db_orders():
+    # Init db
+    DataBaseManager.init_connection(db_name)
+    DataBaseManager.create_all()
+    DataBaseManager.insert(data)
+    # Assert primary key
+    with pytest.raises(IntegrityError):
+        DataBaseManager.insert(data_2)
+    # Assert uniqueness
+    with pytest.raises(IntegrityError):
+        DataBaseManager.insert(data_3)
+    DataBaseManager.insert(data_4)
+    # Assertions
+    records = DataBaseManager.select(Order)
+    assert len(records) == 2
+    assert records[0] == data
+    assert records[1] == data_4
+
+"""def tear_down():
     # Clean up
     test_utils.delete_file(db_name)
 
@@ -78,4 +92,7 @@ def test_account_info():
 
     # Assertions
     records = DataBaseManager.AccountInfo.select()
-    assert records[0] == acc_info
+    assert records[0] == acc_info"""
+
+
+
