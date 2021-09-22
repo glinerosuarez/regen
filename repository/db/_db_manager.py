@@ -161,5 +161,3 @@ class AccountInfo(DataClass):
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
-
-
