@@ -3,15 +3,15 @@ from repository.remote import BinanceClient
 
 class Repository:
 
-    bnb_client = BinanceClient()
+    _bnb_client: BinanceClient = BinanceClient()
 
-    @classmethod
-    def get_account_info(cls):
+    @staticmethod
+    def get_account_info():
         """
          Get account information
         """
-        return cls.bnb_client.get_account_info()
+        return Repository._bnb_client.get_account_info()
 
-    @classmethod
-    def get_klines_data(cls):
-        return cls.bnb_client.get_klines_data()
+    @staticmethod
+    def get_klines_data():
+        return Repository._bnb_client.get_klines_data()

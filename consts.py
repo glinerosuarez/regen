@@ -1,6 +1,4 @@
 import enum
-from dataclasses import dataclass
-from typing import Optional
 
 
 class EnvConsts:
@@ -49,7 +47,7 @@ class TimeInForce(enum.Enum):
 
 
 class CryptoAsset(enum.Enum):
-
+    """Crypto asset symbols."""
     BNB: str = 'BNB'
     ETH: str = 'ETH'
     BTC: str = 'BTC'
@@ -58,43 +56,3 @@ class CryptoAsset(enum.Enum):
     XRP: str = 'XRP'
     USDT: str = 'USDT'
     BUSD: str = 'BUSD'
-
-
-@dataclass
-class TradingPair:
-    base: CryptoAsset
-    quote: CryptoAsset
-
-    @classmethod
-    def from_str(cls, string: str) -> Optional['TradingPair']:
-        # First crypto asset str found
-        f1 = None
-        # Second crypto asset str found
-        f2 = None
-        # Index of the f1
-        first = None
-        # Index of the f2
-        second = None
-
-        for ca in CryptoAsset:
-            # Check if a crypto asset str is found
-            index = string.find(ca.value)
-            if index != -1:
-                # If the first crypto asset str has not been found yet, assign vars
-                if first is None:
-                    f1 = ca
-                    first = index
-                # Otherwise assign second finding vars
-                elif second is None:
-                    f2 = ca
-                    second = index
-                    # We have all what we need, stop searching
-                    break
-        else:
-            # Return None since we have not found a valid crypto pair
-            return None
-        # Instantiate TradingPair, first occurrence as base and the other as quote
-        return cls(base=f1, quote=f2) if first < second else cls(base=f2, quote=f1)
-
-    def to_symbol(self):
-        return self.base.value + self.quote.value

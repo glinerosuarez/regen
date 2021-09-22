@@ -1,4 +1,5 @@
-from consts import TradingPair, CryptoAsset
+from consts import CryptoAsset
+from repository._dataclass import TradingPair
 
 
 def test_tradingpair_from_str():
