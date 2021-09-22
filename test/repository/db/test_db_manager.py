@@ -1,9 +1,9 @@
 import pytest
+from test import test_utils
+from test.test_utils import clean
 from sqlalchemy.exc import IntegrityError
-from repository.db._sqlalchemy import DataBaseManager, Order
-
-
-db_name = "test_db"
+from repository._consts import AccountType
+from repository.db._db_manager import DataBaseManager, Order, AccountInfo
 
 data = Order(
     symbol="BNBBUSD",
@@ -28,7 +28,7 @@ data_4 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "11121", "clientOrderI
 
 def test_db_orders():
     # Init db
-    DataBaseManager.init_connection(db_name)
+    DataBaseManager.init_connection(":memory:")
     DataBaseManager.create_all()
     DataBaseManager.insert(data)
     # Assert primary key
@@ -44,28 +44,10 @@ def test_db_orders():
     assert records[0] == data
     assert records[1] == data_4
 
-"""def tear_down():
+
+def tear_down():
     # Clean up
     test_utils.delete_file(db_name)
-
-
-@clean(tear_down)
-def test_db_orders():
-    # Init db
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.Orders.create_table()
-    DataBaseManager.Orders.insert(data)
-    # Assert primary key
-    with pytest.raises(IntegrityError):
-        DataBaseManager.Orders.insert(data_2)
-    # Assert uniqueness
-    with pytest.raises(IntegrityError):
-        DataBaseManager.Orders.insert(data_3)
-    DataBaseManager.Orders.insert(data_4)
-    # Assertions
-    records = DataBaseManager.Orders.select()
-    assert records[0] == data
-    assert records[1] == data_4
 
 
 acc_info = AccountInfo(
@@ -78,21 +60,23 @@ acc_info = AccountInfo(
     canDeposit=True,
     updateTime=1631587291,
     accountType=AccountType.SPOT,
-    balances=[Balance(CryptoAsset.BNB, 1.0, 0.0)],
-    permissions=[AccountPermission.SPOT]
+    balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
+    permissions=["SPOT"]
 )
+
+db_name = "test_db"
 
 
 @clean(tear_down)
 def test_account_info():
     # Init db
     DataBaseManager.init_connection(db_name)
-    DataBaseManager.AccountInfo.create_table()
-    DataBaseManager.AccountInfo.insert(acc_info)
+    DataBaseManager.create_all()
+    DataBaseManager.insert(acc_info)
 
     # Assertions
-    records = DataBaseManager.AccountInfo.select()
-    assert records[0] == acc_info"""
+    records = DataBaseManager.select(AccountInfo)
+    assert records[0] == acc_info
 
 
 

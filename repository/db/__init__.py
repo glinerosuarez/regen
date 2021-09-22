@@ -1,4 +1,3 @@
-from repository.db._sqlite import SQLiteManager
+from repository.db._db_manager import DataBaseManager
 
-
-__all__ = ["SQLiteManager"]
+__all__ = ["DataBaseManager"]

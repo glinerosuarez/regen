@@ -6,8 +6,10 @@ from repository import Interval
 from typing import Optional, List
 from utils import remove_none_args
 from binance.error import ClientError
-from consts import TradingPair, Side, OrderType, TimeInForce
-from repository._consts import OrderRecord, KlineRecord, AccountInfo, AvgPrice
+from repository._consts import AvgPrice
+from consts import Side, OrderType, TimeInForce
+from repository.db._db_manager import AccountInfo, Order
+from repository._dataclass import TradingPair, KlineRecord
 
 
 class BinanceClient:
@@ -29,7 +31,7 @@ class BinanceClient:
         :param pair: trading pair.
         :return: AvgPrice record
         """
-        return AvgPrice(**self.client.avg_price(pair.to_symbol()))
+        return AvgPrice(**self.client.avg_price(str(pair)))
 
     def get_klines_data(
             self,
@@ -55,7 +57,7 @@ class BinanceClient:
         # Arguments to kwargs
         args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
 
-        response = self.client.klines(symbol=pair.to_symbol(), interval=interval.value, **args)
+        response = self.client.klines(symbol=str(pair), interval=interval.value, **args)
 
         return [
             KlineRecord(
@@ -85,7 +87,7 @@ class BinanceClient:
             price: Optional[float] = None,
             new_client_order_id: Optional[str] = None,
             is_test: bool = True,
-    ) -> Optional[OrderRecord]:
+    ) -> Optional[Order]:
         """
         Set a test order. Can come in useful for testing orders before actually submitting them.
         :param pair: pair to trade.
@@ -101,7 +103,7 @@ class BinanceClient:
 
         # Arguments to kwargs
         args = remove_none_args({
-            "symbol": pair.to_symbol(),
+            "symbol": str(pair),
             "side": side.value,
             "type": type.value,
             "timeInForce": time_in_force.value,
@@ -114,6 +116,6 @@ class BinanceClient:
                 self.client.new_order_test(**args)
                 return None
             else:
-                return OrderRecord(**self.client.new_order(**args))
+                return Order(**self.client.new_order(**args))
         except ClientError as e:
             LoggerFactory.get_console_logger(__name__).error(e)
