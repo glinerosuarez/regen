@@ -48,6 +48,3 @@ class Balance(DataClass):
 class AvgPrice:
     mins: int = attrib(converter=int)  # Minutes to compute average
     price: float = attrib(converter=float)
-
-
-
