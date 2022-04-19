@@ -6,8 +6,8 @@ from env.StockTradingEnv import StockTradingEnv
 
 import pandas as pd
 
-df = pd.read_csv('./data/AAPL.csv')
-df = df.sort_values('Date')
+df = pd.read_csv("./data/AAPL.csv")
+df = df.sort_values("Date")
 
 # The algorithms require a vectorized environment to run
 env = DummyVecEnv([lambda: StockTradingEnv(df)])

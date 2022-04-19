@@ -64,6 +64,7 @@ class _EncodedDataClass(types.UserDefinedType):
     A SQLAlchemy custom type that represents an immutable structure as a json-encoded string.
     Usage: EncodedDataClass(DataClass)
     """
+
     def __init__(self, type_):
         self.type_ = type_
 
@@ -75,6 +76,7 @@ class _EncodedDataClass(types.UserDefinedType):
             if value is not None:
                 value = json.dumps(cattr.unstructure(value))
             return value
+
         return process
 
     def result_processor(self, dialect, coltype):
@@ -82,6 +84,7 @@ class _EncodedDataClass(types.UserDefinedType):
             if value is not None:
                 value = cattr.structure(json.loads(value), self.type_)
             return value
+
         return process
 
 

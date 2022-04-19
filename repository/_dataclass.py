@@ -8,9 +8,8 @@ from typing import List, Union, Optional
 
 @attrs
 class DataClass:
-
     @classmethod
-    def structure(cls, value: Union[dict, list]) -> Union['DataClass', List['DataClass']]:
+    def structure(cls, value: Union[dict, list]) -> Union["DataClass", List["DataClass"]]:
         if isinstance(value, list):
             return cattr.structure(value, List[cls])
         elif isinstance(value, dict):
@@ -22,7 +21,7 @@ class DataClass:
         """Attributes and their corresponding values as a dict."""
         return cattr.unstructure(self)
 
-    def copy(self, with_: dict) -> 'DataClass':
+    def copy(self, with_: dict) -> "DataClass":
         attribs = deepcopy(self.to_dict())
         for k, v in with_.items():
             attribs[k] = v
@@ -32,11 +31,12 @@ class DataClass:
 @attrs
 class TradingPair(DataClass):
     """A pair of :CryptoAsset:"""
+
     base: CryptoAsset = attrib(validator=instance_of(CryptoAsset), converter=CryptoAsset)
     quote: CryptoAsset = attrib(validator=instance_of(CryptoAsset), converter=CryptoAsset)
 
     @classmethod
-    def from_str(cls, string: str) -> Optional['TradingPair']:
+    def from_str(cls, string: str) -> Optional["TradingPair"]:
         # First crypto asset str found
         f1 = None
         # Second crypto asset str found
@@ -68,7 +68,7 @@ class TradingPair(DataClass):
         return instance
 
     @classmethod
-    def structure(cls, value: Union[dict, list, str]) -> Union['DataClass', List['DataClass']]:
+    def structure(cls, value: Union[dict, list, str]) -> Union["DataClass", List["DataClass"]]:
         # In addition to dict and list, this class can also be structured from a string.
         try:
             return super().structure(value)

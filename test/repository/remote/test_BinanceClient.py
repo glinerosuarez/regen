@@ -26,7 +26,7 @@ def test_get_account_info():
         CryptoAsset.LTC,
         CryptoAsset.TRX,
         CryptoAsset.USDT,
-        CryptoAsset.XRP
+        CryptoAsset.XRP,
     ]
     permissions = [AccountPermission.SPOT]
 
@@ -53,13 +53,16 @@ def test_place_test_order():
     pair = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
     price = int(client.get_current_avg_price(pair).price * 1.1)
     print("price", price)
-    assert client.place_order(
-        pair=pair,
-        side=Side.SELL,
-        type=OrderType.LIMIT,
-        quantity=0.1,
-        price=price,
-    ) is None
+    assert (
+        client.place_order(
+            pair=pair,
+            side=Side.SELL,
+            type=OrderType.LIMIT,
+            quantity=0.1,
+            price=price,
+        )
+        is None
+    )
 
 
 def test_place_order():
@@ -72,13 +75,7 @@ def test_place_order():
     type = OrderType.LIMIT
     side = Side.SELL
     order_data = client.place_order(
-        pair=tp,
-        side=side,
-        type=type,
-        quantity=qtty,
-        price=price,
-        is_test=False,
-        new_client_order_id=clientid
+        pair=tp, side=side, type=type, quantity=qtty, price=price, is_test=False, new_client_order_id=clientid
     )
 
     assert order_data.symbol == tp

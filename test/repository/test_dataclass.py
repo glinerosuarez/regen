@@ -20,5 +20,3 @@ def test_tradingpair_from_str():
     # Negative scenario only a single crypto asset found
     pair = TradingPair.from_str("boff" + CryptoAsset.ETH.value + "boff" + "tra")
     assert pair is None
-
-

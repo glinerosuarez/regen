@@ -22,5 +22,10 @@ jobs:
       - name: Terraform infrastructure
         run: bash terraform/ci/apply.sh
 
+      - name: Python formatter
+        run: |
+          docker exec regen_container pip install black
+          docker exec regen_container black -l 120 -t py310 --check . 
+
       - name: Tests
         run: docker exec regen_container bash test/bin/ci.sh

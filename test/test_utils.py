@@ -18,6 +18,7 @@ def clean(clean_func: Callable) -> Callable:
     :param clean_func: function to execute after the decorated one.
     :return:
     """
+
     def decorator_clean(func: Callable):
         @functools.wraps(func)
         def wrapper_clean(*args, **kwargs) -> None:
@@ -25,6 +26,7 @@ def clean(clean_func: Callable) -> Callable:
                 func(*args, **kwargs)
             finally:
                 clean_func()
-        return wrapper_clean
-    return decorator_clean
 
+        return wrapper_clean
+
+    return decorator_clean
