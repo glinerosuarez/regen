@@ -17,30 +17,37 @@ class CryptoTradingEnv(gym.Env):
     asset_against: CryptoAsset
     # Actions of the format Buy x%, Sell x%, Hold, etc.
     action_space: spaces.Box = attrib(
-        init=False,
-        default=spaces.Box(low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
+        init=False, default=spaces.Box(low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
     )
     # Prices contains the OHCL values for the last five prices
     observation_space: spaces.Box = spaces.Box(low=0, high=1, shape=(6, 6), dtype=np.float16)
 
     def _next_observation(self):
         # Get the data points for the last 5 days and scale to between 0-1
-        frame = np.array([
-            self.df.loc[self.current_step: self.current_step + 5, 'Open'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step + 5, 'High'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step + 5, 'Low'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step + 5, 'Close'].values / EnvConsts.MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step + 5, 'Volume'].values / EnvConsts.MAX_NUM_SHARES,
-        ])
+        frame = np.array(
+            [
+                self.df.loc[self.current_step : self.current_step + 5, "Open"].values / EnvConsts.MAX_SHARE_PRICE,
+                self.df.loc[self.current_step : self.current_step + 5, "High"].values / EnvConsts.MAX_SHARE_PRICE,
+                self.df.loc[self.current_step : self.current_step + 5, "Low"].values / EnvConsts.MAX_SHARE_PRICE,
+                self.df.loc[self.current_step : self.current_step + 5, "Close"].values / EnvConsts.MAX_SHARE_PRICE,
+                self.df.loc[self.current_step : self.current_step + 5, "Volume"].values / EnvConsts.MAX_NUM_SHARES,
+            ]
+        )
         # Append additional data and scale each value to between 0-1
-        obs = np.append(frame, [[
-            self.balance / EnvConsts.MAX_ACCOUNT_BALANCE,
-            self.max_net_worth / EnvConsts.MAX_ACCOUNT_BALANCE,
-            self.shares_held / EnvConsts.MAX_NUM_SHARES,
-            self.cost_basis / EnvConsts.MAX_SHARE_PRICE,
-            self.total_shares_sold / EnvConsts.MAX_NUM_SHARES,
-            self.total_sales_value / (EnvConsts.MAX_NUM_SHARES * EnvConsts.MAX_SHARE_PRICE),
-            ]], axis=0)
+        obs = np.append(
+            frame,
+            [
+                [
+                    self.balance / EnvConsts.MAX_ACCOUNT_BALANCE,
+                    self.max_net_worth / EnvConsts.MAX_ACCOUNT_BALANCE,
+                    self.shares_held / EnvConsts.MAX_NUM_SHARES,
+                    self.cost_basis / EnvConsts.MAX_SHARE_PRICE,
+                    self.total_shares_sold / EnvConsts.MAX_NUM_SHARES,
+                    self.total_sales_value / (EnvConsts.MAX_NUM_SHARES * EnvConsts.MAX_SHARE_PRICE),
+                ]
+            ],
+            axis=0,
+        )
         return obs
 
     def _take_action(self, action):
@@ -69,9 +76,9 @@ class CryptoTradingEnv(gym.Env):
             # Update the total number of shares we have
             self.shares_held += shares_bought
             if shares_bought > 0:
-                self.trades.append({
-                    'step': self.current_step, 'shares': shares_bought, 'total': additional_cost, 'type': "buy"
-                })
+                self.trades.append(
+                    {"step": self.current_step, "shares": shares_bought, "total": additional_cost, "type": "buy"}
+                )
 
         elif action_type < 2:
             # Sell amount % of shares held
@@ -87,12 +94,14 @@ class CryptoTradingEnv(gym.Env):
             self.total_sales_value += shares_sold * current_price
 
             if shares_sold > 0:
-                self.trades.append({
-                    'step': self.current_step,
-                    'shares': shares_sold,
-                    'total': shares_sold * current_price,
-                    'type': "sell",
-                })
+                self.trades.append(
+                    {
+                        "step": self.current_step,
+                        "shares": shares_sold,
+                        "total": shares_sold * current_price,
+                        "type": "sell",
+                    }
+                )
 
         # Update our net worth
         self.net_worth = self.balance + self.shares_held * current_price
@@ -105,17 +114,17 @@ class CryptoTradingEnv(gym.Env):
         if self.shares_held == 0:
             self.cost_basis = 0
 
-    def _render_to_file(self, filename='render.txt'):
+    def _render_to_file(self, filename="render.txt"):
         profit = self.net_worth - EnvConsts.INITIAL_ACCOUNT_BALANCE
 
-        file = open(filename, 'a+')
+        file = open(filename, "a+")
 
-        file.write(f'Step: {self.current_step}\n')
-        file.write(f'Balance: {self.balance}\n')
-        file.write(f'Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})\n')
-        file.write(f'Avg cost for held shares: {self.cost_basis} (Total sales value: {self.total_sales_value})\n')
-        file.write(f'Net worth: {self.net_worth} (Max net worth: {self.max_net_worth})\n')
-        file.write(f'Profit: {profit}\n\n')
+        file.write(f"Step: {self.current_step}\n")
+        file.write(f"Balance: {self.balance}\n")
+        file.write(f"Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})\n")
+        file.write(f"Avg cost for held shares: {self.cost_basis} (Total sales value: {self.total_sales_value})\n")
+        file.write(f"Net worth: {self.net_worth} (Max net worth: {self.max_net_worth})\n")
+        file.write(f"Profit: {profit}\n\n")
 
         file.close()
 
@@ -123,9 +132,9 @@ class CryptoTradingEnv(gym.Env):
         # Execute one time step within the environment
         self._take_action(action)
         self.current_step += 1
-        if self.current_step > len(self.df.loc[:, 'Open'].values) - 6:
+        if self.current_step > len(self.df.loc[:, "Open"].values) - 6:
             self.current_step = 0
-        delay_modifier = (self.current_step / EnvConsts.MAX_STEPS)
+        delay_modifier = self.current_step / EnvConsts.MAX_STEPS
 
         # TODO: I want to optimize the number of shares since my objective is to accumulate more coins
         reward = self.balance * delay_modifier
@@ -147,18 +156,18 @@ class CryptoTradingEnv(gym.Env):
         self.trades = []
 
         # Set the current step to a random point within the data frame
-        self.current_step = random.randint(0, len(self.df.loc[:, 'Open'].values) - 6)
+        self.current_step = random.randint(0, len(self.df.loc[:, "Open"].values) - 6)
 
         return self._next_observation()
 
-    def render(self, mode='live', **kwargs):
+    def render(self, mode="live", **kwargs):
         # Render the environment to the screen
-        if mode == 'file':
-            self._render_to_file(kwargs.get('filename', 'render.txt'))
+        if mode == "file":
+            self._render_to_file(kwargs.get("filename", "render.txt"))
 
-        elif mode == 'live':
+        elif mode == "live":
             if self.visualization is None:
-                self.visualization = StockTradingGraph(self.df, kwargs.get('title', None))
+                self.visualization = StockTradingGraph(self.df, kwargs.get("title", None))
 
             if self.current_step > EnvConsts.LOOKBACK_WINDOW_SIZE:
                 self.visualization.render(

@@ -51,17 +51,17 @@ def tear_down():
 
 
 acc_info = AccountInfo(
-    makerCommission=.001,
-    takerCommission=.001,
-    buyerCommission=.001,
-    sellerCommission=.001,
+    makerCommission=0.001,
+    takerCommission=0.001,
+    buyerCommission=0.001,
+    sellerCommission=0.001,
     canTrade=True,
     canWithdraw=True,
     canDeposit=True,
     updateTime=1631587291,
     accountType=AccountType.SPOT,
     balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
-    permissions=["SPOT"]
+    permissions=["SPOT"],
 )
 
 db_name = "test_db"
@@ -77,6 +77,3 @@ def test_account_info():
     # Assertions
     records = DataBaseManager.select(AccountInfo)
     assert records[0] == acc_info
-
-
-

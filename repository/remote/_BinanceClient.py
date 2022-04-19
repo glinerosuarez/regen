@@ -21,7 +21,7 @@ class BinanceClient:
 
     def get_account_info(self) -> AccountInfo:
         """
-         Get account information
+        Get account information
         """
         return AccountInfo(**self.client.account())
 
@@ -34,12 +34,12 @@ class BinanceClient:
         return AvgPrice(**self.client.avg_price(str(pair)))
 
     def get_klines_data(
-            self,
-            pair: TradingPair,
-            interval: Interval,
-            start_time: Optional[datetime] = None,
-            end_time: Optional[datetime] = None,
-            limit: Optional[int] = None,
+        self,
+        pair: TradingPair,
+        interval: Interval,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None,
     ) -> List[KlineRecord]:
         """
         Kline/Candlestick Data
@@ -78,15 +78,15 @@ class BinanceClient:
         ]
 
     def place_order(
-            self,
-            pair: TradingPair,
-            side: Side,
-            type: OrderType,
-            time_in_force: TimeInForce = TimeInForce.GTC,
-            quantity: Optional[float] = None,
-            price: Optional[float] = None,
-            new_client_order_id: Optional[str] = None,
-            is_test: bool = True,
+        self,
+        pair: TradingPair,
+        side: Side,
+        type: OrderType,
+        time_in_force: TimeInForce = TimeInForce.GTC,
+        quantity: Optional[float] = None,
+        price: Optional[float] = None,
+        new_client_order_id: Optional[str] = None,
+        is_test: bool = True,
     ) -> Optional[Order]:
         """
         Set a test order. Can come in useful for testing orders before actually submitting them.
@@ -102,15 +102,17 @@ class BinanceClient:
         """
 
         # Arguments to kwargs
-        args = remove_none_args({
-            "symbol": str(pair),
-            "side": side.value,
-            "type": type.value,
-            "timeInForce": time_in_force.value,
-            "quantity": quantity,
-            "price": price,
-            "newClientOrderId": new_client_order_id,
-        })
+        args = remove_none_args(
+            {
+                "symbol": str(pair),
+                "side": side.value,
+                "type": type.value,
+                "timeInForce": time_in_force.value,
+                "quantity": quantity,
+                "price": price,
+                "newClientOrderId": new_client_order_id,
+            }
+        )
         try:
             if is_test:
                 self.client.new_order_test(**args)

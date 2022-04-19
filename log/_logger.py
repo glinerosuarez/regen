@@ -41,7 +41,7 @@ class LoggerFactory:
             h_out.addFilter(StdOutFilter())
 
             # Create formatter.
-            formatter: Formatter = Formatter('[%(asctime)s - %(name)s - %(levelname)s]: %(message)s')
+            formatter: Formatter = Formatter("[%(asctime)s - %(name)s - %(levelname)s]: %(message)s")
 
             # add formatter to handlers
             h_err.setFormatter(formatter)

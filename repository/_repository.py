@@ -8,7 +8,7 @@ class Repository:
     @staticmethod
     def get_account_info():
         """
-         Get account information
+        Get account information
         """
         return Repository._bnb_client.get_account_info()
 

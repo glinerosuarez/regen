@@ -6,12 +6,12 @@ from repository._dataclass import DataClass
 
 
 class AccountType(enum.Enum):
-    SPOT = 'SPOT'
+    SPOT = "SPOT"
 
 
 class AccountPermission(enum.Enum):
     @classmethod
-    def _converter(cls, obj: Union[list, 'AccountPermission']):
+    def _converter(cls, obj: Union[list, "AccountPermission"]):
         if isinstance(obj, list):
             return [cls(o) for o in obj]
         elif isinstance(obj, cls):
@@ -19,14 +19,14 @@ class AccountPermission(enum.Enum):
         elif isinstance(obj, str):
             return cls(obj)
 
-    SPOT = 'SPOT'
+    SPOT = "SPOT"
 
 
 class Interval(enum.Enum):
-    M_1 = '1m'
-    M_5 = '5m'
-    H_1 = '1h'
-    D_1 = '1d'
+    M_1 = "1m"
+    M_5 = "5m"
+    H_1 = "1h"
+    D_1 = "1d"
 
 
 @attrs
