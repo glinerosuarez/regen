@@ -1,5 +1,7 @@
 import cattr
 from copy import deepcopy
+
+import numpy as np
 from attr import attrs, attrib
 from consts import CryptoAsset
 from attr.validators import instance_of
@@ -97,3 +99,7 @@ class KlineRecord:
     # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
     taker_buy_base_vol: float = attrib(converter=float)
     taker_buy_quote_vol: float = attrib(converter=float)
+
+    def to_numpy(self) -> np.ndarray:
+        values = vars(self)
+        return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
