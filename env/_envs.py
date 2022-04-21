@@ -1,26 +1,103 @@
 import random
+from enum import Enum
+from typing import Optional, Union
+
 import gym
 import numpy as np
 from gym import spaces
-from attr import attrs, attrib
+from gym.core import ObsType
 from consts import EnvConsts, CryptoAsset
 from env._render import StockTradingGraph
+from vm.crypto_vm import CryptoViewModel
 
 
-@attrs(auto_attribs=True)
 class CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
 
-    # The crypto asset we want to accumulate
-    main_asset: CryptoAsset
-    # The crypto asset we trade our main asset against
-    asset_against: CryptoAsset
-    # Actions of the format Buy x%, Sell x%, Hold, etc.
-    action_space: spaces.Box = attrib(
-        init=False, default=spaces.Box(low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
-    )
-    # Prices contains the OHCL values for the last five prices
-    observation_space: spaces.Box = spaces.Box(low=0, high=1, shape=(6, 6), dtype=np.float16)
+    def __init__(self, window_size: int, base: CryptoAsset, quote: CryptoAsset):
+        # Number of ticks (current and previous ticks) returned as an observation.
+        self.window_size = window_size
+        # Extracted features over time.
+        self.signal_features = np.array([])
+        # Shape of a single observation.
+        self.shape = (window_size, self.signal_features.shape[1])
+        # Actions of the format Buy x%, Sell x%, Hold, etc.
+        self.action_space = spaces.Discrete(len(Action))
+        # Prices contain the OHCL values for the last window_size prices.
+        self.observation_space = spaces.Box(low=0, high=1, shape=self.shape, dtype=np.float32)
+        # VM to get data from sources.
+        self.vm = CryptoViewModel(base_asset=base, quote_asset=quote, window_size=window_size)
+
+    def reset(self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None) -> Union[
+        ObsType, tuple[ObsType, dict]]:
+        self.vm.reset()
+        self._done = False
+        self._current_tick = self._start_tick
+        self._last_trade_tick = self._current_tick - 1
+
+        self._position_history = (self.window_size * [None]) + [self._position]
+        self._total_reward = 0.
+        self._total_profit = 1.  # unit
+        self._first_rendering = True
+        self.history = {}
+        return self.vm.get_observation()
+
+    def step(self, action):
+        self._done = False
+        self._current_tick += 1
+
+        # TODO: This is not applicable to our use case, here we should define the conditions to end the episode.
+        #if self._current_tick == self._end_tick:
+        #    self._done = True
+
+        step_reward = self.vm.calculate_reward(action)
+        self._total_reward += step_reward
+
+        self._update_profit(action)
+
+        trade = False
+        if ((action == Actions.Buy.value and self._position == Positions.Short) or
+                (action == Actions.Sell.value and self._position == Positions.Long)):
+            trade = True
+
+        if trade:
+            self._position = self._position.opposite()
+            self._last_trade_tick = self._current_tick
+
+        self._position_history.append(self._position)
+        observation = self._get_observation()
+        info = dict(
+            total_reward = self._total_reward,
+            total_profit = self._total_profit,
+            position = self._position.value
+        )
+        self._update_history(info)
+
+        return observation, step_reward, self._done, info
+
+'''
+    def reset(self):
+        self.balance = EnvConsts.INITIAL_ACCOUNT_BALANCE
+        self.net_worth = EnvConsts.INITIAL_ACCOUNT_BALANCE
+        self.max_net_worth = EnvConsts.INITIAL_ACCOUNT_BALANCE
+        self.shares_held = 0
+        self.cost_basis = 0
+        self.total_shares_sold = 0
+        self.total_sales_value = 0
+        self.trades = []
+
+        # Set the current step to a random point within the data frame
+        self.current_step = random.randint(0, len(self.df.loc[:, "Open"].values) - 6)
+
+        return self._next_observation()'''
+
+
+
+
+
+
+    def _process_data(self):
+        raise NotImplementedError
 
     def _next_observation(self):
         # Get the data points for the last 5 days and scale to between 0-1
@@ -142,23 +219,6 @@ class CryptoTradingEnv(gym.Env):
         obs = self._next_observation()
         return obs, reward, done, {}
 
-    def reset(self):
-        """
-        Reset the state of the environment to an initial state
-        """
-        self.balance = EnvConsts.INITIAL_ACCOUNT_BALANCE
-        self.net_worth = EnvConsts.INITIAL_ACCOUNT_BALANCE
-        self.max_net_worth = EnvConsts.INITIAL_ACCOUNT_BALANCE
-        self.shares_held = 0
-        self.cost_basis = 0
-        self.total_shares_sold = 0
-        self.total_sales_value = 0
-        self.trades = []
-
-        # Set the current step to a random point within the data frame
-        self.current_step = random.randint(0, len(self.df.loc[:, "Open"].values) - 6)
-
-        return self._next_observation()
 
     def render(self, mode="live", **kwargs):
         # Render the environment to the screen
