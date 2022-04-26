@@ -24,6 +24,14 @@ class BinanceClient:
         """
         return AccountInfo(**self.client.account())
 
+    def get_price(self, pair: TradingPair) -> float:
+        """
+        Get the current price of an asset.
+        :param pair: trading pair.
+        :return: Latest price for a symbol
+        """
+        return float(self.client.ticker_price(str(pair))["price"])
+
     def get_current_avg_price(self, pair: TradingPair) -> AvgPrice:
         """
         Get the average price of a base in the quote units within a predefined length of time.
