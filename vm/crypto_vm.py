@@ -66,6 +66,8 @@ class CryptoViewModel:
             window_size: int,
             base_balance: float = 0,
             quote_balance: float = 0,
+            trade_fee_ask_percent: float = 0.0,
+            trade_fee_bid_percent: float = 0.0,
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -80,22 +82,23 @@ class CryptoViewModel:
         self.trading_pair = TradingPair(base_asset, quote_asset)
         self.base_balance = base_balance
         self.quote_balance = quote_balance
+        # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
         self.producer = KlinesProducer(TradingPair(base_asset, quote_asset), window_size)
         self.position = Position.Short
         self.start_tick = window_size
         self.current_tick = None
-        self.last_trade_tick = None
         self.total_reward = 0.0
         self.total_profit = None
         self.done = None
         # The ask price represents the minimum price that a seller is willing to take for that same security, so this is
         # the fee the exchange charges for buying.
-        self.trade_fee_ask_percent = 0.0
+        self.trade_fee_ask_percent = trade_fee_ask_percent
         # The bid price represents the maximum price that a buyer is willing to pay for a share of stock or other
         # security, so this is the fee the exchange charges for buying.
-        self.trade_fee_bid_percent = 0.0
+        self.trade_fee_bid_percent = trade_fee_bid_percent
         self.position_history = (self.window_size * [None]) + [self.position]
+        self.trade_price_history = []
         self.history = defaultdict(list)
         self.client = BinanceClient()
         self.last_trade_price = None
@@ -105,23 +108,49 @@ class CryptoViewModel:
     def execution_id(self) -> str:
         return str(uuid.uuid4())
 
-    def is_trade(self, action: Action):
-        return any([
-            action == Action.Buy.value and self.position == Position.Short,
-            action == Action.Sell.value and self.position == Position.Long,
-        ])
-
     def reset(self):
         if not self.producer.is_alive():
             self.producer.start()
 
-        # If balance is equal to 0 then we buy at the current price because we always start shorting.
-        self._place_order(Side.BUY)
+        self.done = False
+        self.current_tick = self.window_size
 
-        self.position = Position.Short
+        # We always start longing
+        if self.base_balance > self.quote_balance:
+            self._place_order(Side.SELL)
+
+        self.position = Position.Long
+        self.position_history = (self.window_size * [None]) + [self.position]
+        self.trade_price_history = []
+        self.total_reward = 0.
         self.last_trade_price = None
+        return self._get_observation()
 
-    def get_observation(self):
+    def step(self, action: Action):
+        self.done = False
+        self.current_tick += 1
+
+        # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
+        if self.current_tick == self._TICKS_PER_EPISODE:
+            self.done = True
+
+        step_reward = self._calculate_reward(action)
+        self.total_reward += step_reward
+
+        self.position_history.append(self.position)
+        observation = self._get_observation()
+        info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
+        self._update_history(info)
+
+        return observation, step_reward, self.done, info
+
+    def _is_trade(self, action: Action):
+        return any([
+            action == Action.Buy and self.position == Position.Short,
+            action == Action.Sell and self.position == Position.Long,
+        ])
+
+    def _get_observation(self):
         while True:
             if self.producer.is_alive():
                 if self.producer.queue.empty():
@@ -135,21 +164,23 @@ class CryptoViewModel:
     def _calculate_reward(self, action: Action):
         step_reward = 0
 
-        if self.is_trade(action):
+        if self._is_trade(action):
             quantity, current_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
-            price_diff = self.last_trade_price - current_price
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
-                step_reward = price_diff
+                step_reward = self.last_trade_price - current_price
 
+            self.trade_price_history.append(current_price)
             self.last_trade_price = current_price  # Update last trade price
 
             self._update_balances(action, quantity, current_price)
 
+            self.position = self.position.opposite()
+
         return step_reward
 
     def _update_balances(self, action: Action, quantity: float, price: float) -> None:
-        if self.is_trade(action) or self.done:
+        if self._is_trade(action) or self.done:
             if action == Action.Buy:
                 self.base_balance = quantity
                 self.quote_balance = 0.0
@@ -157,32 +188,9 @@ class CryptoViewModel:
                 self.base_balance = 0.0
                 self.quote_balance = quantity * price
 
-    def update_history(self, info):
+    def _update_history(self, info):
         for key, value in info.items():
             self.history[key].append(value)
-
-    def step(self, action: Action):
-        self.done = False
-        self.current_tick += 1
-
-        # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
-        if self.current_tick == self._TICKS_PER_EPISODE:
-            self.done = True
-
-        step_reward = self._calculate_reward(action)
-        self.total_reward += step_reward
-
-        if self.is_trade(action):
-            self.position = self.position.opposite()
-            self.last_trade_tick = self.current_tick
-            self.last_trade_price
-
-        self.position_history.append(self.position)
-        observation = self.get_observation()
-        info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
-        self.update_history(info)
-
-        return observation, step_reward, self.done, info
 
     def _place_order(self, side: Side) -> tuple[float, float]:
         #order = self.client.place_order(
@@ -199,7 +207,7 @@ class CryptoViewModel:
         if side == Side.BUY:
             quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
         else:
-            quantity = self.base_balance * (1 - self.trade_fee_ask_percent) * price
+            quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
         return quantity, price
 
 
