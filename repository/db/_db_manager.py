@@ -14,6 +14,8 @@ from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy import create_engine, Table, Column, String, Integer, Float, Enum, select, Boolean, BigInteger
 
+from vm.consts import Position, Action
+
 _mapper_registry = registry()
 _logger = LoggerFactory.get_console_logger(__name__)
 
@@ -164,3 +166,35 @@ class AccountInfo(DataClass):
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
+
+
+@_mapper_registry.mapped
+@attrs
+class EnvState(DataClass):
+    __table__ = Table(
+        "env_state",
+        _mapper_registry.metadata,
+        Column("state_id", String, primary_key=True, nullable=False),
+        Column("execution_id", String, nullable=False),
+        Column("episode_id", String, nullable=False),
+        Column("tick", BigInteger, nullable=False),
+        Column("price", Float, nullable=False),
+        Column("position", Enum(Position), nullable=False),
+        Column("action", Enum(Action), nullable=False),
+        Column("is_trade", Boolean, nullable=False),
+        Column("ts", Float, nullable=False),
+    )
+
+    execution_id: str = attrib(converter=str)
+    episode_id: str = attrib(converter=str)
+    tick: int = attrib(converter=int)
+    state_id: str = attrib(init=False)
+    price: float = attrib(converter=float)
+    position: Position = attrib()
+    action: Action = attrib()
+    is_trade: bool = attrib()
+    ts: float = attrib()
+
+    @state_id.default
+    def _id(self):
+        return self.execution_id + self.episode_id + str(self.tick)
