@@ -15,6 +15,8 @@ import matplotlib.animation as animation
 import log
 from repository import Interval
 from consts import CryptoAsset, Side
+from repository.db import DataBaseManager
+from repository.db._db_manager import EnvState
 from vm.consts import E, Action, Position
 from repository.remote import BinanceClient
 from repository._dataclass import TradingPair
@@ -61,6 +63,7 @@ class KlinesProducer(FixedFrequencyProducer):
 class CryptoViewModel:
 
     _TICKS_PER_EPISODE = 60  # at 1 tick per second, this means that an episode last 1 hour at most.
+    _DB_NAME = "regen"
 
     def __init__(
             self,
@@ -94,6 +97,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
+        self.episode_id = None
         self.producer = KlinesProducer(TradingPair(base_asset, quote_asset), window_size)
         self.position = Position.Short
         self.start_tick = window_size
@@ -102,13 +106,16 @@ class CryptoViewModel:
         self.total_profit = None
         self.done = None
         self.position_history = (self.window_size * [None]) + [self.position]
-        self.trade_price_history = []
-        self.price_history = (self.window_size * [None])
         self.history = defaultdict(list)
         self.client = BinanceClient()
+        self.last_price = None
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
         self.first_rendering = None
+
+        self.db_manager = DataBaseManager
+        self.db_manager.init_connection(self._DB_NAME)
+        self.db_manager.create_all()
 
     @cached_property
     def execution_id(self) -> str:
@@ -127,11 +134,11 @@ class CryptoViewModel:
 
         self.position = Position.Long
         self.position_history = (self.window_size * [None]) + [self.position]
-        self.trade_price_history = []
-        self.price_history = self.window_size * [None]
         self.total_reward = 0.
+        self.last_price = None
         self.last_trade_price = None
         self.first_rendering = True
+        self.episode_id = str(uuid.uuid4())
         return self._get_observation()
 
     def step(self, action: Action):
@@ -156,7 +163,7 @@ class CryptoViewModel:
         if mode == "live":
             with open("graph_data.txt", "a") as data_file:
                 if self.current_tick and self.price_history[-1]:
-                    data_file.write(",".join([str(self.current_tick), str(self.price_history[-1])]) + "\n")
+                    data_file.write(",".join([str(self.current_tick), str(self.price_history[-1])], self.is) + "\n")
 
             if self.first_rendering:
                 subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
@@ -183,22 +190,36 @@ class CryptoViewModel:
         step_reward = 0
 
         if self._is_trade(action):
-            quantity, current_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
+            quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
-                step_reward = self.last_trade_price - current_price
+                step_reward = self.last_trade_price - self.last_price
 
-            self.trade_price_history.append(current_price)
-            self.price_history.append(current_price)
-            self.last_trade_price = current_price  # Update last trade price
+            self.last_trade_price = self.last_price  # Update last trade price
 
-            self._update_balances(action, quantity, current_price)
+            self._store_env_state_data(action, is_trade=True)
+            self._update_balances(action, quantity, self.last_price)
 
             self.position = self.position.opposite()
         else:
-            self.price_history.append(self._get_price())
+            self.last_price = self._get_price()
+            self._store_env_state_data(action, is_trade=False)
 
         return step_reward
+
+    def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
+        self.db_manager.insert(
+            EnvState(
+                execution_id=self.execution_id,
+                episode_id=self.episode_id,
+                tick=self.current_tick,
+                price=self.last_price,
+                position=self.position,
+                action=action,
+                is_trade=is_trade,
+                ts=time.time()
+            )
+        )
 
     def _update_balances(self, action: Action, quantity: float, price: float) -> None:
         if self._is_trade(action) or self.done:

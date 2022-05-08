@@ -1,9 +1,11 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
+
 from test import test_utils
 from test.test_utils import clean
-from sqlalchemy.exc import IntegrityError
 from repository._consts import AccountType
-from repository.db._db_manager import DataBaseManager, Order, AccountInfo
+from repository.db._db_manager import DataBaseManager, Order, AccountInfo, EnvState
+from vm.consts import Position, Action
 
 data = Order(
     symbol="BNBBUSD",
@@ -77,3 +79,30 @@ def test_account_info():
     # Assertions
     records = DataBaseManager.select(AccountInfo)
     assert records[0] == acc_info
+
+
+def test_env_state():
+    # Init db
+    DataBaseManager.init_connection(db_name)
+    DataBaseManager.create_all()
+
+    env_state = EnvState(
+        execution_id="001",
+        episode_id="001",
+        tick=1,
+        price=100.0,
+        position=Position.Long,
+        action=Action.Sell,
+        is_trade=False,
+        ts=1651992028.7183151
+    )
+
+    DataBaseManager.insert(env_state)
+
+    # Assertions
+    records = DataBaseManager.select(EnvState)
+    assert records[0] == env_state
+
+
+if __name__ == '__main__':
+    test_env_state()
