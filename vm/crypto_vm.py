@@ -1,20 +1,23 @@
+import subprocess
 import uuid
+from typing import Generic
 from collections import defaultdict
+from abc import ABC, abstractmethod
 from functools import cached_property
 
-import numpy as np
 import time
 import threading
-from abc import ABC, abstractmethod
+import numpy as np
 from queue import Queue
-from typing import Generic, Optional
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 import log
-from consts import CryptoAsset, Side, OrderType
 from repository import Interval
-from repository._dataclass import TradingPair
-from repository.remote import BinanceClient
+from consts import CryptoAsset, Side
 from vm.consts import E, Action, Position
+from repository.remote import BinanceClient
+from repository._dataclass import TradingPair
 
 
 class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
@@ -80,10 +83,17 @@ class CryptoViewModel:
         self.base_asset = base_asset
         self.quote_asset = quote_asset
         self.trading_pair = TradingPair(base_asset, quote_asset)
-        self.base_balance = base_balance
-        self.quote_balance = quote_balance
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
+        self.base_balance = base_balance
+        self.quote_balance = quote_balance
+        # The ask price represents the minimum price that a seller is willing to take for that same security, so this is
+        # the fee the exchange charges for buying.
+        self.trade_fee_ask_percent = trade_fee_ask_percent
+        # The bid price represents the maximum price that a buyer is willing to pay for a share of stock or other
+        # security, so this is the fee the exchange charges for buying.
+        self.trade_fee_bid_percent = trade_fee_bid_percent
+
         self.producer = KlinesProducer(TradingPair(base_asset, quote_asset), window_size)
         self.position = Position.Short
         self.start_tick = window_size
@@ -91,18 +101,14 @@ class CryptoViewModel:
         self.total_reward = 0.0
         self.total_profit = None
         self.done = None
-        # The ask price represents the minimum price that a seller is willing to take for that same security, so this is
-        # the fee the exchange charges for buying.
-        self.trade_fee_ask_percent = trade_fee_ask_percent
-        # The bid price represents the maximum price that a buyer is willing to pay for a share of stock or other
-        # security, so this is the fee the exchange charges for buying.
-        self.trade_fee_bid_percent = trade_fee_bid_percent
         self.position_history = (self.window_size * [None]) + [self.position]
         self.trade_price_history = []
+        self.price_history = (self.window_size * [None])
         self.history = defaultdict(list)
         self.client = BinanceClient()
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
+        self.first_rendering = None
 
     @cached_property
     def execution_id(self) -> str:
@@ -122,8 +128,10 @@ class CryptoViewModel:
         self.position = Position.Long
         self.position_history = (self.window_size * [None]) + [self.position]
         self.trade_price_history = []
+        self.price_history = self.window_size * [None]
         self.total_reward = 0.
         self.last_trade_price = None
+        self.first_rendering = True
         return self._get_observation()
 
     def step(self, action: Action):
@@ -143,6 +151,16 @@ class CryptoViewModel:
         self._update_history(info)
 
         return observation, step_reward, self.done, info
+
+    def render(self, mode: str):
+        if mode == "live":
+            with open("graph_data.txt", "a") as data_file:
+                if self.current_tick and self.price_history[-1]:
+                    data_file.write(",".join([str(self.current_tick), str(self.price_history[-1])]) + "\n")
+
+            if self.first_rendering:
+                subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
+                self.first_rendering = False
 
     def _is_trade(self, action: Action):
         return any([
@@ -171,11 +189,14 @@ class CryptoViewModel:
                 step_reward = self.last_trade_price - current_price
 
             self.trade_price_history.append(current_price)
+            self.price_history.append(current_price)
             self.last_trade_price = current_price  # Update last trade price
 
             self._update_balances(action, quantity, current_price)
 
             self.position = self.position.opposite()
+        else:
+            self.price_history.append(self._get_price())
 
         return step_reward
 
@@ -209,5 +230,8 @@ class CryptoViewModel:
         else:
             quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
         return quantity, price
+
+    def _get_price(self):
+        return self.client.get_price(self.trading_pair)
 
 
