@@ -1,5 +1,7 @@
 [default]
 app_name = "regen"
+db_name = "regen"
 [development]
 bnb_base_url = "https://testnet.binance.vision" # The base endpoint this client will send requests to.
 [production]
+bnb_base_url = "https://api.binance.com"

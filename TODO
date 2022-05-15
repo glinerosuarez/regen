@@ -1,2 +1,2 @@
 1. Implement mypy and pyre https://pyre-check.org/docs/getting-started for statical type check
-2. Implement SQLAlchemy, better if if we create a light library to automatically convert attrs classes
+2. increase observation features

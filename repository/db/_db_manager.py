@@ -10,7 +10,7 @@ from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import registry, Session
 from consts import TimeInForce, OrderType, Side
-from repository._dataclass import DataClass, TradingPair
+from repository._dataclass import DataClass, TradingPair, KlineRecord
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy import create_engine, Table, Column, String, Integer, Float, Enum, select, Boolean, BigInteger
 
@@ -53,7 +53,7 @@ class DataBaseManager:
                 raise exception
 
     @staticmethod
-    def select(table: Type[DataClass]) -> list:
+    def select_all(table: Type[DataClass]) -> list:
         """
         Execute a SELECT statement from the SQL Object table.
         :return: a :list: of SQL Object.
@@ -198,3 +198,22 @@ class EnvState(DataClass):
     @state_id.default
     def _id(self):
         return self.execution_id + self.episode_id + str(self.tick)
+
+
+@_mapper_registry.mapped
+@attrs
+class Observation(DataClass):
+    __table__ = Table(
+        "observation",
+        _mapper_registry.metadata,
+        Column("obs_id", Integer, primary_key=True, nullable=False),
+        Column("execution_id", String, nullable=False),
+        Column("episode_id", String, nullable=False),
+        Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
+        Column("ts", Float, nullable=False),
+    )
+
+    execution_id: str = attrib(converter=str)
+    episode_id: str = attrib(converter=str)
+    klines: List[KlineRecord] = attrib()
+    ts: float = attrib(converter=float)
