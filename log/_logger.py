@@ -32,12 +32,12 @@ class LoggerFactory:
 
             # Create stderr handler.
             h_err: StreamHandler = StreamHandler(stderr)
-            h_err.setLevel(logging.INFO)
+            h_err.setLevel(logging.DEBUG)
             h_err.addFilter(StdErrFilter())
 
             # Create stdout handler.
             h_out: StreamHandler = StreamHandler(stdout)
-            h_out.setLevel(logging.INFO)
+            h_out.setLevel(logging.DEBUG)
             h_out.addFilter(StdOutFilter())
 
             # Create formatter.

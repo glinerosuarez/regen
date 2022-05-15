@@ -85,7 +85,7 @@ class TradingPair(DataClass):
 
 
 @attrs
-class KlineRecord:
+class KlineRecord(DataClass):
     pair: TradingPair = attrib(validator=instance_of(TradingPair))
     open_time: int = attrib(converter=int)
     open_value: float = attrib(converter=float)

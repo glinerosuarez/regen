@@ -9,14 +9,13 @@ import time
 import threading
 import numpy as np
 from queue import Queue
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
+import config
 import log
 from repository import Interval
 from consts import CryptoAsset, Side
 from repository.db import DataBaseManager
-from repository.db._db_manager import EnvState
+from repository.db._db_manager import EnvState, Observation
 from vm.consts import E, Action, Position
 from repository.remote import BinanceClient
 from repository._dataclass import TradingPair
@@ -56,14 +55,12 @@ class KlinesProducer(FixedFrequencyProducer):
         self.n_klines = n_klines
 
     def _get_element(self) -> E:
-        klines = self.client.get_klines_data(self.trading_pair, Interval.M_1, limit=self.n_klines)
-        return np.array([np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines])
+        return self.client.get_klines_data(self.trading_pair, Interval.M_1, limit=self.n_klines)
 
 
 class CryptoViewModel:
 
     _TICKS_PER_EPISODE = 60  # at 1 tick per second, this means that an episode last 1 hour at most.
-    _DB_NAME = "regen"
 
     def __init__(
             self,
@@ -112,10 +109,10 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
         self.first_rendering = None
+        self.render_process = None
 
-        self.db_manager = DataBaseManager
-        self.db_manager.init_connection(self._DB_NAME)
-        self.db_manager.create_all()
+        DataBaseManager.init_connection(config.settings.db_name)
+        DataBaseManager.create_all()
 
     @cached_property
     def execution_id(self) -> str:
@@ -138,6 +135,9 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.first_rendering = True
+        if self.render_process:
+            self.render_process.kill()
+            self.render_process = None
         self.episode_id = str(uuid.uuid4())
         return self._get_observation()
 
@@ -161,12 +161,8 @@ class CryptoViewModel:
 
     def render(self, mode: str):
         if mode == "live":
-            with open("graph_data.txt", "a") as data_file:
-                if self.current_tick and self.price_history[-1]:
-                    data_file.write(",".join([str(self.current_tick), str(self.price_history[-1])], self.is) + "\n")
-
             if self.first_rendering:
-                subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
+                self.render_process = subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
                 self.first_rendering = False
 
     def _is_trade(self, action: Action):
@@ -182,9 +178,20 @@ class CryptoViewModel:
                     time.sleep(self.producer.DEFAULT_FREQ / 2)
                     continue
                 else:
-                    element = self.producer.queue.get()
-                    self.logger.debug(f'Getting {element} : {self.producer.queue.qsize()} elements in queue.')
-                    return element
+                    obs_data = self.producer.queue.get()
+                    self.logger.debug(f'Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.')
+                    self.logger.debug(f'Saving observation in database.')
+                    DataBaseManager.insert(
+                        Observation(
+                            execution_id=self.execution_id,
+                            episode_id=self.episode_id,
+                            klines=obs_data,
+                            ts=time.time(),
+                        )
+                    )
+                    return np.array(  # Return observation as a numpy array because everybody uses numpy.
+                        [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in obs_data]
+                    )
 
     def _calculate_reward(self, action: Action):
         step_reward = 0
@@ -208,7 +215,7 @@ class CryptoViewModel:
         return step_reward
 
     def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
-        self.db_manager.insert(
+        DataBaseManager.insert(
             EnvState(
                 execution_id=self.execution_id,
                 episode_id=self.episode_id,
