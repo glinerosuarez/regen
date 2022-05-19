@@ -1,5 +1,4 @@
 import subprocess
-import uuid
 from typing import Generic
 from collections import defaultdict
 from abc import ABC, abstractmethod
@@ -114,10 +113,6 @@ class CryptoViewModel:
         DataBaseManager.init_connection(config.settings.db_name)
         DataBaseManager.create_all()
 
-    @cached_property
-    def execution_id(self) -> str:
-        return str(uuid.uuid4())
-
     def reset(self):
         if not self.producer.is_alive():
             self.producer.start()
@@ -138,7 +133,7 @@ class CryptoViewModel:
         if self.render_process:
             self.render_process.kill()
             self.render_process = None
-        self.episode_id = str(uuid.uuid4())
+        self.episode_id = self._get_episode_id()
         return self._get_observation()
 
     def step(self, action: Action):
@@ -164,6 +159,15 @@ class CryptoViewModel:
             if self.first_rendering:
                 self.render_process = subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
                 self.first_rendering = False
+
+    @cached_property
+    def execution_id(self) -> int:
+        last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
+        return last_exec_id + 1 if last_exec_id is not None else 0
+
+    def _get_episode_id(self) -> int:
+        last_ep_id = DataBaseManager.select_max(EnvState.episode_id, EnvState.episode_id == self.execution_id)
+        return last_ep_id + 1 if last_ep_id is not None else 0
 
     def _is_trade(self, action: Action):
         return any([

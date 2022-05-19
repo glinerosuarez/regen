@@ -18,7 +18,12 @@ if __name__ == '__main__':
     def animate(i):
         ax1.clear()
 
-        records: List[EnvState] = DataBaseManager.select_all(EnvState)
+        last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
+        last_ep_id = DataBaseManager.select_max(EnvState.episode_id, condition=EnvState.execution_id == last_exec_id)
+        records: List[EnvState] = DataBaseManager.select(
+            EnvState,
+            conditions=[EnvState.execution_id == last_exec_id, EnvState.episode_id == last_ep_id]
+        )
 
         xs, ys = list(), list()
 
