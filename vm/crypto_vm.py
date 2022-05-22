@@ -1,4 +1,3 @@
-import subprocess
 from typing import Generic
 from collections import defaultdict
 from abc import ABC, abstractmethod
@@ -175,7 +174,7 @@ class CryptoViewModel:
                 else:
                     obs_data = self.producer.queue.get()
                     self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
-                    self.logger.debug(f"Saving observation in database.")
+                    self.logger.debug("Saving observation in database.")
                     DataBaseManager.insert(
                         Observation(
                             execution_id=self.execution_id,
