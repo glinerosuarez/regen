@@ -57,7 +57,7 @@ class CryptoTradingEnv(gym.Env):
                 self.first_rendering = False
 
     def reset(
-            self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None
+        self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None
     ) -> Union[ObsType, tuple[ObsType, dict]]:
         # Reset rendering process.
         self.first_rendering = True

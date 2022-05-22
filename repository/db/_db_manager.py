@@ -15,7 +15,18 @@ from consts import TimeInForce, OrderType, Side
 from repository._dataclass import DataClass, TradingPair, KlineRecord
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy import (
-    create_engine, Table, Column, String, Integer, Float, Enum, select, Boolean, BigInteger, func, and_
+    create_engine,
+    Table,
+    Column,
+    String,
+    Integer,
+    Float,
+    Enum,
+    select,
+    Boolean,
+    BigInteger,
+    func,
+    and_,
 )
 
 from vm.consts import Position, Action

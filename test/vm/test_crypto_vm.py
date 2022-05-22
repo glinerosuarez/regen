@@ -17,5 +17,5 @@ def test_crypto_vm():
     print("It's over my friend")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_crypto_vm()

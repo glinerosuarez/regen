@@ -39,7 +39,7 @@ class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
             if not self.queue.full():
                 element = self._get_element()
                 self.queue.put(element)
-                self.logger.debug(f'Putting {element} : {self.queue.qsize()} elements in queue.')
+                self.logger.debug(f"Putting {element} : {self.queue.qsize()} elements in queue.")
                 time.sleep(self.frequency)
 
 
@@ -62,14 +62,14 @@ class CryptoViewModel:
     _TICKS_PER_EPISODE = 60  # at 1 tick per second, this means that an episode last 1 hour at most.
 
     def __init__(
-            self,
-            base_asset: CryptoAsset,
-            quote_asset: CryptoAsset,
-            window_size: int,
-            base_balance: float = 0,
-            quote_balance: float = 0,
-            trade_fee_ask_percent: float = 0.0,
-            trade_fee_bid_percent: float = 0.0,
+        self,
+        base_asset: CryptoAsset,
+        quote_asset: CryptoAsset,
+        window_size: int,
+        base_balance: float = 0,
+        quote_balance: float = 0,
+        trade_fee_ask_percent: float = 0.0,
+        trade_fee_bid_percent: float = 0.0,
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -124,7 +124,7 @@ class CryptoViewModel:
 
         self.position = Position.Long
         self.position_history = (self.window_size * [None]) + [self.position]
-        self.total_reward = 0.
+        self.total_reward = 0.0
         self.last_price = None
         self.last_trade_price = None
 
@@ -159,10 +159,12 @@ class CryptoViewModel:
         return last_ep_id + 1 if last_ep_id is not None else 0
 
     def _is_trade(self, action: Action):
-        return any([
-            action == Action.Buy and self.position == Position.Short,
-            action == Action.Sell and self.position == Position.Long,
-        ])
+        return any(
+            [
+                action == Action.Buy and self.position == Position.Short,
+                action == Action.Sell and self.position == Position.Long,
+            ]
+        )
 
     def _get_observation(self):
         while True:
@@ -172,8 +174,8 @@ class CryptoViewModel:
                     continue
                 else:
                     obs_data = self.producer.queue.get()
-                    self.logger.debug(f'Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.')
-                    self.logger.debug(f'Saving observation in database.')
+                    self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
+                    self.logger.debug(f"Saving observation in database.")
                     DataBaseManager.insert(
                         Observation(
                             execution_id=self.execution_id,
@@ -217,7 +219,7 @@ class CryptoViewModel:
                 position=self.position,
                 action=action,
                 is_trade=is_trade,
-                ts=time.time()
+                ts=time.time(),
             )
         )
 
@@ -235,13 +237,13 @@ class CryptoViewModel:
             self.history[key].append(value)
 
     def _place_order(self, side: Side) -> tuple[float, float]:
-        #order = self.client.place_order(
+        # order = self.client.place_order(
         #    pair=self.trading_pair,
         #    side=side,
         #    type=OrderType.MARKET,
         #    quantity=self.balance,
         #    new_client_order_id=self.execution_id
-        #)
+        # )
         # TODO: Get trade price.
         # TODO: To train the initial agent we can skip placing a real order and use the curent price instead.
         # The price and quantity will be returned by client.place_order.
@@ -254,5 +256,3 @@ class CryptoViewModel:
 
     def _get_price(self):
         return self.client.get_price(self.trading_pair)
-
-

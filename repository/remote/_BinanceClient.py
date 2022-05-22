@@ -16,6 +16,7 @@ class BinanceClient:
     """
     Binance api client.
     """
+
     client = Spot(base_url=settings.bnb_base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
 
     def get_account_info(self) -> AccountInfo:

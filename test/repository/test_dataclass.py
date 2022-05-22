@@ -25,23 +25,25 @@ def test_tradingpair_from_str():
 
 
 def test_to_np():
-    vals = [TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
-            10,
-            100.2,
-            120.1,
-            90.2,
-            101.3,
-            50_000,
-            15,
-            20_000,
-            200,
-            100.3,
-            100.3]
+    vals = [
+        TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+        10,
+        100.2,
+        120.1,
+        90.2,
+        101.3,
+        50_000,
+        15,
+        20_000,
+        200,
+        100.3,
+        100.3,
+    ]
 
     record = KlineRecord(*vals)
 
     assert (np.array(vals) == record.to_numpy()).all()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_to_np()

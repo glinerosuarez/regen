@@ -8,10 +8,10 @@ from repository.db import DataBaseManager
 from repository.db._db_manager import EnvState
 from vm.consts import Action
 
-style.use('fivethirtyeight')
+style.use("fivethirtyeight")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     DataBaseManager.init_connection(config.settings.db_name)
 
@@ -21,8 +21,7 @@ if __name__ == '__main__':
         last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
         last_ep_id = DataBaseManager.select_max(EnvState.episode_id, condition=EnvState.execution_id == last_exec_id)
         records: List[EnvState] = DataBaseManager.select(
-            EnvState,
-            conditions=[EnvState.execution_id == last_exec_id, EnvState.episode_id == last_ep_id]
+            EnvState, conditions=[EnvState.execution_id == last_exec_id, EnvState.episode_id == last_ep_id]
         )
 
         xs, ys = list(), list()
