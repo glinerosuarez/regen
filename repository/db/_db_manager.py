@@ -1,18 +1,35 @@
 import json
 import cattr
 import pendulum
+from sqlalchemy.sql.elements import BinaryExpression
+
 from log import LoggerFactory
 from attr import attrs, attrib
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Any
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import registry, Session
+from sqlalchemy.orm import registry, Session, InstrumentedAttribute
 from consts import TimeInForce, OrderType, Side
-from repository._dataclass import DataClass, TradingPair
+from repository._dataclass import DataClass, TradingPair, KlineRecord
 from repository._consts import Fill, AccountType, Balance, AccountPermission
-from sqlalchemy import create_engine, Table, Column, String, Integer, Float, Enum, select, Boolean, BigInteger
+from sqlalchemy import (
+    create_engine,
+    Table,
+    Column,
+    String,
+    Integer,
+    Float,
+    Enum,
+    select,
+    Boolean,
+    BigInteger,
+    func,
+    and_,
+)
+
+from vm.consts import Position, Action
 
 _mapper_registry = registry()
 _logger = LoggerFactory.get_console_logger(__name__)
@@ -51,12 +68,41 @@ class DataBaseManager:
                 raise exception
 
     @staticmethod
-    def select(table: Type[DataClass]) -> list:
+    def select(table: Type[DataClass], conditions: Optional[BinaryExpression | list[BinaryExpression]] = None) -> list:
         """
         Execute a SELECT statement from the SQL Object table.
         :return: a :list: of SQL Object.
         """
+        match conditions:
+            case None:
+                sql_statement = select(table)
+            case [*cond]:
+                sql_statement = select(table).where(and_(*cond))
+            case _:
+                sql_statement = select(table).where(conditions)
+
+        return [data[0] for data in DataBaseManager._session.execute(sql_statement)]
+
+    @staticmethod
+    def select_all(table: Type[DataClass]) -> list:
+        """
+        Execute a SELECT * statement from the SQL Object table.
+        :return: a :list: of SQL Object.
+        """
         return [data[0] for data in DataBaseManager._session.execute(select(table))]
+
+    @staticmethod
+    def select_max(col: InstrumentedAttribute, condition: Optional[BinaryExpression] = None) -> Optional[Any]:
+        """
+        Return the biggest value in a column.
+        :param col: Column to get the value from.
+        :param condition: Binary condition that is used to filter out rows.
+        :return: Maximum value in the column.
+        """
+        sql_statement = select(func.max(col))
+        if condition is not None:
+            sql_statement = sql_statement.where(condition)
+        return DataBaseManager._session.execute(sql_statement).fetchone()[0]
 
 
 class _EncodedDataClass(types.UserDefinedType):
@@ -164,3 +210,54 @@ class AccountInfo(DataClass):
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
+
+
+@_mapper_registry.mapped
+@attrs
+class EnvState(DataClass):
+    __table__ = Table(
+        "env_state",
+        _mapper_registry.metadata,
+        Column("state_id", String, primary_key=True, nullable=False),
+        Column("execution_id", Integer, nullable=False),
+        Column("episode_id", Integer, nullable=False),
+        Column("tick", BigInteger, nullable=False),
+        Column("price", Float, nullable=False),
+        Column("position", Enum(Position), nullable=False),
+        Column("action", Enum(Action), nullable=False),
+        Column("is_trade", Boolean, nullable=False),
+        Column("ts", Float, nullable=False),
+    )
+
+    execution_id: int = attrib(converter=int)
+    episode_id: int = attrib(converter=int)
+    tick: int = attrib(converter=int)
+    state_id: str = attrib(init=False)
+    price: float = attrib(converter=float)
+    position: Position = attrib()
+    action: Action = attrib()
+    is_trade: bool = attrib()
+    ts: float = attrib()
+
+    @state_id.default
+    def _id(self):
+        return "-".join([str(self.execution_id), str(self.episode_id), str(self.tick)])
+
+
+@_mapper_registry.mapped
+@attrs
+class Observation(DataClass):
+    __table__ = Table(
+        "observation",
+        _mapper_registry.metadata,
+        Column("obs_id", Integer, primary_key=True, nullable=False),
+        Column("execution_id", String, nullable=False),
+        Column("episode_id", String, nullable=False),
+        Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
+        Column("ts", Float, nullable=False),
+    )
+
+    execution_id: str = attrib(converter=str)
+    episode_id: str = attrib(converter=str)
+    klines: List[KlineRecord] = attrib()
+    ts: float = attrib(converter=float)

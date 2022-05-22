@@ -1,5 +1,7 @@
+import numpy as np
+
 from consts import CryptoAsset
-from repository._dataclass import TradingPair
+from repository._dataclass import TradingPair, KlineRecord
 
 
 def test_tradingpair_from_str():
@@ -20,3 +22,28 @@ def test_tradingpair_from_str():
     # Negative scenario only a single crypto asset found
     pair = TradingPair.from_str("boff" + CryptoAsset.ETH.value + "boff" + "tra")
     assert pair is None
+
+
+def test_to_np():
+    vals = [
+        TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+        10,
+        100.2,
+        120.1,
+        90.2,
+        101.3,
+        50_000,
+        15,
+        20_000,
+        200,
+        100.3,
+        100.3,
+    ]
+
+    record = KlineRecord(*vals)
+
+    assert (np.array(vals) == record.to_numpy()).all()
+
+
+if __name__ == "__main__":
+    test_to_np()
