@@ -86,3 +86,8 @@ def test_place_order():
     assert order_data.timeInForce == TimeInForce.GTC
     assert order_data.type == type
     assert order_data.side == side
+
+
+def test_get_price():
+    price = client.get_price(TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD))
+    assert isinstance(price, float)
