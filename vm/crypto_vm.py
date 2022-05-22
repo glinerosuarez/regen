@@ -107,8 +107,6 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.first_rendering = None
-        self.render_process = None
 
         DataBaseManager.init_connection(config.settings.db_name)
         DataBaseManager.create_all()
@@ -129,10 +127,7 @@ class CryptoViewModel:
         self.total_reward = 0.
         self.last_price = None
         self.last_trade_price = None
-        self.first_rendering = True
-        if self.render_process:
-            self.render_process.kill()
-            self.render_process = None
+
         self.episode_id = self._get_episode_id()
         return self._get_observation()
 
@@ -153,12 +148,6 @@ class CryptoViewModel:
         self._update_history(info)
 
         return observation, step_reward, self.done, info
-
-    def render(self, mode: str):
-        if mode == "live":
-            if self.first_rendering:
-                self.render_process = subprocess.Popen(["python", "env/_utils.py"], start_new_session=True)
-                self.first_rendering = False
 
     @cached_property
     def execution_id(self) -> int:
