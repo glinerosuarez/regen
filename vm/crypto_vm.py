@@ -59,6 +59,7 @@ class KlinesProducer(FixedFrequencyProducer):
 class CryptoViewModel:
 
     _TICKS_PER_EPISODE = 60  # at 1 tick per second, this means that an episode last 1 hour at most.
+    _OBS_TYPE = 'float32'
 
     def __init__(
         self,
@@ -185,7 +186,7 @@ class CryptoViewModel:
                     )
                     return np.array(  # Return observation as a numpy array because everybody uses numpy.
                         [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in obs_data]
-                    )
+                    ).astype(self._OBS_TYPE)
 
     def _calculate_reward(self, action: Action):
         step_reward = 0
