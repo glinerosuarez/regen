@@ -2,10 +2,9 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from test import test_utils
-from test.test_utils import clean
-from repository._consts import AccountType
-from repository.db._db_manager import DataBaseManager, Order, AccountInfo, EnvState
+from repository import AccountType
 from vm.consts import Position, Action
+from repository.db import DataBaseManager, Order, AccountInfo, EnvState
 
 db_name = ":memory:"
 data = Order(

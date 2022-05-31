@@ -1,9 +1,10 @@
 import json
+from logging import Logger
+
 import cattr
 import pendulum
 from sqlalchemy.sql.elements import BinaryExpression
 
-from log import LoggerFactory
 from attr import attrs, attrib
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
@@ -29,6 +30,7 @@ from sqlalchemy import (
     and_,
 )
 
+from log import LoggerFactory
 from vm.consts import Position, Action
 
 _mapper_registry = registry()
@@ -49,7 +51,8 @@ class DataBaseManager:
         Connect to a database or create a new database if it does not exist.
         :param db_name: Name of the database
         """
-        DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{db_name}", echo=True, future=True)
+        DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{db_name}", echo=False, future=True)
+        DataBaseManager.log_to_file()
         DataBaseManager._session = Session(DataBaseManager._engine)
 
     @staticmethod
@@ -92,7 +95,7 @@ class DataBaseManager:
         return [data[0] for data in DataBaseManager._session.execute(select(table))]
 
     @staticmethod
-    def select_max(col: InstrumentedAttribute, condition: Optional[BinaryExpression] = None) -> Optional[Any]:
+    def select_max(col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None) -> Optional[Any]:
         """
         Return the biggest value in a column.
         :param col: Column to get the value from.
@@ -103,6 +106,11 @@ class DataBaseManager:
         if condition is not None:
             sql_statement = sql_statement.where(condition)
         return DataBaseManager._session.execute(sql_statement).fetchone()[0]
+
+    @staticmethod
+    def log_to_file() -> Logger:
+        return LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
+
 
 
 class _EncodedDataClass(types.UserDefinedType):
