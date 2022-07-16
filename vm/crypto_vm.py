@@ -126,7 +126,6 @@ class CryptoViewModel:
         self.total_reward = 0.0
         self.last_price = None
         self.last_trade_price = None
-
         self.episode_id = 1 if self._get_last_episode_id() is None else self._get_last_episode_id() + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
@@ -159,7 +158,7 @@ class CryptoViewModel:
     def _get_last_episode_id(self) -> Optional[int]:
         """Get the last episode id in this execution, return None if there's no last episode id."""
         return DataBaseManager.select_max(
-            col=EnvState.episode_id, condition=EnvState.episode_id == self.execution_id
+            col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id
         )
 
     def _is_trade(self, action: Action):
