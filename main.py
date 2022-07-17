@@ -1,22 +1,36 @@
-from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv
-from stable_baselines import PPO2
+from datetime import datetime
 
-from env.StockTradingEnv import StockTradingEnv
+from stable_baselines3 import PPO
+from stable_baselines3.ppo.policies import MlpPolicy
+from stable_baselines3.common.logger import configure
+from stable_baselines3.common.cmd_util import make_vec_env
 
-import pandas as pd
+from consts import CryptoAsset
+from env import CryptoTradingEnv
 
-df = pd.read_csv("./data/AAPL.csv")
-df = df.sort_values("Date")
 
-# The algorithms require a vectorized environment to run
-env = DummyVecEnv([lambda: StockTradingEnv(df)])
+def train():
+    time_steps = 8
+    base_asset = CryptoAsset.BNB
+    quote_asset = CryptoAsset.BUSD
 
-model = PPO2(MlpPolicy, env, verbose=1)
-model.learn(total_timesteps=20000)
+    env = CryptoTradingEnv(window_size=5, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
+    env = make_vec_env(lambda: env, n_envs=1)
 
-obs = env.reset()
-for i in range(2000):
-    action, _states = model.predict(obs)
-    obs, rewards, done, info = env.step(action)
-    env.render()
+    # set up logger
+    tmp_path = "output/logs/"
+    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
+
+    model = PPO(MlpPolicy, env, verbose=1, n_steps=time_steps, batch_size=time_steps)
+    model.set_logger(new_logger)
+    model.learn(total_timesteps=time_steps)
+
+    ts = datetime.today()
+    model.save(
+        f"output/models/PPO_{base_asset.name}{quote_asset.name}_{time_steps}_{ts.year}{ts.month}{ts.day}"
+        f"{ts.hour}{ts.minute}{ts.second}"
+    )
+
+
+if __name__ == "__main__":
+    train()

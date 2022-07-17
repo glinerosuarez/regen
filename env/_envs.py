@@ -1,19 +1,20 @@
 import subprocess
-from typing import Optional, Union
+from typing import Optional
 
 import gym
 import numpy as np
 from gym import spaces
-from attr import define, field
-from gym.core import ObsType
-from consts import CryptoAsset
 from vm.consts import Action
+from attr import define, field
+from consts import CryptoAsset
 from vm.crypto_vm import CryptoViewModel
 
 
 @define
 class CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
+
+    metadata = {"render.modes": ["live"]}
 
     window_size: int = field()
     base_asset: CryptoAsset = field()
@@ -56,9 +57,7 @@ class CryptoTradingEnv(gym.Env):
                 self.render_process = subprocess.Popen(["python", "env/_render.py"], start_new_session=True)
                 self.first_rendering = False
 
-    def reset(
-        self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None
-    ) -> Union[ObsType, tuple[ObsType, dict]]:
+    def reset(self, *, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None):
         # Reset rendering process.
         self.first_rendering = True
         if self.render_process:
@@ -68,4 +67,4 @@ class CryptoTradingEnv(gym.Env):
         return self.vm.reset()
 
     def step(self, action):
-        return self.vm.step(action)
+        return self.vm.step(Action(action))

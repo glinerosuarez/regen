@@ -1,4 +1,4 @@
-from typing import Generic
+from typing import Generic, Optional
 from collections import defaultdict
 from abc import ABC, abstractmethod
 from functools import cached_property
@@ -8,20 +8,19 @@ import threading
 import numpy as np
 from queue import Queue
 
-import config
 import log
+import configuration
 from repository import Interval
 from consts import CryptoAsset, Side
 from repository.db import DataBaseManager
-from repository.db._db_manager import EnvState, Observation
 from vm.consts import E, Action, Position
 from repository.remote import BinanceClient
-from repository._dataclass import TradingPair
+from repository import EnvState, Observation, TradingPair
 
 
 class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
 
-    DEFAULT_FREQ = 60
+    DEFAULT_FREQ = 60  # Produce 1 element per this time (in seconds)
 
     def __init__(self, queue: Queue[E], frequency: int = DEFAULT_FREQ, daemon: bool = True):
         super(FixedFrequencyProducer, self).__init__(daemon=daemon)
@@ -58,7 +57,7 @@ class KlinesProducer(FixedFrequencyProducer):
 
 class CryptoViewModel:
 
-    _TICKS_PER_EPISODE = 60  # at 1 tick per second, this means that an episode last 1 hour at most.
+    _OBS_TYPE = "float32"
 
     def __init__(
         self,
@@ -107,10 +106,11 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
-        DataBaseManager.init_connection(config.settings.db_name)
+        DataBaseManager.init_connection(configuration.settings.db_name)
         DataBaseManager.create_all()
 
     def reset(self):
+        self.logger.debug("Resetting environment.")
         if not self.producer.is_alive():
             self.producer.start()
 
@@ -126,8 +126,9 @@ class CryptoViewModel:
         self.total_reward = 0.0
         self.last_price = None
         self.last_trade_price = None
+        self.episode_id = 1 if self._get_last_episode_id() is None else self._get_last_episode_id() + 1
+        self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
-        self.episode_id = self._get_episode_id()
         return self._get_observation()
 
     def step(self, action: Action):
@@ -135,9 +136,10 @@ class CryptoViewModel:
         self.current_tick += 1
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
-        if self.current_tick == self._TICKS_PER_EPISODE:
+        if self.current_tick == configuration.settings.ticks_per_episode:
             self.done = True
 
+        # TODO: compute reward as a proportion of self.base_balance so that the model work with different balances
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
 
@@ -151,11 +153,11 @@ class CryptoViewModel:
     @cached_property
     def execution_id(self) -> int:
         last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
-        return last_exec_id + 1 if last_exec_id is not None else 0
+        return 1 if last_exec_id is None else last_exec_id + 1
 
-    def _get_episode_id(self) -> int:
-        last_ep_id = DataBaseManager.select_max(EnvState.episode_id, EnvState.episode_id == self.execution_id)
-        return last_ep_id + 1 if last_ep_id is not None else 0
+    def _get_last_episode_id(self) -> Optional[int]:
+        """Get the last episode id in this execution, return None if there's no last episode id."""
+        return DataBaseManager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def _is_trade(self, action: Action):
         return any(
@@ -185,7 +187,7 @@ class CryptoViewModel:
                     )
                     return np.array(  # Return observation as a numpy array because everybody uses numpy.
                         [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in obs_data]
-                    )
+                    ).astype(self._OBS_TYPE)
 
     def _calculate_reward(self, action: Action):
         step_reward = 0

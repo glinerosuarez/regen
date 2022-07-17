@@ -1,6 +1,7 @@
 [default]
 app_name = "regen"
 db_name = "regen"
+ticks_per_episode = 60  # at 1 tick per second, this means that an episode last 1 hour - window_size minutes aprox.
 [development]
 bnb_base_url = "https://testnet.binance.vision" # The base endpoint this client will send requests to.
 [production]

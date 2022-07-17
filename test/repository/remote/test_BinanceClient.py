@@ -1,10 +1,12 @@
 from datetime import datetime
-from consts import CryptoAsset, TimeInForce
-from repository._consts import AccountType, AccountPermission
-from repository._dataclass import TradingPair
-from utils import datetime_to_ts_ms
-from repository.remote import BinanceClient
+
 from consts import Side, OrderType
+from repository.remote import BinanceClient
+from consts import CryptoAsset, TimeInForce
+from functions.utils import datetime_to_ts_ms
+from repository._dataclass import TradingPair
+from repository._consts import AccountType, AccountPermission
+
 
 client = BinanceClient()
 
