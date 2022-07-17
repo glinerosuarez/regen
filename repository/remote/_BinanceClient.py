@@ -7,8 +7,8 @@ from binance.error import ClientError
 from log import LoggerFactory
 from repository import Interval
 from configuration import settings
-from utils import remove_none_args
 from repository._consts import AvgPrice
+from functions.utils import remove_none_args
 from consts import Side, OrderType, TimeInForce
 from repository.db._db_manager import AccountInfo, Order
 from repository._dataclass import TradingPair, KlineRecord
