@@ -14,7 +14,7 @@ from vm.crypto_vm import CryptoViewModel
 class CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
 
-    metadata = {'render.modes': ['live']}
+    metadata = {"render.modes": ["live"]}
 
     window_size: int = field()
     base_asset: CryptoAsset = field()

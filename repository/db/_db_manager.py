@@ -112,7 +112,6 @@ class DataBaseManager:
         return LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
 
-
 class _EncodedDataClass(types.UserDefinedType):
     """
     A SQLAlchemy custom type that represents an immutable structure as a json-encoded string.

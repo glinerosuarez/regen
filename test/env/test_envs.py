@@ -15,7 +15,7 @@ def _execute_steps(env):
     for step in range(n_steps):
         print("Step {}".format(step + 1))
         obs, reward, done, info = env.step(1)
-        print('obs=', obs, 'reward=', reward, 'done=', done)
+        print("obs=", obs, "reward=", reward, "done=", done)
         env.render()
         if done:
             print("Goal reached!", "reward=", reward)
@@ -29,5 +29,5 @@ def test_cryptoenv():
     # _execute_steps(env)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_cryptoenv()

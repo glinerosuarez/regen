@@ -57,7 +57,7 @@ class KlinesProducer(FixedFrequencyProducer):
 
 class CryptoViewModel:
 
-    _OBS_TYPE = 'float32'
+    _OBS_TYPE = "float32"
 
     def __init__(
         self,
@@ -157,9 +157,7 @@ class CryptoViewModel:
 
     def _get_last_episode_id(self) -> Optional[int]:
         """Get the last episode id in this execution, return None if there's no last episode id."""
-        return DataBaseManager.select_max(
-            col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id
-        )
+        return DataBaseManager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def _is_trade(self, action: Action):
         return any(

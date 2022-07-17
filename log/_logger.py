@@ -91,4 +91,3 @@ class LoggerFactory:
             logger.addHandler(out_handler)
 
         return logger
-
