@@ -8,8 +8,8 @@ import threading
 import numpy as np
 from queue import Queue
 
-import config
 import log
+import configuration
 from repository import Interval
 from consts import CryptoAsset, Side
 from repository.db import DataBaseManager
@@ -106,7 +106,7 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
-        DataBaseManager.init_connection(config.settings.db_name)
+        DataBaseManager.init_connection(configuration.settings.db_name)
         DataBaseManager.create_all()
 
     def reset(self):
@@ -136,7 +136,7 @@ class CryptoViewModel:
         self.current_tick += 1
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
-        if self.current_tick == config.settings.ticks_per_episode:
+        if self.current_tick == configuration.settings.ticks_per_episode:
             self.done = True
 
         # TODO: compute reward as a proportion of self.base_balance so that the model work with different balances
