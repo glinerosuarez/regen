@@ -1,11 +1,13 @@
-from config import settings
 from datetime import datetime
+from typing import Optional, List
+
 from binance.spot import Spot
+from binance.error import ClientError
+
 from log import LoggerFactory
 from repository import Interval
-from typing import Optional, List
+from configuration import settings
 from utils import remove_none_args
-from binance.error import ClientError
 from repository._consts import AvgPrice
 from consts import Side, OrderType, TimeInForce
 from repository.db._db_manager import AccountInfo, Order
