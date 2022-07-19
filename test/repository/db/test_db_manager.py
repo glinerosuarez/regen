@@ -1,8 +1,12 @@
+import time
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from consts import CryptoAsset
+from repository._dataclass import KlineRecord, TradingPair
 from test import test_utils
-from repository import AccountType
+from repository import AccountType, Observation
 from vm.consts import Position, Action
 from repository.db import DataBaseManager, Order, AccountInfo, EnvState
 
@@ -100,3 +104,53 @@ def test_env_state():
 
     # Test select_max
     assert DataBaseManager.select_max(EnvState.state_id) == "1-1-1"
+
+
+obs1 = Observation(
+    execution_id=1,
+    episode_id=1,
+    klines=[
+        KlineRecord(
+            pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+            open_time=123456,
+            open_value=100,
+            high=110,
+            low=90,
+            close_value=103,
+            volume=1_000,
+            close_time=123457,
+            quote_asset_vol=500,
+            trades=20,
+            taker_buy_base_vol=700,
+            taker_buy_quote_vol=600,
+        )
+    ],
+    ts=time.time(),
+)
+
+
+def test_select_with_limit():
+    DataBaseManager.init_connection(db_name)
+    DataBaseManager.create_all()
+
+    # Insert orders
+    DataBaseManager.insert(obs1)
+    for i in range(2, 11):
+        DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
+
+    assert len(DataBaseManager.select(Observation, limit=2)) == 2
+    assert DataBaseManager.select(Observation, limit=2)[1].episode_id == "2"
+
+
+def test_select_with_offset():
+    DataBaseManager.init_connection(db_name)
+    DataBaseManager.create_all()
+
+    # Insert orders
+    DataBaseManager.insert(obs1)
+    for i in range(2, 11):
+        DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
+
+    assert DataBaseManager.select(Observation, offset=10) == []
+    obs1.episode_id = "10"
+    assert DataBaseManager.select(Observation, offset=9)[0] == obs1
