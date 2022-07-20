@@ -20,12 +20,14 @@ class CryptoTradingEnv(gym.Env):
     base_asset: CryptoAsset = field()
     quote_asset: CryptoAsset = field()
     base_balance: float = field()
+    use_db_buffer: bool = field(default=True)
     shape: tuple[int, int] = field(init=False)
     vm: CryptoViewModel = field(init=False)
     action_space: spaces.Discrete = field(init=False)
     observation_space: spaces.Box = field(init=False)
     first_rendering: bool = field(init=False, default=True)
     render_process: Optional[subprocess.Popen] = field(init=False, default=None)
+
 
     @vm.default
     def init_vm(self):
@@ -34,6 +36,7 @@ class CryptoTradingEnv(gym.Env):
             quote_asset=self.quote_asset,
             window_size=self.window_size,
             base_balance=self.base_balance,
+            use_db_buffer=self.use_db_buffer,
         )
 
     @shape.default

@@ -72,7 +72,8 @@ class ObsProducer:
             for obs in page:
                 yield obs
 
-    def __init__(self, trading_pair: TradingPair, window_size: int):
+    def __init__(self, trading_pair: TradingPair, window_size: int, use_db_buffer: bool = True):
+        self.use_db_buffer = use_db_buffer
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
         DataBaseManager.init_connection(configuration.settings.db_name)
@@ -91,7 +92,7 @@ class ObsProducer:
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
             ).astype(self._OBS_TYPE)
 
-        if obs := next(self.db_buffer, None):
+        if obs := next(self.db_buffer, None) and self.use_db_buffer:
             self.logger.debug(f"Getting {obs=} from database.")
             return klines_to_numpy(obs.klines)
         else:
@@ -119,6 +120,7 @@ class CryptoViewModel:
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
+        use_db_buffer: bool = True,
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -155,7 +157,7 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
+        self.obs_producer = ObsProducer(self.trading_pair, self.window_size, use_db_buffer=use_db_buffer)
 
     def reset(self):
         self.logger.debug("Resetting environment.")

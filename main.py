@@ -16,11 +16,8 @@ base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
 
 
-env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
-
-
 def train():
-
+    env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
     env = make_vec_env(lambda: env, n_envs=1)
 
     # set up logger
@@ -40,7 +37,11 @@ def train():
 
 def collect_data(n_steps: int):
     """Get observation data from Binance API and store it in a local database."""
+    env = CryptoTradingEnv(
+        window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100, use_db_buffer=False
+    )
     env.reset()
+
     for step in range(n_steps):
         print("Step {}".format(step + 1))
         obs, reward, done, info = env.step(1)
