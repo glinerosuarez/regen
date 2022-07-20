@@ -72,12 +72,10 @@ class ObsProducer:
             for obs in page:
                 yield obs
 
-    def __init__(self, trading_pair: TradingPair, window_size: int, use_db_buffer: bool = True):
-        self.use_db_buffer = use_db_buffer
+    def __init__(self, trading_pair: TradingPair, window_size: int, execution_id: int, use_db_buffer: bool = True):
+        self.use_db_buffer = use_db_buffer  # Deliver observations from the database or not
+        self.execution_id = execution_id
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-
-        DataBaseManager.init_connection(configuration.settings.db_name)
-        DataBaseManager.create_all()
 
         self.producer = KlinesProducer(trading_pair, window_size)
         if not self.producer.is_alive():
@@ -85,16 +83,32 @@ class ObsProducer:
 
         self.page_size = 10_000
         self.db_buffer = self._get_db_obs_generator()
+        self.next_observation = next(self.db_buffer, None)
 
-    def get_observation(self):
+    def get_observation(self, episode_id: int) -> tuple[np.ndarray, Optional[bool]]:
+        """
+        Deliver an observation either from the database or a new one from the api.
+        :return: Observation data and a flag to identify the end of an episode.
+        """
         def klines_to_numpy(klines: list[KlineRecord]):
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
             ).astype(self._OBS_TYPE)
 
-        if obs := next(self.db_buffer, None) and self.use_db_buffer:
-            self.logger.debug(f"Getting {obs=} from database.")
-            return klines_to_numpy(obs.klines)
+        if (obs := self.next_observation) is not None and self.use_db_buffer:
+            self.logger.debug(f"Serving {obs=} from database.")
+            self.next_observation = next(self.db_buffer, None)
+            return (
+                klines_to_numpy(obs.klines),
+                any([
+                    # If there's no next obs then this is the last obs in the db and an episode end,
+                    self.next_observation is None,
+                    # if the execution_id is different in the next obs then this is the last obs in this episode.
+                    obs.execution_id != self.next_observation.execution_id,
+                    # if the episode_id is different in the next obs then this is the last obs in this episode.
+                    obs.episode_id != self.next_observation.episode_id,
+                ])
+            )
         else:
             while True:
                 if self.producer.is_alive():
@@ -105,8 +119,10 @@ class ObsProducer:
                         obs_data = self.producer.queue.get()
                         self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
                         self.logger.debug("Saving observation in database.")
-                        DataBaseManager.insert(Observation(klines=obs_data, ts=time.time()))
-                        return klines_to_numpy(obs_data)
+                        DataBaseManager.insert(Observation(
+                            execution_id=self.execution_id, episode_id=episode_id, klines=obs_data, ts=time.time(),
+                        ))
+                        return klines_to_numpy(obs_data), False
 
 
 class CryptoViewModel:
@@ -144,6 +160,9 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
+        DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
+        DataBaseManager.create_all()
+
         self.episode_id = None
         self.position = Position.Short
         self.start_tick = window_size
@@ -157,7 +176,9 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size, use_db_buffer=use_db_buffer)
+        self.obs_producer = ObsProducer(
+            self.trading_pair, self.window_size, self.execution_id, use_db_buffer=use_db_buffer
+        )
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -177,7 +198,9 @@ class CryptoViewModel:
         self.episode_id = 1 if self._get_last_episode_id() is None else self._get_last_episode_id() + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
-        return self.obs_producer.get_observation()
+        # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
+        obs, done = self.obs_producer.get_observation(self.episode_id)
+        return obs
 
     def step(self, action: Action):
         self.done = False
@@ -192,7 +215,7 @@ class CryptoViewModel:
         self.total_reward += step_reward
 
         self.position_history.append(self.position)
-        observation = self.obs_producer.get_observation()
+        observation, self.done = self.obs_producer.get_observation(self.episode_id)
         info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
         self._update_history(info)
 
