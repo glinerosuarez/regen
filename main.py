@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 
 from stable_baselines3 import PPO
@@ -9,12 +10,17 @@ from consts import CryptoAsset
 from env import CryptoTradingEnv
 
 
-def train():
-    time_steps = 8
-    base_asset = CryptoAsset.BNB
-    quote_asset = CryptoAsset.BUSD
+time_steps = 8
+window_size = 5
+base_asset = CryptoAsset.BNB
+quote_asset = CryptoAsset.BUSD
 
-    env = CryptoTradingEnv(window_size=5, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
+
+env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
+
+
+def train():
+
     env = make_vec_env(lambda: env, n_envs=1)
 
     # set up logger
@@ -32,5 +38,35 @@ def train():
     )
 
 
+def collect_data(n_steps: int):
+    """Get observation data from Binance API and store it in a local database."""
+    env.reset()
+    for step in range(n_steps):
+        print("Step {}".format(step + 1))
+        obs, reward, done, info = env.step(1)
+        print("obs=", obs, "reward=", reward, "done=", done)
+        env.render()
+        if done:
+            print("Goal reached!", "reward=", reward)
+            env.reset()
+
+
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c', '--collect', default='0', type=int, help='Collect observations from the source without training an agent.'
+    )
+    parser.add_argument(
+        '-t', '--train',
+        default=False,
+        action='store_const',
+        const=True,
+        help='Train an agent while collecting new observations.'
+    )
+
+    args = parser.parse_args()
+
+    if args.collect > 0:
+        collect_data(args.collect)
+    else:
+        train()
