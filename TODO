@@ -3,4 +3,3 @@
 3. Encapsulate all repository logic(remote and db) inside Repository class.
 4. when collecting data we get n + 1 observations stored in the db instead of n
 5. We need to segment observations by episode because observations won't be stored continuously but in a sparse fashion
-6. When collecting data, we don't need to read the data that is already stored in the db
