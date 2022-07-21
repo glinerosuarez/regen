@@ -139,18 +139,10 @@ def test_select_with_limit():
         DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
 
     assert len(DataBaseManager.select(Observation, limit=2)) == 2
-    assert DataBaseManager.select(Observation, limit=2)[1].episode_id == "2"
+    assert DataBaseManager.select(Observation, limit=2)[1].episode_id == 2
 
 
 def test_select_with_offset():
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-
-    # Insert orders
-    DataBaseManager.insert(obs1)
-    for i in range(2, 11):
-        DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
-
     assert DataBaseManager.select(Observation, offset=10) == []
-    obs1.episode_id = "10"
+    obs1.episode_id = 10
     assert DataBaseManager.select(Observation, offset=9)[0] == obs1
