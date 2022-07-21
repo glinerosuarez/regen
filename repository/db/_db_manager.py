@@ -269,13 +269,13 @@ class Observation(DataClass):
         "observation",
         _mapper_registry.metadata,
         Column("obs_id", Integer, primary_key=True, nullable=False),
-        Column("execution_id", Integer, nullable=False),
+        Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
         Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
         Column("ts", Float, nullable=False),
     )
 
-    execution_id: int = attrib(converter=int)
+    execution_id: str = attrib(converter=str)
     episode_id: int = attrib(converter=int)
     klines: List[KlineRecord] = attrib()
     ts: float = attrib(converter=float)

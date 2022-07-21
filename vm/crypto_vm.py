@@ -100,14 +100,14 @@ class ObsProducer:
             self.next_observation = next(self.db_buffer, None)
             return (
                 klines_to_numpy(obs.klines),
-                any([
+                (
                     # If there's no next obs then this is the last obs in the db and an episode end,
-                    self.next_observation is None,
+                    self.next_observation is None or
                     # if the execution_id is different in the next obs then this is the last obs in this episode.
-                    obs.execution_id != self.next_observation.execution_id,
+                    obs.execution_id != self.next_observation.execution_id or
                     # if the episode_id is different in the next obs then this is the last obs in this episode.
-                    obs.episode_id != self.next_observation.episode_id,
-                ])
+                    obs.episode_id != self.next_observation.episode_id
+                )
             )
         else:
             while True:
@@ -136,7 +136,6 @@ class CryptoViewModel:
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
-        use_db_buffer: bool = True,
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -176,9 +175,7 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(
-            self.trading_pair, self.window_size, self.execution_id, use_db_buffer=use_db_buffer
-        )
+        self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -206,10 +203,6 @@ class CryptoViewModel:
         self.done = False
         self.current_tick += 1
 
-        # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
-        if self.current_tick == configuration.settings.ticks_per_episode:
-            self.done = True
-
         # TODO: compute reward as a proportion of self.base_balance so that the model work with different balances
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
@@ -218,6 +211,10 @@ class CryptoViewModel:
         observation, self.done = self.obs_producer.get_observation(self.episode_id)
         info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
         self._update_history(info)
+
+        # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
+        if self.current_tick >= configuration.settings.ticks_per_episode:
+            self.done = True
 
         return observation, step_reward, self.done, info
 

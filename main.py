@@ -6,11 +6,14 @@ from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.cmd_util import make_vec_env
 
+import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
+from repository import TradingPair, Observation
+from repository.db import DataBaseManager
+from vm.crypto_vm import ObsProducer
 
-
-time_steps = 8
+time_steps = 9
 window_size = 5
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
@@ -35,21 +38,30 @@ def train():
     )
 
 
-def collect_data(n_steps: int):
+def collect_data(n_obs: int):
     """Get observation data from Binance API and store it in a local database."""
-    env = CryptoTradingEnv(
-        window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100, use_db_buffer=False
-    )
-    env.reset()
+    DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
+    DataBaseManager.create_all()
 
-    for step in range(n_steps):
-        print("Step {}".format(step + 1))
-        obs, reward, done, info = env.step(1)
-        print("obs=", obs, "reward=", reward, "done=", done)
-        env.render()
-        if done:
-            print("Goal reached!", "reward=", reward)
-            env.reset()
+    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.execution_id.like('c%'))
+    if last_exec_id is None:
+        exec_id = "c1"
+    else:
+        exec_id = "c" + str(int(last_exec_id[1:]) + 1)
+    episode_id = 1
+
+    producer: ObsProducer = ObsProducer(TradingPair(base_asset, quote_asset), window_size, exec_id, False)
+    step = 0
+    for _ in range(1, n_obs + 1):
+        step += 1
+        print(f"Episode {episode_id}")
+        print(f"Step {step}")
+        obs, _ = producer.get_observation(episode_id)
+        print("obs=", obs)
+        if step + window_size >= configuration.settings.ticks_per_episode:
+            print("End of episode reached!")
+            step = 0
+            episode_id += 1
 
 
 if __name__ == "__main__":
