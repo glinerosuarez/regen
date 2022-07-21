@@ -90,6 +90,7 @@ class ObsProducer:
         Deliver an observation either from the database or a new one from the api.
         :return: Observation data and a flag to identify the end of an episode.
         """
+
         def klines_to_numpy(klines: list[KlineRecord]):
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
@@ -102,12 +103,14 @@ class ObsProducer:
                 klines_to_numpy(obs.klines),
                 (
                     # If there's no next obs then this is the last obs in the db and an episode end,
-                    self.next_observation is None or
+                    self.next_observation is None
+                    or
                     # if the execution_id is different in the next obs then this is the last obs in this episode.
-                    obs.execution_id != self.next_observation.execution_id or
+                    obs.execution_id != self.next_observation.execution_id
+                    or
                     # if the episode_id is different in the next obs then this is the last obs in this episode.
                     obs.episode_id != self.next_observation.episode_id
-                )
+                ),
             )
         else:
             while True:
@@ -119,14 +122,18 @@ class ObsProducer:
                         obs_data = self.producer.queue.get()
                         self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
                         self.logger.debug("Saving observation in database.")
-                        DataBaseManager.insert(Observation(
-                            execution_id=self.execution_id, episode_id=episode_id, klines=obs_data, ts=time.time(),
-                        ))
+                        DataBaseManager.insert(
+                            Observation(
+                                execution_id=self.execution_id,
+                                episode_id=episode_id,
+                                klines=obs_data,
+                                ts=time.time(),
+                            )
+                        )
                         return klines_to_numpy(obs_data), False
 
 
 class CryptoViewModel:
-
     def __init__(
         self,
         base_asset: CryptoAsset,

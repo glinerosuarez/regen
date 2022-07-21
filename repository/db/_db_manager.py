@@ -72,10 +72,10 @@ class DataBaseManager:
 
     @staticmethod
     def select(
-            table: Type[DataClass],
-            conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
-            offset: int = 0,
-            limit: int = 0,
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        offset: int = 0,
+        limit: int = 0,
     ) -> list:
         """
         Execute a SELECT statement from the SQL Object table.

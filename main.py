@@ -43,7 +43,7 @@ def collect_data(n_obs: int):
     DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
     DataBaseManager.create_all()
 
-    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.execution_id.like('c%'))
+    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.execution_id.like("c%"))
     if last_exec_id is None:
         exec_id = "c1"
     else:
@@ -67,14 +67,15 @@ def collect_data(n_obs: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-c', '--collect', default='0', type=int, help='Collect observations from the source without training an agent.'
+        "-c", "--collect", default="0", type=int, help="Collect observations from the source without training an agent."
     )
     parser.add_argument(
-        '-t', '--train',
+        "-t",
+        "--train",
         default=False,
-        action='store_const',
+        action="store_const",
         const=True,
-        help='Train an agent while collecting new observations.'
+        help="Train an agent while collecting new observations.",
     )
 
     args = parser.parse_args()
