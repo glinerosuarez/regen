@@ -71,7 +71,12 @@ class DataBaseManager:
                 raise exception
 
     @staticmethod
-    def select(table: Type[DataClass], conditions: Optional[BinaryExpression | list[BinaryExpression]] = None) -> list:
+    def select(
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        offset: int = 0,
+        limit: int = 0,
+    ) -> list:
         """
         Execute a SELECT statement from the SQL Object table.
         :return: a :list: of SQL Object.
@@ -83,6 +88,12 @@ class DataBaseManager:
                 sql_statement = select(table).where(and_(*cond))
             case _:
                 sql_statement = select(table).where(conditions)
+
+        if offset != 0:
+            sql_statement = sql_statement.offset(offset)
+
+        if limit != 0:
+            sql_statement = sql_statement.limit(limit)
 
         return [data[0] for data in DataBaseManager._session.execute(sql_statement)]
 
@@ -259,12 +270,12 @@ class Observation(DataClass):
         _mapper_registry.metadata,
         Column("obs_id", Integer, primary_key=True, nullable=False),
         Column("execution_id", String, nullable=False),
-        Column("episode_id", String, nullable=False),
+        Column("episode_id", Integer, nullable=False),
         Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
         Column("ts", Float, nullable=False),
     )
 
     execution_id: str = attrib(converter=str)
-    episode_id: str = attrib(converter=str)
+    episode_id: int = attrib(converter=int)
     klines: List[KlineRecord] = attrib()
     ts: float = attrib(converter=float)
