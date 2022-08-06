@@ -1,3 +1,4 @@
+import logging
 import time
 import threading
 from queue import Queue
@@ -92,6 +93,8 @@ class ObsProducer:
         """
 
         def klines_to_numpy(klines: list[KlineRecord]):
+            # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
+            # same tick has a different value for the volume
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
             ).astype(self._OBS_TYPE)
@@ -179,9 +182,10 @@ class CryptoViewModel:
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
         self.client = BinanceClient()
+        self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
+        self.logger = log.LoggerFactory.get_console_logger(__name__, logging.DEBUG)
         self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
 
     def reset(self):
@@ -191,7 +195,9 @@ class CryptoViewModel:
         self.current_tick = self.window_size
 
         # We always start longing
-        if self.base_balance > self.quote_balance:
+        # TODO: Remove the option that allows passing quote balance, since our purpose is always to accumulate the base
+        #  asset
+        if self.base_balance < self.quote_balance:
             self._place_order(Side.SELL)
 
         self.position = Position.Long
@@ -203,27 +209,28 @@ class CryptoViewModel:
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
-        obs, done = self.obs_producer.get_observation(self.episode_id)
-        return obs
+        self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
+        return self.last_observation
 
     def step(self, action: Action):
         self.done = False
-        self.current_tick += 1
 
         # TODO: compute reward as a proportion of self.base_balance so that the model work with different balances
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
 
         self.position_history.append(self.position)
-        observation, self.done = self.obs_producer.get_observation(self.episode_id)
+        self.last_observation, self.done = self.obs_producer.get_observation(self.episode_id)
+        # TODO: Total profit is always None
         info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
         self._update_history(info)
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
+        self.current_tick += 1
         if self.current_tick >= configuration.settings.ticks_per_episode:
             self.done = True
 
-        return observation, step_reward, self.done, info
+        return self.last_observation, step_reward, self.done, info
 
     @cached_property
     def execution_id(self) -> int:
@@ -244,7 +251,6 @@ class CryptoViewModel:
 
     def _calculate_reward(self, action: Action):
         step_reward = 0
-
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
@@ -299,9 +305,10 @@ class CryptoViewModel:
         #    new_client_order_id=self.execution_id
         # )
         # TODO: Get trade price.
-        # TODO: To train the initial agent we can skip placing a real order and use the curent price instead.
+        # TODO: To train the initial agent we can skip placing a real order and use the last price in the current
+        #  observation.
+        price = self._get_price()
         # The price and quantity will be returned by client.place_order.
-        price = self.client.get_price(self.trading_pair)
         if side == Side.BUY:
             quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
         else:
@@ -309,4 +316,6 @@ class CryptoViewModel:
         return quantity, price
 
     def _get_price(self):
-        return self.client.get_price(self.trading_pair)
+        price = self.last_observation[-1][3]
+        self.logger.debug(f"Returning {price=} for {self.last_observation=}")
+        return price
