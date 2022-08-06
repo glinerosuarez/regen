@@ -1,4 +1,3 @@
-import logging
 import time
 import threading
 from queue import Queue
@@ -94,7 +93,7 @@ class ObsProducer:
 
         def klines_to_numpy(klines: list[KlineRecord]):
             # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
-            # same tick has a different value for the volume
+            #  same tick has a different value for the volume
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
             ).astype(self._OBS_TYPE)
@@ -185,7 +184,7 @@ class CryptoViewModel:
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
-        self.logger = log.LoggerFactory.get_console_logger(__name__, logging.DEBUG)
+        self.logger = log.LoggerFactory.get_console_logger(__name__)
         self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
 
     def reset(self):
