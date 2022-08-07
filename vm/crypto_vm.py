@@ -249,12 +249,14 @@ class CryptoViewModel:
         )
 
     def _calculate_reward(self, action: Action):
-        step_reward = 0
+        step_reward = 0.
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
+            # TODO: should the observation array include the position, so the agent doesn't have to memorize it ?
             if self.position == Position.Short:  # Our objective is to accumulate the base.
-                step_reward = self.last_trade_price - self.last_price
+                # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
+                step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
 
             self.last_trade_price = self.last_price  # Update last trade price
 
