@@ -180,6 +180,8 @@ class CryptoViewModel:
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
         self.client = BinanceClient()
+        # TODO: Find a way to normalize kline data, we could for example express values as percentages of the last
+        #  trade's price
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
@@ -211,9 +213,9 @@ class CryptoViewModel:
         return self.last_observation
 
     def step(self, action: Action):
+        # TODO: should the observation array include the position, so the agent doesn't have to memorize it ?
         self.done = False
 
-        # TODO: compute reward as a proportion of self.base_balance so that the model work with different balances
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
 
@@ -256,7 +258,6 @@ class CryptoViewModel:
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
-            # TODO: should the observation array include the position, so the agent doesn't have to memorize it ?
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
                 step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
