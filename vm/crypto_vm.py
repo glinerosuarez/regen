@@ -176,7 +176,6 @@ class CryptoViewModel:
         self.start_tick = window_size
         self.current_tick = None
         self.total_reward = 0.0
-        self.total_profit = None
         self.done = None
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
@@ -220,8 +219,12 @@ class CryptoViewModel:
 
         self.position_history.append(self.position)
         self.last_observation, self.done = self.obs_producer.get_observation(self.episode_id)
-        # TODO: Total profit is always None
-        info = dict(total_reward=self.total_reward, total_profit=self.total_profit, position=self.position.value)
+        info = dict(
+            total_reward=self.total_reward,
+            base_balance=self.base_balance,
+            quote_balance=self.quote_balance,
+            position=self.position.value,
+        )
         self._update_history(info)
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
