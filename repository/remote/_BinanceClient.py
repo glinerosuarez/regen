@@ -1,6 +1,9 @@
+import random
 from datetime import datetime
+from logging import Logger
 from typing import Optional, List
 
+import requests
 from binance.spot import Spot
 from binance.error import ClientError
 
@@ -14,12 +17,25 @@ from repository.db._db_manager import AccountInfo, Order
 from repository._dataclass import TradingPair, KlineRecord
 
 
+# TODO: Remote connection is closed automatically after around 2 hours
 class BinanceClient:
     """
     Binance api client.
     """
 
-    client = Spot(base_url=settings.bnb_base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
+    @staticmethod
+    def _get_client(use_default_url: bool = True) -> Spot:
+        """
+        Init a new spot client.
+        :param use_default_url: If True, then use the first url provided in settings.bnb_client_key, else choose a
+            random one.
+        """
+        base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice([settings.bnb_base_url])
+        return Spot(base_url=base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
+
+    def __init__(self):
+        self.client: Spot = self._get_client()
+        self.logger: Logger = LoggerFactory.get_console_logger(__name__)
 
     def get_account_info(self) -> AccountInfo:
         """
@@ -66,8 +82,12 @@ class BinanceClient:
 
         # Arguments to kwargs
         args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
-
-        response = self.client.klines(symbol=str(pair), interval=interval.value, **args)
+        try:
+            response = self.client.klines(symbol=str(pair), interval=interval.value, **args)
+        except requests.exceptions.ConnectionError as connection_err:
+            self.logger.error(f"Remote disconnected: {connection_err=}")
+            self.client = self._get_client(False)
+            return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
             KlineRecord(
