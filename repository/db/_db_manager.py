@@ -73,9 +73,9 @@ class DataBaseManager:
 
     @staticmethod
     def _apply_conditions(
-            table: Type[DataClass],
-            conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
-            function: Callable = select,
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        function: Callable = select,
     ):
         """
         Apply sql.expression and conditions to a table.
@@ -138,9 +138,9 @@ class DataBaseManager:
 
     @staticmethod
     def delete(
-            table: Type[DataClass],
-            conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
-            commit: bool = False,
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        commit: bool = False,
     ) -> int:
         """
         Delete rows.

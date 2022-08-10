@@ -255,7 +255,7 @@ class CryptoViewModel:
         )
 
     def _calculate_reward(self, action: Action):
-        step_reward = 0.
+        step_reward = 0.0
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
