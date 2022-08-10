@@ -38,8 +38,9 @@ def train():
     )
 
 
-def collect_data(n_obs: int):
+def collect_data(n_obs: float):
     """Get observation data from Binance API and store it in a local database."""
+    print(f"Collecting {n_obs} observations")
     DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
     DataBaseManager.create_all()
 
@@ -52,7 +53,9 @@ def collect_data(n_obs: int):
 
     producer: ObsProducer = ObsProducer(TradingPair(base_asset, quote_asset), window_size, exec_id, False)
     step = 0
-    for _ in range(1, n_obs + 1):
+    obs_index = 1
+
+    while obs_index <= n_obs:
         step += 1
         print(f"Episode {episode_id}")
         print(f"Step {step}")
@@ -63,11 +66,13 @@ def collect_data(n_obs: int):
             step = 0
             episode_id += 1
 
+        obs_index += 1
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c", "--collect", default="0", type=int, help="Collect observations from the source without training an agent."
+        "-c", "--collect", default=0, type=str, help="Collect observations from the source without training an agent."
     )
     parser.add_argument(
         "-t",
@@ -80,7 +85,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.collect > 0:
-        collect_data(args.collect)
-    else:
+    if args.train:
         train()
+    elif args.collect == "inf":
+        collect_data(float("inf"))
+    elif args.collect > 0:
+        collect_data(args.collect)
