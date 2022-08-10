@@ -20,6 +20,8 @@ quote_asset = CryptoAsset.BUSD
 
 
 def train():
+    # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
+    # TODO: Train with more than 1 vectorized DummyVecEnv
     env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
     env = make_vec_env(lambda: env, n_envs=1)
 
@@ -44,7 +46,8 @@ def collect_data(n_obs: float):
     DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
     DataBaseManager.create_all()
 
-    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.execution_id.like("c%"))
+    last_ts = DataBaseManager.select_max(Observation.ts, Observation.execution_id.like("c%"))
+    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.ts == last_ts)
     if last_exec_id is None:
         exec_id = "c1"
     else:
@@ -56,6 +59,7 @@ def collect_data(n_obs: float):
     obs_index = 1
 
     while obs_index <= n_obs:
+        print(f"Global time step: {obs_index}")
         step += 1
         print(f"Episode {episode_id}")
         print(f"Step {step}")

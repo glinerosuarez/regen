@@ -213,6 +213,7 @@ class CryptoViewModel:
         return self.last_observation
 
     def step(self, action: Action):
+        # TODO: Finish episode if balance goes to 0
         # TODO: should the observation array include the position, so the agent doesn't have to memorize it ?
         self.done = False
 

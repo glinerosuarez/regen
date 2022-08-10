@@ -30,7 +30,7 @@ class BinanceClient:
         :param use_default_url: If True, then use the first url provided in settings.bnb_client_key, else choose a
             random one.
         """
-        base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice([settings.bnb_base_url])
+        base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice(settings.bnb_base_url)
         return Spot(base_url=base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
 
     def __init__(self):
