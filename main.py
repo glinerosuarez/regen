@@ -4,14 +4,15 @@ from datetime import datetime
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.cmd_util import make_vec_env
 
 import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
-from repository import TradingPair, Observation
-from repository.db import DataBaseManager
 from vm.crypto_vm import ObsProducer
+from repository.db import DataBaseManager
+from repository import TradingPair, Observation
 
 time_steps = 9
 window_size = 5
@@ -22,6 +23,11 @@ quote_asset = CryptoAsset.BUSD
 def train():
     # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
     # TODO: Train with more than 1 vectorized DummyVecEnv
+    # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
+    # TODO: Use callbacks to get bets models or to log values
+    # TODO: Implement tensorboard, weights and biases
+    # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
+
     env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
     env = make_vec_env(lambda: env, n_envs=1)
 

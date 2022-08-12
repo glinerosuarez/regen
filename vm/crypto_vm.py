@@ -210,7 +210,7 @@ class CryptoViewModel:
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
-        return self.last_observation
+        return dict(klines=self.last_observation, last_price=0, position=Position.Long.value)
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
@@ -235,7 +235,16 @@ class CryptoViewModel:
         if self.current_tick >= configuration.settings.ticks_per_episode:
             self.done = True
 
-        return self.last_observation, step_reward, self.done, info
+        return (
+            dict(
+                klines=self.last_observation,
+                last_price=self.last_trade_price if self.last_trade_price is not None else 0,
+                position=self.position.value
+            ),
+            step_reward,
+            self.done,
+            info
+        )
 
     @cached_property
     def execution_id(self) -> int:

@@ -4,7 +4,7 @@ from typing import Optional
 import gym
 import numpy as np
 from gym import spaces
-from vm.consts import Action
+from vm.consts import Action, Position
 from attr import define, field
 from consts import CryptoAsset
 from vm.crypto_vm import CryptoViewModel
@@ -47,9 +47,15 @@ class CryptoTradingEnv(gym.Env):
         return spaces.Discrete(len(Action))
 
     @observation_space.default
-    def init_observation_space(self) -> spaces.Box:
-        # Prices contain the OHCL values for the last window_size prices.
-        return spaces.Box(low=0.0, high=np.inf, shape=self.shape, dtype=np.float32)
+    def init_observation_space(self) -> spaces.Dict:
+        return spaces.Dict({
+            # Prices contain the OHCL values for the last window_size prices.
+            "klines": spaces.Box(low=0.0, high=np.inf, shape=self.shape, dtype=np.float32),
+            # This is the price the last trade was executed at.
+            "last_price": spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
+            # Current position the agent has.
+            "position": spaces.Discrete(len(Position)),
+        })
 
     def render(self, mode="human"):
         if mode == "live":
