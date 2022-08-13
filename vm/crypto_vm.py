@@ -185,6 +185,7 @@ class CryptoViewModel:
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
+        self.initial_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
         self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
 
@@ -210,7 +211,12 @@ class CryptoViewModel:
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
-        return dict(klines=self.last_observation, last_price=0, position=Position.Long.value)
+        self.initial_price = self.last_observation[-1][3]
+        return dict(
+            klines=self.last_observation,
+            last_price=self.initial_price,
+            position=Position.Long.value
+        )
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
@@ -238,7 +244,7 @@ class CryptoViewModel:
         return (
             dict(
                 klines=self.last_observation,
-                last_price=self.last_trade_price if self.last_trade_price is not None else 0,
+                last_price=self.last_trade_price if self.last_trade_price is not None else self.initial_price,
                 position=self.position.value
             ),
             step_reward,
@@ -264,6 +270,13 @@ class CryptoViewModel:
         )
 
     def _calculate_reward(self, action: Action):
+        # TODO: During training, the reward is computed based on the close price of the observation that the agent
+        #  interacted with, in practice, this price will vary because of the succeeding market movements and the fact
+        #  that we always buy at market price (for simplicity, we could change that in the future), this makes things
+        #  easier for the agent, this difference will depend mainly on the time that elapses between the moment the
+        #  agent takes a trade action and the moment the order is processed (measure that time on average), to start
+        #  with, I think we could take a random value from (open, close) of the next observation (because we get a new
+        #  observation every minute, frequently)
         step_reward = 0.0
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
