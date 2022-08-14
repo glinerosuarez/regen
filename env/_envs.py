@@ -51,9 +51,7 @@ class CryptoTradingEnv(gym.Env):
         return spaces.Dict(
             {
                 # Prices contain the OHCL values for the last window_size prices.
-                "klines": spaces.Box(low=0.0, high=np.inf, shape=self.shape, dtype=np.float32),
-                # This is the price the last trade was executed at.
-                "last_price": spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
+                "klines": spaces.Box(low=-np.inf, high=np.inf, shape=self.shape, dtype=np.float32),
                 # Current position the agent has.
                 "position": spaces.Discrete(len(Position)),
             }

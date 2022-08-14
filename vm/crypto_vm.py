@@ -213,7 +213,7 @@ class CryptoViewModel:
         self.initial_price = self.last_observation[-1][3]
         # We normalize prices dividing by the initial price
         self.last_observation[:, :3] = self.last_observation[:, :3] / self.initial_price
-        return dict(klines=self.last_observation, last_price=self.initial_price, position=Position.Long.value)
+        return dict(klines=self.last_observation, position=Position.Long.value)
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
@@ -243,7 +243,7 @@ class CryptoViewModel:
         self.last_observation[:, :3] = self.last_observation[:, :3] / non_null_last_trade_price
 
         return (
-            dict(klines=self.last_observation, last_price=non_null_last_trade_price, position=self.position.value),
+            dict(klines=self.last_observation, position=self.position.value),
             step_reward,
             self.done,
             info,
@@ -332,6 +332,7 @@ class CryptoViewModel:
         # TODO: Get trade price.
         # TODO: To train the initial agent we can skip placing a real order and use the last price in the current
         #  observation.
+        # TODO: Add a trade_fee_percent to make training harder for the agent
         price = self._get_price()
         # The price and quantity will be returned by client.place_order.
         if side == Side.BUY:
