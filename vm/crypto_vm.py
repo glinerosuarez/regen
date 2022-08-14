@@ -21,9 +21,7 @@ from repository import EnvState, Observation, TradingPair
 
 class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
 
-    DEFAULT_FREQ = 60  # Produce 1 element per this time (in seconds)
-
-    def __init__(self, queue: Queue[E], frequency: int = DEFAULT_FREQ, daemon: bool = True):
+    def __init__(self, queue: Queue[E], frequency: int, daemon: bool = True):
         super(FixedFrequencyProducer, self).__init__(daemon=daemon)
         self.queue = queue
         self.frequency = frequency
@@ -43,10 +41,11 @@ class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
 
 
 class KlinesProducer(FixedFrequencyProducer):
+    _DEFAULT_FREQ = 60  # Produce 1 element per this time (in seconds)
     _MAX_QUEUE_SIZE = 10_000
 
-    def __init__(self, trading_pair: TradingPair, n_klines):
-        super().__init__(queue=Queue(self._MAX_QUEUE_SIZE))
+    def __init__(self, trading_pair: TradingPair, n_klines: int, freq: int = _DEFAULT_FREQ):
+        super().__init__(queue=Queue(self._MAX_QUEUE_SIZE), frequency=freq)
         # Client to query the data.
         self.client = BinanceClient()
         self.trading_pair = trading_pair
@@ -118,7 +117,7 @@ class ObsProducer:
             while True:
                 if self.producer.is_alive():
                     if self.producer.queue.empty():
-                        time.sleep(self.producer.DEFAULT_FREQ / 2)
+                        time.sleep(self.producer.frequency / 2)
                         continue
                     else:
                         obs_data = self.producer.queue.get()
@@ -211,7 +210,10 @@ class CryptoViewModel:
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
+        # The initial price is the last price in the first observation
         self.initial_price = self.last_observation[-1][3]
+        # We normalize prices dividing by the initial price
+        self.last_observation[:, :3] = self.last_observation[:, :3]/self.initial_price
         return dict(
             klines=self.last_observation,
             last_price=self.initial_price,
@@ -241,10 +243,14 @@ class CryptoViewModel:
         if self.current_tick >= configuration.settings.ticks_per_episode:
             self.done = True
 
+        # We normalize prices dividing by the last trade price
+        non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.initial_price
+        self.last_observation[:, :3] = self.last_observation[:, :3]/non_null_last_trade_price
+
         return (
             dict(
                 klines=self.last_observation,
-                last_price=self.last_trade_price if self.last_trade_price is not None else self.initial_price,
+                last_price=non_null_last_trade_price,
                 position=self.position.value
             ),
             step_reward,
