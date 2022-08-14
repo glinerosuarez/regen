@@ -1,3 +1,4 @@
 1. Implement mypy and pyre https://pyre-check.org/docs/getting-started for statical type check
 2. increase observation features
 3. Encapsulate all repository logic(remote and db) inside Repository class.
+4. Implement poetry library and https://tox.wiki/en/latest/

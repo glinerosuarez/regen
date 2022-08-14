@@ -8,7 +8,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from attr import attrs, attrib
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
-from typing import List, Optional, Type, Any
+from typing import List, Optional, Type, Any, Callable
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import registry, Session, InstrumentedAttribute
@@ -24,6 +24,7 @@ from sqlalchemy import (
     Float,
     Enum,
     select,
+    delete,
     Boolean,
     BigInteger,
     func,
@@ -71,6 +72,29 @@ class DataBaseManager:
                 raise exception
 
     @staticmethod
+    def _apply_conditions(
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        function: Callable = select,
+    ):
+        """
+        Apply sql.expression and conditions to a table.
+        :param table: Table to run the query on.
+        :param conditions: Where conditions.
+        :param function: SQLAlchemy sql.expression that allows for the where clause.
+        :return: SQLAlchemy executable query object.
+        """
+        match conditions:
+            case None:
+                sql_statement = function(table)
+            case [*cond]:
+                sql_statement = function(table).where(and_(*cond))
+            case _:
+                sql_statement = function(table).where(conditions)
+
+        return sql_statement
+
+    @staticmethod
     def select(
         table: Type[DataClass],
         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
@@ -81,13 +105,7 @@ class DataBaseManager:
         Execute a SELECT statement from the SQL Object table.
         :return: a :list: of SQL Object.
         """
-        match conditions:
-            case None:
-                sql_statement = select(table)
-            case [*cond]:
-                sql_statement = select(table).where(and_(*cond))
-            case _:
-                sql_statement = select(table).where(conditions)
+        sql_statement = DataBaseManager._apply_conditions(table, conditions)
 
         if offset != 0:
             sql_statement = sql_statement.offset(offset)
@@ -117,6 +135,27 @@ class DataBaseManager:
         if condition is not None:
             sql_statement = sql_statement.where(condition)
         return DataBaseManager._session.execute(sql_statement).fetchone()[0]
+
+    @staticmethod
+    def delete(
+        table: Type[DataClass],
+        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        commit: bool = False,
+    ) -> int:
+        """
+        Delete rows.
+        :param table: Table from which rows will be deleted.
+        :param conditions: Condition to filter rows to delete.
+        :param commit: whether to commit changes or not.
+        :return: Number of rows to delete or deleted if commit == True.
+        """
+        query = DataBaseManager._apply_conditions(table, conditions, function=delete)
+        rowcount = DataBaseManager._session.execute(query).rowcount
+
+        if commit is True:
+            DataBaseManager._session.commit()
+
+        return rowcount
 
     @staticmethod
     def log_to_file() -> Logger:
@@ -205,6 +244,7 @@ class AccountInfo(DataClass):
         Column("canTrade", Boolean),
         Column("canWithdraw", Boolean),
         Column("canDeposit", Boolean),
+        Column("brokered", Boolean),
         Column("updateTime", BigInteger),
         Column("accountType", Enum(AccountType)),
         Column("balances", _EncodedDataClass(List[Balance])),
@@ -223,6 +263,7 @@ class AccountInfo(DataClass):
     canTrade: bool = attrib(converter=bool)
     canWithdraw: bool = attrib(converter=bool)
     canDeposit: bool = attrib(converter=bool)
+    brokered: bool = attrib(converter=bool)
     updateTime: int = attrib(converter=int)
     accountType: AccountType = attrib(converter=AccountType)
     balances: List[Balance] = attrib(converter=Balance.structure)

@@ -9,9 +9,9 @@ from stable_baselines3.common.cmd_util import make_vec_env
 import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
-from repository import TradingPair, Observation
-from repository.db import DataBaseManager
 from vm.crypto_vm import ObsProducer
+from repository.db import DataBaseManager
+from repository import TradingPair, Observation
 
 time_steps = 9
 window_size = 5
@@ -20,6 +20,13 @@ quote_asset = CryptoAsset.BUSD
 
 
 def train():
+    # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
+    # TODO: Train with more than 1 vectorized DummyVecEnv
+    # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
+    # TODO: Use callbacks to get bets models or to log values
+    # TODO: Implement tensorboard, weights and biases
+    # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
+
     env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
     env = make_vec_env(lambda: env, n_envs=1)
 
@@ -38,12 +45,14 @@ def train():
     )
 
 
-def collect_data(n_obs: int):
+def collect_data(n_obs: float):
     """Get observation data from Binance API and store it in a local database."""
+    print(f"Collecting {n_obs} observations")
     DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
     DataBaseManager.create_all()
 
-    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.execution_id.like("c%"))
+    last_ts = DataBaseManager.select_max(Observation.ts, Observation.execution_id.like("c%"))
+    last_exec_id = DataBaseManager.select_max(Observation.execution_id, Observation.ts == last_ts)
     if last_exec_id is None:
         exec_id = "c1"
     else:
@@ -52,7 +61,10 @@ def collect_data(n_obs: int):
 
     producer: ObsProducer = ObsProducer(TradingPair(base_asset, quote_asset), window_size, exec_id, False)
     step = 0
-    for _ in range(1, n_obs + 1):
+    obs_index = 1
+
+    while obs_index <= n_obs:
+        print(f"Global time step: {obs_index}")
         step += 1
         print(f"Episode {episode_id}")
         print(f"Step {step}")
@@ -63,11 +75,13 @@ def collect_data(n_obs: int):
             step = 0
             episode_id += 1
 
+        obs_index += 1
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c", "--collect", default="0", type=int, help="Collect observations from the source without training an agent."
+        "-c", "--collect", default=0, type=str, help="Collect observations from the source without training an agent."
     )
     parser.add_argument(
         "-t",
@@ -80,7 +94,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.collect > 0:
-        collect_data(args.collect)
-    else:
+    if args.train:
         train()
+    elif args.collect == "inf":
+        collect_data(float("inf"))
+    elif args.collect > 0:
+        collect_data(args.collect)

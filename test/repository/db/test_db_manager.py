@@ -39,6 +39,7 @@ acc_info = AccountInfo(
     canTrade=True,
     canWithdraw=True,
     canDeposit=True,
+    brokered=True,
     updateTime=1631587291,
     accountType=AccountType.SPOT,
     balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
@@ -133,7 +134,7 @@ def test_select_with_limit():
     DataBaseManager.init_connection(db_name)
     DataBaseManager.create_all()
 
-    # Insert orders
+    # Insert obs
     DataBaseManager.insert(obs1)
     for i in range(2, 11):
         DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
@@ -146,3 +147,10 @@ def test_select_with_offset():
     assert DataBaseManager.select(Observation, offset=10) == []
     obs1.episode_id = 10
     assert DataBaseManager.select(Observation, offset=9)[0] == obs1
+    obs1.episode_id = 1
+
+
+def test_delete():
+    assert DataBaseManager.delete(Observation, [Observation.episode_id > 5, Observation.episode_id % 2 == 0]) == 3
+    results = DataBaseManager.select_all(Observation)
+    assert [r.episode_id for r in results] == [1, 2, 3, 4, 5, 7, 9]
