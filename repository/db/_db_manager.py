@@ -244,6 +244,7 @@ class AccountInfo(DataClass):
         Column("canTrade", Boolean),
         Column("canWithdraw", Boolean),
         Column("canDeposit", Boolean),
+        Column("brokered", Boolean),
         Column("updateTime", BigInteger),
         Column("accountType", Enum(AccountType)),
         Column("balances", _EncodedDataClass(List[Balance])),
@@ -262,6 +263,7 @@ class AccountInfo(DataClass):
     canTrade: bool = attrib(converter=bool)
     canWithdraw: bool = attrib(converter=bool)
     canDeposit: bool = attrib(converter=bool)
+    brokered: bool = attrib(converter=bool)
     updateTime: int = attrib(converter=int)
     accountType: AccountType = attrib(converter=AccountType)
     balances: List[Balance] = attrib(converter=Balance.structure)

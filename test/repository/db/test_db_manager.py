@@ -39,6 +39,7 @@ acc_info = AccountInfo(
     canTrade=True,
     canWithdraw=True,
     canDeposit=True,
+    brokered=True,
     updateTime=1631587291,
     accountType=AccountType.SPOT,
     balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
