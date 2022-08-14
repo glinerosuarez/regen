@@ -4,7 +4,6 @@ from datetime import datetime
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.cmd_util import make_vec_env
 
 import configuration
