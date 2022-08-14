@@ -20,7 +20,6 @@ from repository import EnvState, Observation, TradingPair
 
 
 class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
-
     def __init__(self, queue: Queue[E], frequency: int, daemon: bool = True):
         super(FixedFrequencyProducer, self).__init__(daemon=daemon)
         self.queue = queue
@@ -213,12 +212,8 @@ class CryptoViewModel:
         # The initial price is the last price in the first observation
         self.initial_price = self.last_observation[-1][3]
         # We normalize prices dividing by the initial price
-        self.last_observation[:, :3] = self.last_observation[:, :3]/self.initial_price
-        return dict(
-            klines=self.last_observation,
-            last_price=self.initial_price,
-            position=Position.Long.value
-        )
+        self.last_observation[:, :3] = self.last_observation[:, :3] / self.initial_price
+        return dict(klines=self.last_observation, last_price=self.initial_price, position=Position.Long.value)
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
@@ -245,17 +240,13 @@ class CryptoViewModel:
 
         # We normalize prices dividing by the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.initial_price
-        self.last_observation[:, :3] = self.last_observation[:, :3]/non_null_last_trade_price
+        self.last_observation[:, :3] = self.last_observation[:, :3] / non_null_last_trade_price
 
         return (
-            dict(
-                klines=self.last_observation,
-                last_price=non_null_last_trade_price,
-                position=self.position.value
-            ),
+            dict(klines=self.last_observation, last_price=non_null_last_trade_price, position=self.position.value),
             step_reward,
             self.done,
-            info
+            info,
         )
 
     @cached_property
