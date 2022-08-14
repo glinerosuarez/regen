@@ -17,7 +17,6 @@ from repository.db._db_manager import AccountInfo, Order
 from repository._dataclass import TradingPair, KlineRecord
 
 
-# TODO: Remote connection is closed automatically after around 2 hours
 class BinanceClient:
     """
     Binance api client.

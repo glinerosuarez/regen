@@ -178,8 +178,6 @@ class CryptoViewModel:
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
         self.client = BinanceClient()
-        # TODO: Find a way to normalize kline data, we could for example express values as percentages of the last
-        #  trade's price
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
@@ -217,7 +215,6 @@ class CryptoViewModel:
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
-        # TODO: should the observation array include the position, so the agent doesn't have to memorize it ?
         self.done = False
 
         step_reward = self._calculate_reward(action)
@@ -330,8 +327,6 @@ class CryptoViewModel:
         #    new_client_order_id=self.execution_id
         # )
         # TODO: Get trade price.
-        # TODO: To train the initial agent we can skip placing a real order and use the last price in the current
-        #  observation.
         # TODO: Add a trade_fee_percent to make training harder for the agent
         price = self._get_price()
         # The price and quantity will be returned by client.place_order.
