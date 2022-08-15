@@ -1,57 +1,18 @@
 import time
-import threading
-from queue import Queue
-from typing import Generic, Optional
+from typing import Optional
 from collections import defaultdict
-from abc import ABC, abstractmethod
 from functools import cached_property
 
 import numpy as np
 
 import log
 import configuration
-from repository import Interval
 from consts import CryptoAsset, Side
-from repository._dataclass import KlineRecord
-from repository.db import DataBaseManager
-from vm.consts import E, Action, Position
+from vm.consts import Action, Position
+from vm._obs_producer import KlinesProducer
 from repository.remote import BinanceClient
+from repository.db import DataBaseManager, Kline
 from repository import EnvState, Observation, TradingPair
-
-
-class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
-    def __init__(self, queue: Queue[E], frequency: int, daemon: bool = True):
-        super(FixedFrequencyProducer, self).__init__(daemon=daemon)
-        self.queue = queue
-        self.frequency = frequency
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
-
-    @abstractmethod
-    def _get_element(self) -> E:
-        raise NotImplementedError
-
-    def run(self):
-        while True:
-            if not self.queue.full():
-                element = self._get_element()
-                self.queue.put(element)
-                self.logger.debug(f"Putting {element} : {self.queue.qsize()} elements in queue.")
-                time.sleep(self.frequency)
-
-
-class KlinesProducer(FixedFrequencyProducer):
-    _DEFAULT_FREQ = 60  # Produce 1 element per this time (in seconds)
-    _MAX_QUEUE_SIZE = 10_000
-
-    def __init__(self, trading_pair: TradingPair, n_klines: int, freq: int = _DEFAULT_FREQ):
-        super().__init__(queue=Queue(self._MAX_QUEUE_SIZE), frequency=freq)
-        # Client to query the data.
-        self.client = BinanceClient()
-        self.trading_pair = trading_pair
-        self.n_klines = n_klines
-
-    def _get_element(self) -> E:
-        return self.client.get_klines_data(self.trading_pair, Interval.M_1, limit=self.n_klines)
 
 
 class ObsProducer:
@@ -89,7 +50,7 @@ class ObsProducer:
         :return: Observation data and a flag to identify the end of an episode.
         """
 
-        def klines_to_numpy(klines: list[KlineRecord]):
+        def klines_to_numpy(klines: list[Kline]):
             # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
             #  same tick has a different value for the volume
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
