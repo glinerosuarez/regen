@@ -2,6 +2,7 @@ import json
 from logging import Logger
 
 import cattr
+import numpy as np
 import pendulum
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -13,7 +14,7 @@ from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import registry, Session, InstrumentedAttribute
 from consts import TimeInForce, OrderType, Side
-from repository._dataclass import DataClass, TradingPair, KlineRecord
+from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy import (
     create_engine,
@@ -305,6 +306,50 @@ class EnvState(DataClass):
 
 @_mapper_registry.mapped
 @attrs
+class Kline(DataClass):
+    __table__ = Table(
+        "kline",
+        _mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False),
+        Column("pair", _EncodedDataClass(TradingPair)),
+        Column("open_time", Integer, nullable=False),
+        Column("open_value", Float, nullable=False),
+        Column("high", Float, nullable=False),
+        Column("low", Float, nullable=False),
+        Column("close_value", Float, nullable=False),
+        Column("volume", Float, nullable=False),
+        Column("close_time", Integer, nullable=False),
+        Column("quote_asset_vol", Float, nullable=False),
+        Column("trades", Integer, nullable=False),
+        Column("taker_buy_base_vol", Float, nullable=False),
+        Column("taker_buy_quote_vol", Float, nullable=False),
+    )
+
+    @id.default
+    def _id(self):
+        return str(self.open_time) + "_" + str(self.close_time)
+
+    pair: TradingPair = attrib(validator=instance_of(TradingPair))
+    open_time: int = attrib(converter=int)
+    open_value: float = attrib(converter=float)
+    high: float = attrib(converter=float)
+    low: float = attrib(converter=float)
+    close_value: float = attrib(converter=float)
+    volume: float = attrib(converter=float)
+    close_time: int = attrib(converter=int)
+    quote_asset_vol: float = attrib(converter=float)  # Volume measured in the units of the second part of the pair.
+    trades: int = attrib(converter=int)
+    # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
+    taker_buy_base_vol: float = attrib(converter=float)
+    taker_buy_quote_vol: float = attrib(converter=float)
+
+    def to_numpy(self) -> np.ndarray:
+        values = vars(self)
+        return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
+
+
+@_mapper_registry.mapped
+@attrs
 class Observation(DataClass):
     __table__ = Table(
         "observation",
@@ -312,7 +357,7 @@ class Observation(DataClass):
         Column("obs_id", Integer, primary_key=True, nullable=False),
         Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
-        Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
+        Column("klines", _EncodedDataClass(List[Kline]), nullable=False),
         Column("ts", Float, nullable=False),
     )
 

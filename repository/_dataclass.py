@@ -82,24 +82,3 @@ class TradingPair(DataClass):
 
     def __str__(self):
         return self.base.value + self.quote.value
-
-
-@attrs
-class KlineRecord(DataClass):
-    pair: TradingPair = attrib(validator=instance_of(TradingPair))
-    open_time: int = attrib(converter=int)
-    open_value: float = attrib(converter=float)
-    high: float = attrib(converter=float)
-    low: float = attrib(converter=float)
-    close_value: float = attrib(converter=float)
-    volume: float = attrib(converter=float)
-    close_time: int = attrib(converter=int)
-    quote_asset_vol: float = attrib(converter=float)  # Volume measured in the units of the second part of the pair.
-    trades: int = attrib(converter=int)
-    # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
-    taker_buy_base_vol: float = attrib(converter=float)
-    taker_buy_quote_vol: float = attrib(converter=float)
-
-    def to_numpy(self) -> np.ndarray:
-        values = vars(self)
-        return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
