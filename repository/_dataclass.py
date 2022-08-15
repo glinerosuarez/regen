@@ -1,4 +1,5 @@
 import cattr
+import inspect
 from copy import deepcopy
 
 from attr import attrs, attrib
@@ -23,9 +24,17 @@ class DataClass:
         return cattr.unstructure(self)
 
     def copy(self, with_: dict) -> "DataClass":
-        attribs = deepcopy(self.to_dict())
+        """
+        Create a deep copy of this instance.
+        :param with_: Properties to replace in the new object.
+        """
+        attribs = deepcopy({  # Copy only constructor params
+            k: v for k, v in self.to_dict().items() if k in inspect.signature(self.__init__).parameters
+        })
+
         for k, v in with_.items():
             attribs[k] = v
+
         return self.__class__(**attribs)
 
 
@@ -71,6 +80,8 @@ class TradingPair(DataClass):
     @classmethod
     def structure(cls, value: Union[dict, list, str]) -> Union["DataClass", List["DataClass"]]:
         # In addition to dict and list, this class can also be structured from a string.
+        if isinstance(value, cls):
+            return value
         try:
             return super().structure(value)
         except TypeError:

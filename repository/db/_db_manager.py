@@ -6,16 +6,16 @@ import numpy as np
 import pendulum
 from sqlalchemy.sql.elements import BinaryExpression
 
-from attr import attrs, attrib
+from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
 from typing import List, Optional, Type, Any, Callable
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import registry, Session, InstrumentedAttribute
 from consts import TimeInForce, OrderType, Side
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
+from sqlalchemy.orm import registry, Session, InstrumentedAttribute, relationship
 from sqlalchemy import (
     create_engine,
     Table,
@@ -30,6 +30,8 @@ from sqlalchemy import (
     BigInteger,
     func,
     and_,
+    ForeignKey,
+    DateTime,
 )
 
 from log import LoggerFactory
@@ -304,28 +306,40 @@ class EnvState(DataClass):
         return "-".join([str(self.execution_id), str(self.episode_id), str(self.tick)])
 
 
+ObservationKline = Table(
+    "ObservationKline",
+    _mapper_registry.metadata,
+    Column("id", Integer, primary_key=True, autoincrement="auto"),
+    Column("obs_id", Integer, ForeignKey("observation.id")),
+    Column("kline_id", Integer, ForeignKey("kline.id")),
+    Column("created_at", DateTime, server_default=func.now())
+)
+
+
 @_mapper_registry.mapped
 @attrs
 class Kline(DataClass):
     __table__ = Table(
         "kline",
         _mapper_registry.metadata,
-        Column("kline_id", Integer, primary_key=True, nullable=False),
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("pair", _EncodedDataClass(TradingPair)),
-        Column("open_time", Integer, nullable=False),
+        Column("open_time", Integer, nullable=False, unique=True),
         Column("open_value", Float, nullable=False),
         Column("high", Float, nullable=False),
         Column("low", Float, nullable=False),
         Column("close_value", Float, nullable=False),
         Column("volume", Float, nullable=False),
-        Column("close_time", Integer, nullable=False),
+        Column("close_time", Integer, nullable=False, unique=True),
         Column("quote_asset_vol", Float, nullable=False),
         Column("trades", Integer, nullable=False),
         Column("taker_buy_base_vol", Float, nullable=False),
         Column("taker_buy_quote_vol", Float, nullable=False),
+        Column("created_at", DateTime, server_default=func.now())
     )
 
-    pair: TradingPair = attrib(validator=instance_of(TradingPair))
+    id: int = attrib(init=False)
+    pair: TradingPair = attrib(converter=TradingPair.structure, validator=instance_of(TradingPair))
     open_time: int = attrib(converter=int)
     open_value: float = attrib(converter=float)
     high: float = attrib(converter=float)
@@ -338,11 +352,7 @@ class Kline(DataClass):
     # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
     taker_buy_base_vol: float = attrib(converter=float)
     taker_buy_quote_vol: float = attrib(converter=float)
-    id: str = attrib(init=False)
-
-    @id.default
-    def _id(self):
-        return str(self.open_time) + "_" + str(self.close_time)
+    created_at: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
 
     def to_numpy(self) -> np.ndarray:
         values = vars(self)
@@ -350,19 +360,25 @@ class Kline(DataClass):
 
 
 @_mapper_registry.mapped
-@attrs
+@define(slots=False)
 class Observation(DataClass):
     __table__ = Table(
         "observation",
         _mapper_registry.metadata,
-        Column("obs_id", Integer, primary_key=True, nullable=False),
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
-        Column("klines", _EncodedDataClass(List[Kline]), nullable=False),
-        Column("ts", Float, nullable=False),
+        Column("created_at", DateTime, server_default=func.now())
     )
 
-    execution_id: str = attrib(converter=str)
-    episode_id: int = attrib(converter=int)
-    klines: List[Kline] = attrib()
-    ts: float = attrib(converter=float)
+    __mapper_args__ = {  # type: ignore
+        "properties": {
+            "klines": relationship("Kline", secondary=ObservationKline),
+        }
+    }
+
+    id: int = field(init=False)
+    execution_id: str
+    episode_id: int
+    klines: list[Kline]
+    created_at: pendulum.DateTime = field(init=False, converter=pendulum.DateTime)

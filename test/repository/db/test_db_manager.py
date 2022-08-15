@@ -1,3 +1,4 @@
+import cattrs
 import time
 
 import pytest
@@ -107,27 +108,35 @@ def test_env_state():
     assert DataBaseManager.select_max(EnvState.state_id) == "1-1-1"
 
 
-obs1 = Observation(
-    execution_id=1,
-    episode_id=1,
-    klines=[
-        Kline(
-            pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
-            open_time=123456,
-            open_value=100,
-            high=110,
-            low=90,
-            close_value=103,
-            volume=1_000,
-            close_time=123457,
-            quote_asset_vol=500,
-            trades=20,
-            taker_buy_base_vol=700,
-            taker_buy_quote_vol=600,
-        )
-    ],
-    ts=time.time(),
+kline = Kline(
+    pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+    open_time=123456,
+    open_value=100,
+    high=110,
+    low=90,
+    close_value=103,
+    volume=1_000,
+    close_time=123457,
+    quote_asset_vol=500,
+    trades=20,
+    taker_buy_base_vol=700,
+    taker_buy_quote_vol=600,
 )
+kline2 = kline.copy(with_=dict(trades=45, open_time=134567, close_time=234567))
+kline3 = kline.copy(with_=dict(trades=101, open_time=334567, close_time=434567))
+obs1 = Observation(execution_id=1, episode_id=1, klines=[kline, kline2])
+
+
+def test_obs_kline_relationship():
+    DataBaseManager.init_connection(db_name)
+    DataBaseManager.create_all()
+
+    DataBaseManager.insert(obs1)
+    DataBaseManager.insert(kline3)
+
+    obs = DataBaseManager.select_all(Observation)
+    assert len(obs[0].klines) == 2
+    assert len(DataBaseManager.select_all(Kline)) == 3
 
 
 def test_select_with_limit():
