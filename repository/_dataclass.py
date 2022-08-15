@@ -1,7 +1,6 @@
 import cattr
 from copy import deepcopy
 
-import numpy as np
 from attr import attrs, attrib
 from consts import CryptoAsset
 from attr.validators import instance_of

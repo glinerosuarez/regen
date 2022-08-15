@@ -363,5 +363,5 @@ class Observation(DataClass):
 
     execution_id: str = attrib(converter=str)
     episode_id: int = attrib(converter=int)
-    klines: List[KlineRecord] = attrib()
+    klines: List[Kline] = attrib()
     ts: float = attrib(converter=float)
