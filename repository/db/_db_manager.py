@@ -310,7 +310,7 @@ class Kline(DataClass):
     __table__ = Table(
         "kline",
         _mapper_registry.metadata,
-        Column("id", Integer, primary_key=True, nullable=False),
+        Column("kline_id", Integer, primary_key=True, nullable=False),
         Column("pair", _EncodedDataClass(TradingPair)),
         Column("open_time", Integer, nullable=False),
         Column("open_value", Float, nullable=False),
@@ -325,10 +325,11 @@ class Kline(DataClass):
         Column("taker_buy_quote_vol", Float, nullable=False),
     )
 
-    @id.default
+    @kline_id.default
     def _id(self):
         return str(self.open_time) + "_" + str(self.close_time)
 
+    kline_id: str = attrib(init=False)
     pair: TradingPair = attrib(validator=instance_of(TradingPair))
     open_time: int = attrib(converter=int)
     open_value: float = attrib(converter=float)
