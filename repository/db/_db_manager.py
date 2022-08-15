@@ -325,11 +325,7 @@ class Kline(DataClass):
         Column("taker_buy_quote_vol", Float, nullable=False),
     )
 
-    @kline_id.default
-    def _id(self):
-        return str(self.open_time) + "_" + str(self.close_time)
-
-    kline_id: str = attrib(init=False)
+    id: str = attrib(init=False)
     pair: TradingPair = attrib(validator=instance_of(TradingPair))
     open_time: int = attrib(converter=int)
     open_value: float = attrib(converter=float)
@@ -343,6 +339,10 @@ class Kline(DataClass):
     # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
     taker_buy_base_vol: float = attrib(converter=float)
     taker_buy_quote_vol: float = attrib(converter=float)
+
+    @id.default
+    def _id(self):
+        return str(self.open_time) + "_" + str(self.close_time)
 
     def to_numpy(self) -> np.ndarray:
         values = vars(self)
