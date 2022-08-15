@@ -312,7 +312,7 @@ ObservationKline = Table(
     Column("id", Integer, primary_key=True, autoincrement="auto"),
     Column("obs_id", Integer, ForeignKey("observation.id")),
     Column("kline_id", Integer, ForeignKey("kline.id")),
-    Column("created_at", DateTime, server_default=func.now())
+    Column("created_at", DateTime, server_default=func.now()),
 )
 
 
@@ -335,7 +335,7 @@ class Kline(DataClass):
         Column("trades", Integer, nullable=False),
         Column("taker_buy_base_vol", Float, nullable=False),
         Column("taker_buy_quote_vol", Float, nullable=False),
-        Column("created_at", DateTime, server_default=func.now())
+        Column("created_at", DateTime, server_default=func.now()),
     )
 
     id: int = attrib(init=False)
@@ -368,7 +368,7 @@ class Observation(DataClass):
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
-        Column("created_at", DateTime, server_default=func.now())
+        Column("created_at", DateTime, server_default=func.now()),
     )
 
     __mapper_args__ = {  # type: ignore

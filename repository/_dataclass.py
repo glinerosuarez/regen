@@ -28,9 +28,11 @@ class DataClass:
         Create a deep copy of this instance.
         :param with_: Properties to replace in the new object.
         """
-        attribs = deepcopy({  # Copy only constructor params
-            k: v for k, v in self.to_dict().items() if k in inspect.signature(self.__init__).parameters
-        })
+        attribs = deepcopy(
+            {  # Copy only constructor params
+                k: v for k, v in self.to_dict().items() if k in inspect.signature(self.__init__).parameters
+            }
+        )
 
         for k, v in with_.items():
             attribs[k] = v
