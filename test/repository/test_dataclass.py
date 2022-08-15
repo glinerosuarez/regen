@@ -1,7 +1,8 @@
 import numpy as np
 
 from consts import CryptoAsset
-from repository._dataclass import TradingPair, KlineRecord
+from repository.db import Kline
+from repository._dataclass import TradingPair
 
 
 def test_tradingpair_from_str():
@@ -40,7 +41,7 @@ def test_to_np():
         100.3,
     ]
 
-    record = KlineRecord(*vals)
+    record = Kline(*vals)
 
     assert (np.array(vals) == record.to_numpy()).all()
 

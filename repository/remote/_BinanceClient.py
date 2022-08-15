@@ -12,9 +12,9 @@ from repository import Interval
 from configuration import settings
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
+from repository._dataclass import TradingPair
 from consts import Side, OrderType, TimeInForce
-from repository.db._db_manager import AccountInfo, Order
-from repository._dataclass import TradingPair, KlineRecord
+from repository.db import AccountInfo, Order, Kline
 
 
 class BinanceClient:
@@ -65,7 +65,7 @@ class BinanceClient:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         limit: Optional[int] = None,
-    ) -> List[KlineRecord]:
+    ) -> List[Kline]:
         """
         Kline/Candlestick Data
 
@@ -89,7 +89,7 @@ class BinanceClient:
             return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
-            KlineRecord(
+            Kline(
                 pair=pair,
                 open_time=r[0],
                 open_value=r[1],

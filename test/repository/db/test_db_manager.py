@@ -4,11 +4,11 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from consts import CryptoAsset
-from repository._dataclass import KlineRecord, TradingPair
+from repository._dataclass import TradingPair
 from test import test_utils
 from repository import AccountType, Observation
 from vm.consts import Position, Action
-from repository.db import DataBaseManager, Order, AccountInfo, EnvState
+from repository.db import DataBaseManager, Order, AccountInfo, EnvState, Kline
 
 db_name = ":memory:"
 data = Order(
@@ -111,7 +111,7 @@ obs1 = Observation(
     execution_id=1,
     episode_id=1,
     klines=[
-        KlineRecord(
+        Kline(
             pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
             open_time=123456,
             open_value=100,
