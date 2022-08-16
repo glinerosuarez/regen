@@ -1,5 +1,4 @@
-import cattrs
-import time
+import copy
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -124,7 +123,8 @@ kline = Kline(
 )
 kline2 = kline.copy(with_=dict(trades=45, open_time=134567, close_time=234567))
 kline3 = kline.copy(with_=dict(trades=101, open_time=334567, close_time=434567))
-obs1 = Observation(execution_id=1, episode_id=1, klines=[kline, kline2])
+obs = Observation(execution_id=1, episode_id=1, klines=[kline, kline2])
+obs1 = copy.deepcopy(obs)
 
 
 def test_obs_kline_relationship():
@@ -140,13 +140,11 @@ def test_obs_kline_relationship():
 
 
 def test_select_with_limit():
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-
     # Insert obs
-    DataBaseManager.insert(obs1)
+    obs.klines = []
+
     for i in range(2, 11):
-        DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
+        DataBaseManager.insert(obs.copy(with_={"episode_id": i}))
 
     assert len(DataBaseManager.select(Observation, limit=2)) == 2
     assert DataBaseManager.select(Observation, limit=2)[1].episode_id == 2
@@ -155,7 +153,7 @@ def test_select_with_limit():
 def test_select_with_offset():
     assert DataBaseManager.select(Observation, offset=10) == []
     obs1.episode_id = 10
-    assert DataBaseManager.select(Observation, offset=9)[0] == obs1
+    assert DataBaseManager.select(Observation, offset=9)[0].episode_id == 10
     obs1.episode_id = 1
 
 

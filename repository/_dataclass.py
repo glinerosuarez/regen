@@ -1,6 +1,7 @@
+import copy
+
 import cattr
 import inspect
-from copy import deepcopy
 
 from attr import attrs, attrib
 from consts import CryptoAsset
@@ -13,6 +14,8 @@ class DataClass:
     @classmethod
     def structure(cls, value: Union[dict, list]) -> Union["DataClass", List["DataClass"]]:
         if isinstance(value, list):
+            if all(isinstance(e, cls) for e in value):
+                return value
             return cattr.structure(value, List[cls])
         elif isinstance(value, dict):
             return cattr.structure(value, cls)
@@ -28,9 +31,9 @@ class DataClass:
         Create a deep copy of this instance.
         :param with_: Properties to replace in the new object.
         """
-        attribs = deepcopy(
+        attribs = copy.deepcopy(
             {  # Copy only constructor params
-                k: v for k, v in self.to_dict().items() if k in inspect.signature(self.__init__).parameters
+                k: v for k, v in self.__dict__.items() if k in inspect.signature(self.__init__).parameters
             }
         )
 

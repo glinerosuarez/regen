@@ -218,7 +218,7 @@ class Order(DataClass):
         Column("fills", _EncodedDataClass(List[Fill])),
     )
 
-    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.from_str)
+    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)
     orderId: str = attrib(converter=str)
     orderListId: str = attrib(converter=str)  # Unless OCO, value will be -1
     clientOrderId: str = attrib(converter=str)

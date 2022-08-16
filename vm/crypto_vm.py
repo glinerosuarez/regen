@@ -84,12 +84,7 @@ class ObsProducer:
                         self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
                         self.logger.debug("Saving observation in database.")
                         DataBaseManager.insert(
-                            Observation(
-                                execution_id=self.execution_id,
-                                episode_id=episode_id,
-                                klines=obs_data,
-                                ts=time.time(),
-                            )
+                            Observation(execution_id=self.execution_id, episode_id=episode_id, klines=obs_data)
                         )
                         return klines_to_numpy(obs_data), False
 
