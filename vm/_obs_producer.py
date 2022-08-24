@@ -4,28 +4,28 @@ import logging
 import time
 import threading
 from queue import Queue
-from typing import Optional
+from typing import Optional, Iterator
 
 import pendulum
 import numpy as np
 
 import configuration
 import log
-from consts import CryptoAsset
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair, Observation
-from repository.db import DataBaseManager, Kline, get_db_generator, get_db_async_generator
+from repository.db import DataBaseManager, Kline, get_db_async_generator
 
 
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
+    # TODO: test that kline values don't differ after some time
+    _BUFFER_SIZE = 3
 
-    _BUFFER_SIZE = 10_000
-
-    def __init__(self, daemon: bool = True):
+    def __init__(self, trading_pair: TradingPair, daemon: bool = True):
         super(KlineProducer, self).__init__(daemon=daemon)
 
         now = pendulum.now()
+        self.trading_pair = trading_pair
         self.queue = Queue(self._BUFFER_SIZE)  # interface to expose klines to the main thread
         self._api_queue = asyncio.Queue(self._BUFFER_SIZE)  # buffer for klines that come directly from the api
         self.db_manager = DataBaseManager
@@ -47,7 +47,7 @@ class KlineProducer(threading.Thread):
         etime = kl_times[-1].end_of("minute")
 
         klines = self.client.get_klines_data(
-            TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+            self.trading_pair,
             Interval.M_1,
             start_time=stime,
             end_time=etime,
@@ -78,6 +78,7 @@ class KlineProducer(threading.Thread):
         schedule_task = asyncio.create_task(self.schedule_job())  # Start getting klines from the api
         self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
+        # TODO: This will return all the klines records in the database regardless of their trading pair.
         async for db_kline in get_db_async_generator(configuration.settings.db_name, Kline, self._BUFFER_SIZE):
             self.queue.put(db_kline)
 
@@ -87,22 +88,54 @@ class KlineProducer(threading.Thread):
     def run(self):
         asyncio.run(self.main())
 
+    def get_klines(self) -> Iterator[Kline]:
+        """Return a generator that produces klines as they are available."""
+        while True:
+            yield self.queue.get()
+
 
 class ObsProducer:
     _OBS_TYPE = "float32"
+    _KLINE_FEATURES = 5
 
     def __init__(self, trading_pair: TradingPair, window_size: int, execution_id: int, use_db_buffer: bool = True):
+        self.window_size = window_size
         self.use_db_buffer = use_db_buffer  # Deliver observations from the database or not
         self.execution_id = execution_id
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
-        self.producer = None
+        self.producer = KlineProducer(trading_pair)
         if not self.producer.is_alive():
             self.producer.start()
 
-        self.page_size = 10_000
-        self.db_buffer = get_db_generator(Observation, self.page_size)
-        self.next_observation = next(self.db_buffer, None)
+    def get_kline_chunk(self) -> Iterator[Optional[np.ndarray]]:
+        """A generator that yields chunks of klines."""
+
+        def get_empty_chunk() -> np.ndarray:
+            return np.zeros((self.window_size, self._KLINE_FEATURES + 1))  # The ´+ 1´ is to keep track of the open time
+
+        def kline_to_np(kline: Kline) -> np.ndarray:
+            return np.array((kline.open_value, kline.high, kline.low, kline.close_value, kline.volume, kline.open_time))
+
+        chunk = get_empty_chunk()
+        i = 0
+
+        for kl in self.producer.get_klines():
+            if i == 0:  # If this is the first kline in the chunk we just simply add it
+                chunk[i, :] = kline_to_np(kl)
+                i += 1
+            else:  # if it is not
+                if chunk[i - 1][-1] == kl.open_time - 60_000:  # then we check that this is a subsequent kline
+                    chunk[i, :] = kline_to_np(kl)  # if it is we add it to the chunk
+                    i += 1
+                else:  # if it is not then we discard this chunk and return None
+                    chunk = get_empty_chunk()
+                    i = 0
+                    yield None
+
+            if i == self.window_size:  # yield the chunk if complete
+                i = 0
+                yield chunk[:, :-1]  # Remove the last column (open time) that we use to check that kl's are subsequent
 
     def get_observation(self, episode_id: int) -> tuple[np.ndarray, Optional[bool]]:
         """
@@ -111,8 +144,6 @@ class ObsProducer:
         """
 
         def klines_to_numpy(klines: list[Kline]):
-            # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
-            #  same tick has a different value for the volume
             return np.array(  # Return observation as a numpy array because everybody uses numpy.
                 [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
             ).astype(self._OBS_TYPE)
