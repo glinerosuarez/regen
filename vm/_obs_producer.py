@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import time
 import threading
 from queue import Queue
 from typing import Optional, Iterator
@@ -12,7 +11,7 @@ import numpy as np
 import configuration
 import log
 from repository.remote import BinanceClient
-from repository import Interval, TradingPair, Observation
+from repository import Interval, TradingPair
 from repository.db import DataBaseManager, Kline, get_db_async_generator
 
 
