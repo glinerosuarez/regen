@@ -5,8 +5,7 @@ from repository.remote import BinanceClient
 from consts import CryptoAsset, TimeInForce
 from functions.utils import datetime_to_ts_ms
 from repository._dataclass import TradingPair
-from repository._consts import AccountType, AccountPermission
-
+from repository._consts import AccountType, AccountPermission, Interval
 
 client = BinanceClient()
 
@@ -47,8 +46,14 @@ def test_get_account_info():
 
 
 def test_get_klines_data():
-    # TODO: test this on the real net because test net seems inconsistent.
-    pass
+    close_time = datetime(year=2022, month=8, day=13, hour=13, minute=35)
+    open_time = datetime(year=2022, month=8, day=13, hour=13, minute=30)
+    response = client.get_klines_data(
+        TradingPair(CryptoAsset.BNB, CryptoAsset.USDT), Interval.M_1, open_time, close_time, 5
+    )
+    assert len(response) == 6
+    assert response[0].open_time == open_time.timestamp() * 1_000
+    assert response[-1].open_time == close_time.timestamp() * 1_000
 
 
 def test_place_test_order():

@@ -46,7 +46,17 @@ class DataBaseManager:
     _session: Optional[Session] = None
 
     @staticmethod
-    def create_all():
+    def init(db_name: str) -> None:
+        """
+        Connect to a database or create a new database if it does not exist.
+        :param db_name: Name of the database
+        """
+        DataBaseManager.init_connection(db_name)
+        DataBaseManager.create_all()
+
+    @staticmethod
+    def create_all() -> None:
+        """Create tables."""
         _mapper_registry.metadata.create_all(DataBaseManager._engine)
 
     @staticmethod
@@ -162,6 +172,7 @@ class DataBaseManager:
 
     @staticmethod
     def log_to_file() -> Logger:
+        # TODO: It seems this function is not working, I'm not seeing the log files created
         return LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
 
@@ -306,6 +317,7 @@ class EnvState(DataClass):
         return "-".join([str(self.execution_id), str(self.episode_id), str(self.tick)])
 
 
+# TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique
 ObservationKline = Table(
     "ObservationKline",
     _mapper_registry.metadata,

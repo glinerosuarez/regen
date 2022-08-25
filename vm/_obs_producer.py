@@ -18,6 +18,7 @@ from repository.db import DataBaseManager, Kline, get_db_async_generator
 
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
+
     # TODO: test that kline values don't differ after some time
     _BUFFER_SIZE = 3
 
@@ -47,11 +48,7 @@ class KlineProducer(threading.Thread):
         etime = kl_times[-1].end_of("minute")
 
         klines = self.client.get_klines_data(
-            self.trading_pair,
-            Interval.M_1,
-            start_time=stime,
-            end_time=etime,
-            limit=len(kl_times)
+            self.trading_pair, Interval.M_1, start_time=stime, end_time=etime, limit=len(kl_times)
         )
 
         self.last_stime = stime  # keep track of the last kline produced, the next kline will be the kline corresponding
@@ -98,15 +95,16 @@ class ObsProducer:
     _OBS_TYPE = "float32"
     _KLINE_FEATURES = 5
 
-    def __init__(self, trading_pair: TradingPair, window_size: int, execution_id: int, use_db_buffer: bool = True):
+    def __init__(self, trading_pair: TradingPair, window_size: int):
         self.window_size = window_size
-        self.use_db_buffer = use_db_buffer  # Deliver observations from the database or not
-        self.execution_id = execution_id
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
         self.producer = KlineProducer(trading_pair)
         if not self.producer.is_alive():
             self.producer.start()
+
+        self.chunks_generator = self.get_kline_chunk()
+        self.next_chunk = None
 
     def get_kline_chunk(self) -> Iterator[Optional[np.ndarray]]:
         """A generator that yields chunks of klines."""
@@ -117,64 +115,42 @@ class ObsProducer:
         def kline_to_np(kline: Kline) -> np.ndarray:
             return np.array((kline.open_value, kline.high, kline.low, kline.close_value, kline.volume, kline.open_time))
 
+        kl_generator = self.producer.get_klines()
         chunk = get_empty_chunk()
-        i = 0
+        chunk[0, :] = kline_to_np(next(kl_generator))  # insert first kline into the chunk
+        chunk_size = 1
 
-        for kl in self.producer.get_klines():
-            if i == 0:  # If this is the first kline in the chunk we just simply add it
-                chunk[i, :] = kline_to_np(kl)
-                i += 1
+        for kl in kl_generator:
+            if chunk[chunk_size - 1][-1] == kl.open_time - 60_000:  # then we check that this is a subsequent kline
+                if chunk_size == self.window_size:  # if the chunk has already been delivered
+                    chunk = np.roll(chunk, -1, axis=0)  # shift up to only keep the most recent window_size - 1 klines
+                    chunk[-1, :] = kline_to_np(kl)  # we add the kline to the last row of the chunk
+                else:  # if it has not
+                    chunk[chunk_size, :] = kline_to_np(kl)  # we add to the corresponding position in the chunk
+                    chunk_size += 1
             else:  # if it is not
-                if chunk[i - 1][-1] == kl.open_time - 60_000:  # then we check that this is a subsequent kline
-                    chunk[i, :] = kline_to_np(kl)  # if it is we add it to the chunk
-                    i += 1
-                else:  # if it is not then we discard this chunk and return None
-                    chunk = get_empty_chunk()
-                    i = 0
-                    yield None
+                chunk = get_empty_chunk()  # we discard this chunk
+                chunk[0, :] = kline_to_np(kl)  # and start populating a new one
+                chunk_size = 1
+                yield None  # yield None to send a signal that this was a failed chunk :(
+            # yield chunk if complete, remove the last column (open time) that we use to check that kl's are subsequent
+            if chunk_size == self.window_size:
+                yield chunk[:, :-1].astype(self._OBS_TYPE)
 
-            if i == self.window_size:  # yield the chunk if complete
-                i = 0
-                yield chunk[:, :-1]  # Remove the last column (open time) that we use to check that kl's are subsequent
-
-    def get_observation(self, episode_id: int) -> tuple[np.ndarray, Optional[bool]]:
+    def get_observation(self) -> tuple[np.ndarray, Optional[bool]]:
         """
         Deliver an observation either from the database or a new one from the api.
-        :return: Observation data and a flag to identify the end of an episode.
+        :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is
+            a time gap between klines.
         """
+        while self.next_chunk is None:  # request a new chunk until we get a valid one
+            self.next_chunk = next(self.chunks_generator)
 
-        def klines_to_numpy(klines: list[Kline]):
-            return np.array(  # Return observation as a numpy array because everybody uses numpy.
-                [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
-            ).astype(self._OBS_TYPE)
+        this_chunk = self.next_chunk  # ok it's time for next_chunk to shine
+        self.next_chunk = next(self.chunks_generator)  # and someone else must fill that place
 
-        if (obs := self.next_observation) is not None and self.use_db_buffer:
-            self.logger.debug(f"Serving {obs=} from database.")
-            self.next_observation = next(self.db_buffer, None)
-            return (
-                klines_to_numpy(obs.klines),
-                (
-                    # If there's no next obs then this is the last obs in the db and an episode end,
-                        self.next_observation is None
-                        or
-                        # if the execution_id is different in the next obs then this is the last obs in this episode.
-                        obs.execution_id != self.next_observation.execution_id
-                        or
-                        # if the episode_id is different in the next obs then this is the last obs in this episode.
-                        obs.episode_id != self.next_observation.episode_id
-                ),
-            )
+        if self.next_chunk is None:  # but we've got a potential problem, next chunk could be erroneous
+            done = True  # in this case we need to send a signal to finish the episode
         else:
-            while True:
-                if self.producer.is_alive():
-                    if self.producer.queue.empty():
-                        time.sleep(self.producer.frequency / 2)
-                        continue
-                    else:
-                        obs_data = self.producer.queue.get()
-                        self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
-                        self.logger.debug("Saving observation in database.")
-                        DataBaseManager.insert(
-                            Observation(execution_id=self.execution_id, episode_id=episode_id, klines=obs_data)
-                        )
-                        return klines_to_numpy(obs_data), False
+            done = False  # if it is not, then everything is good!
+        return this_chunk, done

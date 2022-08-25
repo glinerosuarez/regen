@@ -3,90 +3,14 @@ from typing import Optional
 from collections import defaultdict
 from functools import cached_property
 
-import numpy as np
-
 import log
 import configuration
 from consts import CryptoAsset, Side
+from vm._obs_producer import ObsProducer
 from vm.consts import Action, Position
-from vm._obs_producer import KlinesProducer
+from repository.db import DataBaseManager
 from repository.remote import BinanceClient
-from repository.db import DataBaseManager, Kline
-from repository import EnvState, Observation, TradingPair
-
-
-class ObsProducer:
-    _OBS_TYPE = "float32"
-
-    def _get_obs_page_generator(self):
-        offset = 0
-        page = DataBaseManager.select(Observation, offset=offset, limit=self.page_size)
-        while len(page) > 0:
-            yield page
-            offset += self.page_size
-            page = DataBaseManager.select(Observation, offset=offset, limit=self.page_size)
-
-    def _get_db_obs_generator(self):
-        for page in self._get_obs_page_generator():
-            for obs in page:
-                yield obs
-
-    def __init__(self, trading_pair: TradingPair, window_size: int, execution_id: int, use_db_buffer: bool = True):
-        self.use_db_buffer = use_db_buffer  # Deliver observations from the database or not
-        self.execution_id = execution_id
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
-
-        self.producer = KlinesProducer(trading_pair, window_size)
-        if not self.producer.is_alive():
-            self.producer.start()
-
-        self.page_size = 10_000
-        self.db_buffer = self._get_db_obs_generator()
-        self.next_observation = next(self.db_buffer, None)
-
-    def get_observation(self, episode_id: int) -> tuple[np.ndarray, Optional[bool]]:
-        """
-        Deliver an observation either from the database or a new one from the api.
-        :return: Observation data and a flag to identify the end of an episode.
-        """
-
-        def klines_to_numpy(klines: list[Kline]):
-            # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
-            #  same tick has a different value for the volume
-            return np.array(  # Return observation as a numpy array because everybody uses numpy.
-                [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
-            ).astype(self._OBS_TYPE)
-
-        if (obs := self.next_observation) is not None and self.use_db_buffer:
-            self.logger.debug(f"Serving {obs=} from database.")
-            self.next_observation = next(self.db_buffer, None)
-            return (
-                klines_to_numpy(obs.klines),
-                (
-                    # If there's no next obs then this is the last obs in the db and an episode end,
-                    self.next_observation is None
-                    or
-                    # if the execution_id is different in the next obs then this is the last obs in this episode.
-                    obs.execution_id != self.next_observation.execution_id
-                    or
-                    # if the episode_id is different in the next obs then this is the last obs in this episode.
-                    obs.episode_id != self.next_observation.episode_id
-                ),
-            )
-        else:
-            while True:
-                if self.producer.is_alive():
-                    if self.producer.queue.empty():
-                        time.sleep(self.producer.frequency / 2)
-                        continue
-                    else:
-                        obs_data = self.producer.queue.get()
-                        self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
-                        self.logger.debug("Saving observation in database.")
-                        DataBaseManager.insert(
-                            Observation(execution_id=self.execution_id, episode_id=episode_id, klines=obs_data)
-                        )
-                        return klines_to_numpy(obs_data), False
+from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
@@ -139,7 +63,7 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.initial_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
+        self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -177,7 +101,7 @@ class CryptoViewModel:
         self.total_reward += step_reward
 
         self.position_history.append(self.position)
-        self.last_observation, self.done = self.obs_producer.get_observation(self.episode_id)
+        self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
             total_reward=self.total_reward,
             base_balance=self.base_balance,
