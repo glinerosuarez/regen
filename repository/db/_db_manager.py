@@ -36,10 +36,12 @@ from sqlalchemy import (
 from log import LoggerFactory
 from vm.consts import Position, Action
 
-_mapper_registry = registry()
-
 
 class DataBaseManager:
+
+    _engine: Optional[Engine] = None
+    _mapper_registry = registry()
+
     def __init__(self, db_name: str):
         """
         :param db_name: Name of the database
@@ -50,11 +52,12 @@ class DataBaseManager:
         self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
         # Connect to a database or create a new database if it does not exist.
-        self.engine: Engine = create_engine(f"sqlite+pysqlite:///{self.db_name}", echo=False, future=True)
-        self.session: Session = Session(self.engine)
+        if DataBaseManager._engine is None:
+            DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{self.db_name}", echo=False, future=True)
+        self.session: Session = Session(DataBaseManager._engine)
 
         # Create tables.
-        _mapper_registry.metadata.create_all(self.engine)
+        DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)
 
     def insert(self, record: DataClass) -> None:
         """Insert a new row into a SQL table."""
@@ -186,14 +189,14 @@ class _EncodedDataClass(types.UserDefinedType):
         return process
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class Order(DataClass):
     """Data of a placed order."""
 
     __table__ = Table(
         "orders",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("symbol", _EncodedDataClass(TradingPair)),
         Column("orderId", String, primary_key=True),
         Column("orderListId", String),
@@ -226,12 +229,12 @@ class Order(DataClass):
     fills: List[Fill] = attrib(converter=Fill.structure)
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class AccountInfo(DataClass):
     __table__ = Table(
         "account_info",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("makerCommission", Float),
         Column("takerCommission", Float),
         Column("buyerCommission", Float),
@@ -266,12 +269,12 @@ class AccountInfo(DataClass):
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class EnvState(DataClass):
     __table__ = Table(
         "env_state",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("state_id", String, primary_key=True, nullable=False),
         Column("execution_id", Integer, nullable=False),
         Column("episode_id", Integer, nullable=False),
@@ -301,7 +304,7 @@ class EnvState(DataClass):
 # TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique
 ObservationKline = Table(
     "ObservationKline",
-    _mapper_registry.metadata,
+    DataBaseManager._mapper_registry.metadata,
     Column("id", Integer, primary_key=True, autoincrement="auto"),
     Column("obs_id", Integer, ForeignKey("observation.id")),
     Column("kline_id", Integer, ForeignKey("kline.id")),
@@ -309,12 +312,12 @@ ObservationKline = Table(
 )
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class Kline(DataClass):
     __table__ = Table(
         "kline",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("pair", _EncodedDataClass(TradingPair)),
         Column("open_time", Integer, nullable=False, unique=True),
@@ -352,12 +355,12 @@ class Kline(DataClass):
         return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @define(slots=False)
 class Observation(DataClass):
     __table__ = Table(
         "observation",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
