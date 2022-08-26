@@ -12,15 +12,15 @@ def get_db_generator(db_name: str, table: type[DataClass], page_size: int) -> It
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
-    DataBaseManager.init(db_name)
+    db_manager = DataBaseManager(db_name)
 
     def _get_page_generator() -> Iterator[list[DataClass]]:
         offset = 0
-        _page = DataBaseManager.select(table, offset=offset, limit=page_size)
+        _page = db_manager.select(table, offset=offset, limit=page_size)
         while len(_page) > 0:
             yield _page
             offset += page_size
-            _page = DataBaseManager.select(table, offset=offset, limit=page_size)
+            _page = db_manager.select(table, offset=offset, limit=page_size)
 
     for page in _get_page_generator():
         yield from page
@@ -33,10 +33,10 @@ async def get_db_async_generator(db_name: str, table: type[DataClass], page_size
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
-    DataBaseManager.init(db_name)
+    db_manager = DataBaseManager(db_name)
 
     async def select_page(offset: int):
-        return await asyncio.to_thread(DataBaseManager.select, table=table, offset=offset, limit=page_size)
+        return await asyncio.to_thread(db_manager.select, table=table, offset=offset, limit=page_size)
 
     async def _get_page_generator() -> AsyncIterator[list[DataClass]]:
         offset = 0

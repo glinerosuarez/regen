@@ -1,5 +1,4 @@
 import json
-from logging import Logger
 
 import cattr
 import numpy as np
@@ -38,50 +37,38 @@ from log import LoggerFactory
 from vm.consts import Position, Action
 
 _mapper_registry = registry()
-_logger = LoggerFactory.get_console_logger(__name__)
 
 
 class DataBaseManager:
-    _engine: Engine = None
-    _session: Optional[Session] = None
 
-    @staticmethod
-    def init(db_name: str) -> None:
+    def __init__(self, db_name: str):
         """
-        Connect to a database or create a new database if it does not exist.
         :param db_name: Name of the database
         """
-        DataBaseManager.init_connection(db_name)
-        DataBaseManager.create_all()
+        self.db_name = db_name
 
-    @staticmethod
-    def create_all() -> None:
-        """Create tables."""
-        _mapper_registry.metadata.create_all(DataBaseManager._engine)
+        # TODO: It seems this function is not working, I'm not seeing the log files created
+        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
-    @staticmethod
-    def init_connection(db_name: str) -> None:
-        """
-        Connect to a database or create a new database if it does not exist.
-        :param db_name: Name of the database
-        """
-        DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{db_name}", echo=False, future=True)
-        DataBaseManager.log_to_file()
-        DataBaseManager._session = Session(DataBaseManager._engine)
+        # Connect to a database or create a new database if it does not exist.
+        self.engine: Engine = create_engine(f"sqlite+pysqlite:///{self.db_name}", echo=False, future=True)
+        self.session: Session = Session(self.engine)
 
-    @staticmethod
-    def insert(record: DataClass) -> None:
+        # Create tables.
+        _mapper_registry.metadata.create_all(self.engine)
+
+    def insert(self, record: DataClass) -> None:
         """Insert a new row into a SQL table."""
         exception = None
         try:
-            DataBaseManager._session.add(record)
-            DataBaseManager._session.commit()
+            self.session.add(record)
+            self.session.commit()
         except IntegrityError as ie:
             exception = ie
         finally:
             if exception is not None:
                 # If there is an exception rollback the transaction and propagate the error.
-                DataBaseManager._session.rollback()
+                self.session.rollback()
                 raise exception
 
     @staticmethod
@@ -107,8 +94,8 @@ class DataBaseManager:
 
         return sql_statement
 
-    @staticmethod
     def select(
+        self,
         table: Type[DataClass],
         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
         offset: int = 0,
@@ -126,18 +113,18 @@ class DataBaseManager:
         if limit != 0:
             sql_statement = sql_statement.limit(limit)
 
-        return [data[0] for data in DataBaseManager._session.execute(sql_statement)]
+        return [data[0] for data in self.session.execute(sql_statement)]
 
-    @staticmethod
-    def select_all(table: Type[DataClass]) -> list:
+    def select_all(self, table: Type[DataClass]) -> list:
         """
         Execute a SELECT * statement from the SQL Object table.
         :return: a :list: of SQL Object.
         """
-        return [data[0] for data in DataBaseManager._session.execute(select(table))]
+        return [data[0] for data in self.session.execute(select(table))]
 
-    @staticmethod
-    def select_max(col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None) -> Optional[Any]:
+    def select_max(
+            self, col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None
+    ) -> Optional[Any]:
         """
         Return the biggest value in a column.
         :param col: Column to get the value from.
@@ -147,10 +134,10 @@ class DataBaseManager:
         sql_statement = select(func.max(col))
         if condition is not None:
             sql_statement = sql_statement.where(condition)
-        return DataBaseManager._session.execute(sql_statement).fetchone()[0]
+        return self.session.execute(sql_statement).fetchone()[0]
 
-    @staticmethod
     def delete(
+        self,
         table: Type[DataClass],
         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
         commit: bool = False,
@@ -163,17 +150,12 @@ class DataBaseManager:
         :return: Number of rows to delete or deleted if commit == True.
         """
         query = DataBaseManager._apply_conditions(table, conditions, function=delete)
-        rowcount = DataBaseManager._session.execute(query).rowcount
+        rowcount = self.session.execute(query).rowcount
 
         if commit is True:
-            DataBaseManager._session.commit()
+            self.session.commit()
 
         return rowcount
-
-    @staticmethod
-    def log_to_file() -> Logger:
-        # TODO: It seems this function is not working, I'm not seeing the log files created
-        return LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
 
 class _EncodedDataClass(types.UserDefinedType):

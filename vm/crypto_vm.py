@@ -86,7 +86,7 @@ class CryptoViewModel:
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
-        self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
+        self.last_observation, done = self.obs_producer.get_observation()
         # The initial price is the last price in the first observation
         self.initial_price = self.last_observation[-1][3]
         # We normalize prices dividing by the initial price
