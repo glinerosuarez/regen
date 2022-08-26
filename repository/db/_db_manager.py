@@ -40,7 +40,6 @@ _mapper_registry = registry()
 
 
 class DataBaseManager:
-
     def __init__(self, db_name: str):
         """
         :param db_name: Name of the database
@@ -123,7 +122,7 @@ class DataBaseManager:
         return [data[0] for data in self.session.execute(select(table))]
 
     def select_max(
-            self, col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None
+        self, col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None
     ) -> Optional[Any]:
         """
         Return the biggest value in a column.
