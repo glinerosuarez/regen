@@ -24,5 +24,6 @@ resource "docker_container" "regen" {
     host_path      = "${local.workdir}/test"
     container_path = "/app/test"
   }
+  env = ["PYTHONPATH=/app"]
   tty = true
 }
