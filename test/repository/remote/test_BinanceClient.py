@@ -49,7 +49,7 @@ def test_get_klines_data():
     close_time = datetime(year=2022, month=8, day=13, hour=13, minute=35)
     open_time = datetime(year=2022, month=8, day=13, hour=13, minute=30)
     response = client.get_klines_data(
-        TradingPair(CryptoAsset.BNB, CryptoAsset.USDT), Interval.M_1, open_time, close_time, 5
+        TradingPair(CryptoAsset.BNB, CryptoAsset.USDT), Interval.M_1, open_time, close_time
     )
     assert len(response) == 6
     assert response[0].open_time == open_time.timestamp() * 1_000

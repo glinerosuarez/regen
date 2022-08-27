@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from consts import TimeInForce, OrderType, Side
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
-from sqlalchemy.orm import registry, Session, InstrumentedAttribute, relationship
+from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
     create_engine,
     Table,
@@ -53,8 +53,15 @@ class DataBaseManager:
 
         # Connect to a database or create a new database if it does not exist.
         if DataBaseManager._engine is None:
-            DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{self.db_name}", echo=False, future=True)
-        self.session: Session = Session(DataBaseManager._engine)
+            DataBaseManager._engine = create_engine(
+                f"sqlite+pysqlite:///{self.db_name}",
+                echo=False,
+                future=True,
+                # It's safe to do this because we never update objects from other threads, in fact, we never update.
+                connect_args={'check_same_thread': False}
+            )
+        session_factory = sessionmaker(bind=DataBaseManager._engine)
+        self.session = scoped_session(session_factory)
 
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)

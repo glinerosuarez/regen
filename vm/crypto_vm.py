@@ -46,8 +46,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
-        DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
-        DataBaseManager.create_all()
+        self.db_manager = DataBaseManager(configuration.settings.db_name)
 
         self.episode_id = None
         self.position = Position.Short
@@ -128,12 +127,12 @@ class CryptoViewModel:
 
     @cached_property
     def execution_id(self) -> int:
-        last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
+        last_exec_id = self.db_manager.select_max(EnvState.execution_id)
         return 1 if last_exec_id is None else last_exec_id + 1
 
     def _get_last_episode_id(self) -> Optional[int]:
         """Get the last episode id in this execution, return None if there's no last episode id."""
-        return DataBaseManager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
+        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def _is_trade(self, action: Action):
         return any(
@@ -172,7 +171,7 @@ class CryptoViewModel:
         return step_reward
 
     def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
-        DataBaseManager.insert(
+        self.db_manager.insert(
             EnvState(
                 execution_id=self.execution_id,
                 episode_id=self.episode_id,

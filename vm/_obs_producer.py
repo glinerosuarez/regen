@@ -12,7 +12,7 @@ import configuration
 import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
-from repository.db import DataBaseManager, Kline, get_db_async_generator
+from repository.db import Kline, get_db_async_generator
 
 
 class KlineProducer(threading.Thread):
@@ -28,7 +28,6 @@ class KlineProducer(threading.Thread):
         self.trading_pair = trading_pair
         self.queue = Queue(self._BUFFER_SIZE)  # interface to expose klines to the main thread
         self._api_queue = asyncio.Queue(self._BUFFER_SIZE)  # buffer for klines that come directly from the api
-        self.db_manager = DataBaseManager
         self.client = BinanceClient()
         self.last_stime = now.subtract(minutes=1).start_of("minute")  # we will start getting klines from this minute
         self.last_etime = now.subtract(minutes=1).end_of("minute")
