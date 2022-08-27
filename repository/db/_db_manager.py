@@ -58,7 +58,7 @@ class DataBaseManager:
                 echo=False,
                 future=True,
                 # It's safe to do this because we never update objects from other threads, in fact, we never update.
-                connect_args={'check_same_thread': False}
+                connect_args={"check_same_thread": False},
             )
         session_factory = sessionmaker(bind=DataBaseManager._engine)
         self.session = scoped_session(session_factory)
