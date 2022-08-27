@@ -1,13 +1,17 @@
 import time
 
+import configuration
 from consts import CryptoAsset
-from repository.db import DataBaseManager
+from repository.db import DataBaseManager, Kline
 from vm.consts import Action
 from vm.crypto_vm import CryptoViewModel
 
 
 def test_crypto_vm():
     DataBaseManager._engine = None
+    db_manager = DataBaseManager(configuration.settings.db_name)
+
+    print(db_manager.select_all(Kline))
 
     vm = CryptoViewModel(CryptoAsset.BNB, CryptoAsset.BUSD, 5, 100)
     # Start the producer
