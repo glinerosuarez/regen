@@ -1,6 +1,8 @@
 import argparse
 from datetime import datetime
+from typing import Optional
 
+import pendulum
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
@@ -9,6 +11,7 @@ from stable_baselines3.common.cmd_util import make_vec_env
 import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
+from vm import KlineProducer
 from vm.crypto_vm import ObsProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Observation
@@ -45,9 +48,32 @@ def train():
     )
 
 
-def collect_data(n_obs: float):
-    """Get observation data from Binance API and store it in a local database."""
-    print(f"Collecting {n_obs} observations")
+def collect_data(
+        start_time: pendulum.DateTime, end_time: Optional[pendulum.DateTime] = None, n_obs: Optional[float] = None
+):
+    """
+    Get observation data from Binance API and store it in a local database.
+    :param start_time
+    :param end_time:
+    :param n_obs:
+    """
+    # Check arguments
+    if end_time is None and n_obs is None:
+        print(f"Collecting klines indefinitely")
+        producer = KlineProducer(TradingPair(base_asset, quote_asset))
+        if not producer.is_alive():
+            producer.start()  # This will start getting klines from this moment onwards
+
+
+
+
+
+
+
+
+
+
+
     DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
     DataBaseManager.create_all()
 

@@ -34,7 +34,7 @@ from sqlalchemy import (
 )
 
 from log import LoggerFactory
-from vm.consts import Position, Action
+from consts import Position, Action
 
 
 class DataBaseManager:

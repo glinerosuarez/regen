@@ -3,6 +3,7 @@ from datetime import datetime
 from logging import Logger
 from typing import Optional, List
 
+import pendulum
 import requests
 from binance.spot import Spot
 from binance.error import ClientError
@@ -62,8 +63,8 @@ class BinanceClient:
         self,
         pair: TradingPair,
         interval: Interval,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: Optional[pendulum.DateTime] = None,
+        end_time: Optional[pendulum.DateTime] = None,
         limit: Optional[int] = None,
     ) -> List[Kline]:
         """
@@ -76,8 +77,8 @@ class BinanceClient:
         :param limit: limit the results. Default 500; max 1000.
         """
         # Convert datetimes to ts
-        start_time_ts = None if start_time is None else int(datetime.timestamp(start_time)) * 1000
-        end_time_ts = None if end_time is None else int(datetime.timestamp(end_time)) * 1000
+        start_time_ts = None if start_time is None else int(start_time.timestamp() * 1000)
+        end_time_ts = None if end_time is None else int(end_time.timestamp() * 1000)
 
         # Arguments to kwargs
         args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
