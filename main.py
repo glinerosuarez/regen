@@ -50,7 +50,7 @@ def train():
 
 
 def collect_data(
-        start_time: pendulum.DateTime, end_time: Optional[pendulum.DateTime] = None, n_obs: Optional[float] = None
+    start_time: pendulum.DateTime, end_time: Optional[pendulum.DateTime] = None, n_obs: Optional[float] = None
 ):
     """
     Get observation data from Binance API and store it in a local database
@@ -58,6 +58,7 @@ def collect_data(
     :param end_time: close time for the last kline, it will be converted to the end of the interval
     :param n_obs: total number of records to get.
     """
+
     def get_kline_history(start: pendulum.DateTime, end: pendulum.DateTime, interval: Interval = Interval.M_1) -> None:
         """
         Get kline records from the past and insert them into the database.
@@ -74,17 +75,13 @@ def collect_data(
 
         start = start.start_of("minute")
         end = end.end_of("minute")
-        points = chain(pendulum.period(start, end).range("minutes", amount=limit - 1), (end, ))
+        points = chain(pendulum.period(start, end).range("minutes", amount=limit - 1), (end,))
         start_point = next(points)
 
         for next_point in points:
             end_point = next_point.end_of("minute")
             for kl in api_client.get_klines_data(
-                    TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
-                    Interval.M_1,
-                    start_point,
-                    end_point,
-                    limit
+                TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD), Interval.M_1, start_point, end_point, limit
             ):
                 db_manager.insert(kl)
 
