@@ -7,7 +7,7 @@ from consts import CryptoAsset
 from repository._dataclass import TradingPair
 from test import test_utils
 from repository import AccountType, Observation
-from vm.consts import Position, Action
+from consts import Position, Action
 from repository.db import DataBaseManager, Order, AccountInfo, EnvState, Kline
 
 db_name = ":memory:"
