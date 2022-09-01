@@ -4,7 +4,7 @@ from typing import Optional
 import gym
 import numpy as np
 from gym import spaces
-from vm.consts import Action, Position
+from consts import Action, Position
 from attr import define, field
 from consts import CryptoAsset
 from vm.crypto_vm import CryptoViewModel

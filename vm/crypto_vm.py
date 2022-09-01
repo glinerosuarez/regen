@@ -7,7 +7,7 @@ import log
 import configuration
 from consts import CryptoAsset, Side
 from vm._obs_producer import ObsProducer
-from vm.consts import Action, Position
+from consts import Action, Position
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
 from repository import EnvState, TradingPair
