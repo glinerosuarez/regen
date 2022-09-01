@@ -89,7 +89,7 @@ def collect_data(
 
     # Check arguments
     if end_time is None and n_obs is None:
-        print(f"Collecting klines indefinitely")
+        print("Collecting klines indefinitely")
         producer = KlineProducer(TradingPair(base_asset, quote_asset))
         if not producer.is_alive():
             producer.start()  # This will start getting klines from this moment onwards
