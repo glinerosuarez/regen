@@ -5,7 +5,6 @@ from typing import Optional
 
 import pendulum
 from stable_baselines3 import PPO
-from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.cmd_util import make_vec_env
 
@@ -38,7 +37,7 @@ def train():
     tmp_path = "output/logs/"
     new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
 
-    model = PPO(MlpPolicy, env, verbose=1, n_steps=time_steps, batch_size=time_steps)
+    model = PPO("MultiInputPolicy", env, verbose=1, n_steps=time_steps, batch_size=time_steps)
     model.set_logger(new_logger)
     model.learn(total_timesteps=time_steps)
 
