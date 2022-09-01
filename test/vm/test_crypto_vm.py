@@ -3,7 +3,7 @@ import time
 import configuration
 from consts import CryptoAsset
 from repository.db import DataBaseManager, Kline
-from vm.consts import Action
+from consts import Action
 from vm.crypto_vm import CryptoViewModel
 
 
