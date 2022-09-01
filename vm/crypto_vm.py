@@ -1,136 +1,16 @@
 import time
-import threading
-from queue import Queue
-from typing import Generic, Optional
+from typing import Optional
 from collections import defaultdict
-from abc import ABC, abstractmethod
 from functools import cached_property
-
-import numpy as np
 
 import log
 import configuration
-from repository import Interval
 from consts import CryptoAsset, Side
-from repository._dataclass import KlineRecord
+from vm._obs_producer import ObsProducer
+from consts import Action, Position
 from repository.db import DataBaseManager
-from vm.consts import E, Action, Position
 from repository.remote import BinanceClient
-from repository import EnvState, Observation, TradingPair
-
-
-class FixedFrequencyProducer(threading.Thread, ABC, Generic[E]):
-    def __init__(self, queue: Queue[E], frequency: int, daemon: bool = True):
-        super(FixedFrequencyProducer, self).__init__(daemon=daemon)
-        self.queue = queue
-        self.frequency = frequency
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
-
-    @abstractmethod
-    def _get_element(self) -> E:
-        raise NotImplementedError
-
-    def run(self):
-        while True:
-            if not self.queue.full():
-                element = self._get_element()
-                self.queue.put(element)
-                self.logger.debug(f"Putting {element} : {self.queue.qsize()} elements in queue.")
-                time.sleep(self.frequency)
-
-
-class KlinesProducer(FixedFrequencyProducer):
-    _DEFAULT_FREQ = 60  # Produce 1 element per this time (in seconds)
-    _MAX_QUEUE_SIZE = 10_000
-
-    def __init__(self, trading_pair: TradingPair, n_klines: int, freq: int = _DEFAULT_FREQ):
-        super().__init__(queue=Queue(self._MAX_QUEUE_SIZE), frequency=freq)
-        # Client to query the data.
-        self.client = BinanceClient()
-        self.trading_pair = trading_pair
-        self.n_klines = n_klines
-
-    def _get_element(self) -> E:
-        return self.client.get_klines_data(self.trading_pair, Interval.M_1, limit=self.n_klines)
-
-
-class ObsProducer:
-    _OBS_TYPE = "float32"
-
-    def _get_obs_page_generator(self):
-        offset = 0
-        page = DataBaseManager.select(Observation, offset=offset, limit=self.page_size)
-        while len(page) > 0:
-            yield page
-            offset += self.page_size
-            page = DataBaseManager.select(Observation, offset=offset, limit=self.page_size)
-
-    def _get_db_obs_generator(self):
-        for page in self._get_obs_page_generator():
-            for obs in page:
-                yield obs
-
-    def __init__(self, trading_pair: TradingPair, window_size: int, execution_id: int, use_db_buffer: bool = True):
-        self.use_db_buffer = use_db_buffer  # Deliver observations from the database or not
-        self.execution_id = execution_id
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
-
-        self.producer = KlinesProducer(trading_pair, window_size)
-        if not self.producer.is_alive():
-            self.producer.start()
-
-        self.page_size = 10_000
-        self.db_buffer = self._get_db_obs_generator()
-        self.next_observation = next(self.db_buffer, None)
-
-    def get_observation(self, episode_id: int) -> tuple[np.ndarray, Optional[bool]]:
-        """
-        Deliver an observation either from the database or a new one from the api.
-        :return: Observation data and a flag to identify the end of an episode.
-        """
-
-        def klines_to_numpy(klines: list[KlineRecord]):
-            # TODO: I saw an observation with a record whose volume was equal to 0 and then in the next observation that
-            #  same tick has a different value for the volume
-            return np.array(  # Return observation as a numpy array because everybody uses numpy.
-                [np.array([kl.open_value, kl.high, kl.low, kl.close_value, kl.volume]) for kl in klines]
-            ).astype(self._OBS_TYPE)
-
-        if (obs := self.next_observation) is not None and self.use_db_buffer:
-            self.logger.debug(f"Serving {obs=} from database.")
-            self.next_observation = next(self.db_buffer, None)
-            return (
-                klines_to_numpy(obs.klines),
-                (
-                    # If there's no next obs then this is the last obs in the db and an episode end,
-                    self.next_observation is None
-                    or
-                    # if the execution_id is different in the next obs then this is the last obs in this episode.
-                    obs.execution_id != self.next_observation.execution_id
-                    or
-                    # if the episode_id is different in the next obs then this is the last obs in this episode.
-                    obs.episode_id != self.next_observation.episode_id
-                ),
-            )
-        else:
-            while True:
-                if self.producer.is_alive():
-                    if self.producer.queue.empty():
-                        time.sleep(self.producer.frequency / 2)
-                        continue
-                    else:
-                        obs_data = self.producer.queue.get()
-                        self.logger.debug(f"Getting {obs_data} : {self.producer.queue.qsize()} elements in queue.")
-                        self.logger.debug("Saving observation in database.")
-                        DataBaseManager.insert(
-                            Observation(
-                                execution_id=self.execution_id,
-                                episode_id=episode_id,
-                                klines=obs_data,
-                                ts=time.time(),
-                            )
-                        )
-                        return klines_to_numpy(obs_data), False
+from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
@@ -166,8 +46,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
-        DataBaseManager.init_connection(configuration.settings.db_name)  # Create connection to database
-        DataBaseManager.create_all()
+        self.db_manager = DataBaseManager(configuration.settings.db_name)
 
         self.episode_id = None
         self.position = Position.Short
@@ -183,7 +62,7 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.initial_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size, self.execution_id)
+        self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -206,7 +85,7 @@ class CryptoViewModel:
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
-        self.last_observation, done = self.obs_producer.get_observation(self.episode_id)
+        self.last_observation, done = self.obs_producer.get_observation()
         # The initial price is the last price in the first observation
         self.initial_price = self.last_observation[-1][3]
         # We normalize prices dividing by the initial price
@@ -221,7 +100,7 @@ class CryptoViewModel:
         self.total_reward += step_reward
 
         self.position_history.append(self.position)
-        self.last_observation, self.done = self.obs_producer.get_observation(self.episode_id)
+        self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
             total_reward=self.total_reward,
             base_balance=self.base_balance,
@@ -248,12 +127,12 @@ class CryptoViewModel:
 
     @cached_property
     def execution_id(self) -> int:
-        last_exec_id = DataBaseManager.select_max(EnvState.execution_id)
+        last_exec_id = self.db_manager.select_max(EnvState.execution_id)
         return 1 if last_exec_id is None else last_exec_id + 1
 
     def _get_last_episode_id(self) -> Optional[int]:
         """Get the last episode id in this execution, return None if there's no last episode id."""
-        return DataBaseManager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
+        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def _is_trade(self, action: Action):
         return any(
@@ -292,7 +171,7 @@ class CryptoViewModel:
         return step_reward
 
     def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
-        DataBaseManager.insert(
+        self.db_manager.insert(
             EnvState(
                 execution_id=self.execution_id,
                 episode_id=self.episode_id,

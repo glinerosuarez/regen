@@ -1,7 +1,8 @@
-import cattr
-from copy import deepcopy
+import copy
 
-import numpy as np
+import cattr
+import inspect
+
 from attr import attrs, attrib
 from consts import CryptoAsset
 from attr.validators import instance_of
@@ -13,6 +14,8 @@ class DataClass:
     @classmethod
     def structure(cls, value: Union[dict, list]) -> Union["DataClass", List["DataClass"]]:
         if isinstance(value, list):
+            if all(isinstance(e, cls) for e in value):
+                return value
             return cattr.structure(value, List[cls])
         elif isinstance(value, dict):
             return cattr.structure(value, cls)
@@ -24,9 +27,19 @@ class DataClass:
         return cattr.unstructure(self)
 
     def copy(self, with_: dict) -> "DataClass":
-        attribs = deepcopy(self.to_dict())
+        """
+        Create a deep copy of this instance.
+        :param with_: Properties to replace in the new object.
+        """
+        attribs = copy.deepcopy(
+            {  # Copy only constructor params
+                k: v for k, v in self.__dict__.items() if k in inspect.signature(self.__init__).parameters
+            }
+        )
+
         for k, v in with_.items():
             attribs[k] = v
+
         return self.__class__(**attribs)
 
 
@@ -72,6 +85,8 @@ class TradingPair(DataClass):
     @classmethod
     def structure(cls, value: Union[dict, list, str]) -> Union["DataClass", List["DataClass"]]:
         # In addition to dict and list, this class can also be structured from a string.
+        if isinstance(value, cls):
+            return value
         try:
             return super().structure(value)
         except TypeError:
@@ -82,24 +97,3 @@ class TradingPair(DataClass):
 
     def __str__(self):
         return self.base.value + self.quote.value
-
-
-@attrs
-class KlineRecord(DataClass):
-    pair: TradingPair = attrib(validator=instance_of(TradingPair))
-    open_time: int = attrib(converter=int)
-    open_value: float = attrib(converter=float)
-    high: float = attrib(converter=float)
-    low: float = attrib(converter=float)
-    close_value: float = attrib(converter=float)
-    volume: float = attrib(converter=float)
-    close_time: int = attrib(converter=int)
-    quote_asset_vol: float = attrib(converter=float)  # Volume measured in the units of the second part of the pair.
-    trades: int = attrib(converter=int)
-    # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
-    taker_buy_base_vol: float = attrib(converter=float)
-    taker_buy_quote_vol: float = attrib(converter=float)
-
-    def to_numpy(self) -> np.ndarray:
-        values = vars(self)
-        return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])

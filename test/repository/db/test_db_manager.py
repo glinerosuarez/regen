@@ -1,16 +1,18 @@
-import time
+import copy
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
 from consts import CryptoAsset
-from repository._dataclass import KlineRecord, TradingPair
+from repository._dataclass import TradingPair
 from test import test_utils
 from repository import AccountType, Observation
-from vm.consts import Position, Action
-from repository.db import DataBaseManager, Order, AccountInfo, EnvState
+from consts import Position, Action
+from repository.db import DataBaseManager, Order, AccountInfo, EnvState, Kline
 
 db_name = ":memory:"
+db_manager = DataBaseManager(db_name)
+db_manager2 = DataBaseManager(db_name)
 data = Order(
     symbol="BNBBUSD",
     orderId="12345",
@@ -65,18 +67,16 @@ def tear_down():
 
 def test_db_orders():
     # Init db
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-    DataBaseManager.insert(data)
+    db_manager.insert(data)
     # Assert primary key
     with pytest.raises(IntegrityError):
-        DataBaseManager.insert(data_2)
+        db_manager.insert(data_2)
     # Assert uniqueness
     with pytest.raises(IntegrityError):
-        DataBaseManager.insert(data_3)
-    DataBaseManager.insert(data_4)
+        db_manager.insert(data_3)
+    db_manager.insert(data_4)
     # Assertions
-    records = DataBaseManager.select_all(Order)
+    records = db_manager.select_all(Order)
     assert len(records) == 2
     assert records[0] == data
     assert records[1] == data_4
@@ -84,73 +84,73 @@ def test_db_orders():
 
 def test_account_info():
     # Init db
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-    DataBaseManager.insert(acc_info)
+    db_manager.insert(acc_info)
 
     # Assertions
-    records = DataBaseManager.select_all(AccountInfo)
+    records = db_manager.select_all(AccountInfo)
     assert records[0] == acc_info
 
 
 def test_env_state():
     # Init db
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-    DataBaseManager.insert(env_state)
+    db_manager.insert(env_state)
 
     # Assertions
-    records = DataBaseManager.select_all(EnvState)
+    records = db_manager.select_all(EnvState)
     assert records[0] == env_state
 
     # Test select_max
-    assert DataBaseManager.select_max(EnvState.state_id) == "1-1-1"
+    assert db_manager.select_max(EnvState.state_id) == "1-1-1"
 
 
-obs1 = Observation(
-    execution_id=1,
-    episode_id=1,
-    klines=[
-        KlineRecord(
-            pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
-            open_time=123456,
-            open_value=100,
-            high=110,
-            low=90,
-            close_value=103,
-            volume=1_000,
-            close_time=123457,
-            quote_asset_vol=500,
-            trades=20,
-            taker_buy_base_vol=700,
-            taker_buy_quote_vol=600,
-        )
-    ],
-    ts=time.time(),
+kline = Kline(
+    pair=TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD),
+    open_time=123456,
+    open_value=100,
+    high=110,
+    low=90,
+    close_value=103,
+    volume=1_000,
+    close_time=123457,
+    quote_asset_vol=500,
+    trades=20,
+    taker_buy_base_vol=700,
+    taker_buy_quote_vol=600,
 )
+kline2 = kline.copy(with_=dict(trades=45, open_time=134567, close_time=234567))
+kline3 = kline.copy(with_=dict(trades=101, open_time=334567, close_time=434567))
+obs = Observation(execution_id=1, episode_id=1, klines=[kline, kline2])
+obs1 = copy.deepcopy(obs)
+
+
+def test_obs_kline_relationship():
+
+    db_manager2.insert(obs1)
+    db_manager2.insert(kline3)
+    obs = db_manager2.select_all(Observation)
+    assert len(obs[0].klines) == 2
+    assert len(db_manager2.select_all(Kline)) == 3
 
 
 def test_select_with_limit():
-    DataBaseManager.init_connection(db_name)
-    DataBaseManager.create_all()
-
     # Insert obs
-    DataBaseManager.insert(obs1)
-    for i in range(2, 11):
-        DataBaseManager.insert(obs1.copy(with_={"episode_id": i}))
+    obs.klines = []
 
-    assert len(DataBaseManager.select(Observation, limit=2)) == 2
-    assert DataBaseManager.select(Observation, limit=2)[1].episode_id == 2
+    for i in range(2, 11):
+        db_manager2.insert(obs.copy(with_={"episode_id": i}))
+
+    assert len(db_manager2.select(Observation, limit=2)) == 2
+    assert db_manager2.select(Observation, limit=2)[1].episode_id == 2
 
 
 def test_select_with_offset():
-    assert DataBaseManager.select(Observation, offset=10) == []
+    assert db_manager.select(Observation, offset=10) == []
     obs1.episode_id = 10
-    assert DataBaseManager.select(Observation, offset=9)[0] == obs1
+    assert db_manager.select(Observation, offset=9)[0].episode_id == 10
     obs1.episode_id = 1
 
 
 def test_delete():
-    assert DataBaseManager.delete(Observation, [Observation.episode_id > 5, Observation.episode_id % 2 == 0]) == 3
-    results = DataBaseManager.select_all(Observation)
+    assert db_manager2.delete(Observation, [Observation.episode_id > 5, Observation.episode_id % 2 == 0]) == 3
+    results = db_manager.select_all(Observation)
     assert [r.episode_id for r in results] == [1, 2, 3, 4, 5, 7, 9]

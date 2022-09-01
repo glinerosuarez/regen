@@ -1,8 +1,8 @@
 import random
-from datetime import datetime
 from logging import Logger
 from typing import Optional, List
 
+import pendulum
 import requests
 from binance.spot import Spot
 from binance.error import ClientError
@@ -12,9 +12,9 @@ from repository import Interval
 from configuration import settings
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
+from repository._dataclass import TradingPair
 from consts import Side, OrderType, TimeInForce
-from repository.db._db_manager import AccountInfo, Order
-from repository._dataclass import TradingPair, KlineRecord
+from repository.db import AccountInfo, Order, Kline
 
 
 class BinanceClient:
@@ -62,10 +62,10 @@ class BinanceClient:
         self,
         pair: TradingPair,
         interval: Interval,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: Optional[pendulum.DateTime] = None,
+        end_time: Optional[pendulum.DateTime] = None,
         limit: Optional[int] = None,
-    ) -> List[KlineRecord]:
+    ) -> List[Kline]:
         """
         Kline/Candlestick Data
 
@@ -76,8 +76,8 @@ class BinanceClient:
         :param limit: limit the results. Default 500; max 1000.
         """
         # Convert datetimes to ts
-        start_time_ts = None if start_time is None else int(datetime.timestamp(start_time)) * 1000
-        end_time_ts = None if end_time is None else int(datetime.timestamp(end_time)) * 1000
+        start_time_ts = None if start_time is None else int(start_time.timestamp() * 1000)
+        end_time_ts = None if end_time is None else int(end_time.timestamp() * 1000)
 
         # Arguments to kwargs
         args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
@@ -89,7 +89,7 @@ class BinanceClient:
             return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
-            KlineRecord(
+            Kline(
                 pair=pair,
                 open_time=r[0],
                 open_value=r[1],

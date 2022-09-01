@@ -1,20 +1,20 @@
 import json
-from logging import Logger
 
 import cattr
+import numpy as np
 import pendulum
 from sqlalchemy.sql.elements import BinaryExpression
 
-from attr import attrs, attrib
+from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
 from typing import List, Optional, Type, Any, Callable
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import registry, Session, InstrumentedAttribute
 from consts import TimeInForce, OrderType, Side
-from repository._dataclass import DataClass, TradingPair, KlineRecord
+from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
+from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
     create_engine,
     Table,
@@ -29,46 +29,55 @@ from sqlalchemy import (
     BigInteger,
     func,
     and_,
+    ForeignKey,
+    DateTime,
 )
 
 from log import LoggerFactory
-from vm.consts import Position, Action
-
-_mapper_registry = registry()
-_logger = LoggerFactory.get_console_logger(__name__)
+from consts import Position, Action
 
 
 class DataBaseManager:
-    _engine: Engine = None
-    _session: Optional[Session] = None
 
-    @staticmethod
-    def create_all():
-        _mapper_registry.metadata.create_all(DataBaseManager._engine)
+    _engine: Optional[Engine] = None
+    _mapper_registry = registry()
 
-    @staticmethod
-    def init_connection(db_name: str) -> None:
+    def __init__(self, db_name: str):
         """
-        Connect to a database or create a new database if it does not exist.
         :param db_name: Name of the database
         """
-        DataBaseManager._engine = create_engine(f"sqlite+pysqlite:///{db_name}", echo=False, future=True)
-        DataBaseManager.log_to_file()
-        DataBaseManager._session = Session(DataBaseManager._engine)
+        self.db_name = db_name
 
-    @staticmethod
-    def insert(record: DataClass) -> None:
+        # TODO: It seems this function is not working, I'm not seeing the log files created
+        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
+
+        # Connect to a database or create a new database if it does not exist.
+        if DataBaseManager._engine is None:
+            DataBaseManager._engine = create_engine(
+                f"sqlite+pysqlite:///{self.db_name}",
+                echo=False,
+                future=True,
+                # It's safe to do this because we never update objects from other threads, in fact, we never update.
+                connect_args={"check_same_thread": False},
+            )
+        session_factory = sessionmaker(bind=DataBaseManager._engine)
+        self.session = scoped_session(session_factory)
+
+        # Create tables.
+        DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)
+
+    def insert(self, record: DataClass) -> None:
         """Insert a new row into a SQL table."""
         exception = None
         try:
-            DataBaseManager._session.add(record)
-            DataBaseManager._session.commit()
+            self.session.add(record)
+            self.session.commit()
         except IntegrityError as ie:
             exception = ie
         finally:
             if exception is not None:
                 # If there is an exception rollback the transaction and propagate the error.
-                DataBaseManager._session.rollback()
+                self.session.rollback()
                 raise exception
 
     @staticmethod
@@ -94,8 +103,8 @@ class DataBaseManager:
 
         return sql_statement
 
-    @staticmethod
     def select(
+        self,
         table: Type[DataClass],
         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
         offset: int = 0,
@@ -113,18 +122,18 @@ class DataBaseManager:
         if limit != 0:
             sql_statement = sql_statement.limit(limit)
 
-        return [data[0] for data in DataBaseManager._session.execute(sql_statement)]
+        return [data[0] for data in self.session.execute(sql_statement)]
 
-    @staticmethod
-    def select_all(table: Type[DataClass]) -> list:
+    def select_all(self, table: Type[DataClass]) -> list:
         """
         Execute a SELECT * statement from the SQL Object table.
         :return: a :list: of SQL Object.
         """
-        return [data[0] for data in DataBaseManager._session.execute(select(table))]
+        return [data[0] for data in self.session.execute(select(table))]
 
-    @staticmethod
-    def select_max(col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None) -> Optional[Any]:
+    def select_max(
+        self, col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None
+    ) -> Optional[Any]:
         """
         Return the biggest value in a column.
         :param col: Column to get the value from.
@@ -134,10 +143,10 @@ class DataBaseManager:
         sql_statement = select(func.max(col))
         if condition is not None:
             sql_statement = sql_statement.where(condition)
-        return DataBaseManager._session.execute(sql_statement).fetchone()[0]
+        return self.session.execute(sql_statement).fetchone()[0]
 
-    @staticmethod
     def delete(
+        self,
         table: Type[DataClass],
         conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
         commit: bool = False,
@@ -150,16 +159,12 @@ class DataBaseManager:
         :return: Number of rows to delete or deleted if commit == True.
         """
         query = DataBaseManager._apply_conditions(table, conditions, function=delete)
-        rowcount = DataBaseManager._session.execute(query).rowcount
+        rowcount = self.session.execute(query).rowcount
 
         if commit is True:
-            DataBaseManager._session.commit()
+            self.session.commit()
 
         return rowcount
-
-    @staticmethod
-    def log_to_file() -> Logger:
-        return LoggerFactory.get_file_logger(name="sqlalchemy", filename="db")
 
 
 class _EncodedDataClass(types.UserDefinedType):
@@ -191,14 +196,14 @@ class _EncodedDataClass(types.UserDefinedType):
         return process
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class Order(DataClass):
     """Data of a placed order."""
 
     __table__ = Table(
         "orders",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("symbol", _EncodedDataClass(TradingPair)),
         Column("orderId", String, primary_key=True),
         Column("orderListId", String),
@@ -215,7 +220,7 @@ class Order(DataClass):
         Column("fills", _EncodedDataClass(List[Fill])),
     )
 
-    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.from_str)
+    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)
     orderId: str = attrib(converter=str)
     orderListId: str = attrib(converter=str)  # Unless OCO, value will be -1
     clientOrderId: str = attrib(converter=str)
@@ -231,12 +236,12 @@ class Order(DataClass):
     fills: List[Fill] = attrib(converter=Fill.structure)
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class AccountInfo(DataClass):
     __table__ = Table(
         "account_info",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("makerCommission", Float),
         Column("takerCommission", Float),
         Column("buyerCommission", Float),
@@ -271,12 +276,12 @@ class AccountInfo(DataClass):
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 
-@_mapper_registry.mapped
+@DataBaseManager._mapper_registry.mapped
 @attrs
 class EnvState(DataClass):
     __table__ = Table(
         "env_state",
-        _mapper_registry.metadata,
+        DataBaseManager._mapper_registry.metadata,
         Column("state_id", String, primary_key=True, nullable=False),
         Column("execution_id", Integer, nullable=False),
         Column("episode_id", Integer, nullable=False),
@@ -303,20 +308,80 @@ class EnvState(DataClass):
         return "-".join([str(self.execution_id), str(self.episode_id), str(self.tick)])
 
 
-@_mapper_registry.mapped
+# TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique
+ObservationKline = Table(
+    "ObservationKline",
+    DataBaseManager._mapper_registry.metadata,
+    Column("id", Integer, primary_key=True, autoincrement="auto"),
+    Column("obs_id", Integer, ForeignKey("observation.id")),
+    Column("kline_id", Integer, ForeignKey("kline.id")),
+    Column("created_at", DateTime, server_default=func.now()),
+)
+
+
+@DataBaseManager._mapper_registry.mapped
 @attrs
+class Kline(DataClass):
+    __table__ = Table(
+        "kline",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("pair", _EncodedDataClass(TradingPair)),
+        Column("open_time", Integer, nullable=False, unique=True),
+        Column("open_value", Float, nullable=False),
+        Column("high", Float, nullable=False),
+        Column("low", Float, nullable=False),
+        Column("close_value", Float, nullable=False),
+        Column("volume", Float, nullable=False),
+        Column("close_time", Integer, nullable=False, unique=True),
+        Column("quote_asset_vol", Float, nullable=False),
+        Column("trades", Integer, nullable=False),
+        Column("taker_buy_base_vol", Float, nullable=False),
+        Column("taker_buy_quote_vol", Float, nullable=False),
+        Column("created_at", DateTime, server_default=func.now()),
+    )
+
+    id: int = attrib(init=False)
+    pair: TradingPair = attrib(converter=TradingPair.structure, validator=instance_of(TradingPair))
+    open_time: int = attrib(converter=int)
+    open_value: float = attrib(converter=float)
+    high: float = attrib(converter=float)
+    low: float = attrib(converter=float)
+    close_value: float = attrib(converter=float)
+    volume: float = attrib(converter=float)
+    close_time: int = attrib(converter=int)
+    quote_asset_vol: float = attrib(converter=float)  # Volume measured in the units of the second part of the pair.
+    trades: int = attrib(converter=int)
+    # Explanation: https://dataguide.cryptoquant.com/market-data/taker-buy-sell-volume-ratio
+    taker_buy_base_vol: float = attrib(converter=float)
+    taker_buy_quote_vol: float = attrib(converter=float)
+    created_at: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
+
+    def to_numpy(self) -> np.ndarray:
+        values = vars(self)
+        return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
 class Observation(DataClass):
     __table__ = Table(
         "observation",
-        _mapper_registry.metadata,
-        Column("obs_id", Integer, primary_key=True, nullable=False),
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("execution_id", String, nullable=False),
         Column("episode_id", Integer, nullable=False),
-        Column("klines", _EncodedDataClass(List[KlineRecord]), nullable=False),
-        Column("ts", Float, nullable=False),
+        Column("created_at", DateTime, server_default=func.now()),
     )
 
-    execution_id: str = attrib(converter=str)
-    episode_id: int = attrib(converter=int)
-    klines: List[KlineRecord] = attrib()
-    ts: float = attrib(converter=float)
+    __mapper_args__ = {  # type: ignore
+        "properties": {
+            "klines": relationship("Kline", secondary=ObservationKline),
+        }
+    }
+
+    id: int = field(init=False)
+    execution_id: str
+    episode_id: int
+    klines: list[Kline]
+    created_at: pendulum.DateTime = field(init=False, converter=pendulum.DateTime)

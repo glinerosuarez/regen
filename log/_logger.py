@@ -21,7 +21,7 @@ class LoggerFactory:
         return Formatter("[%(asctime)s - %(name)s - %(levelname)s]: %(message)s")
 
     @staticmethod
-    def get_console_logger(name: str, level: str = logging.INFO) -> Logger:
+    def get_console_logger(name: str, level: int = logging.INFO) -> Logger:
         """Get a logger that prints INFO or more severe logs to the console"""
 
         # Create logger.
