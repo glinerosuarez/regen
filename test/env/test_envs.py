@@ -11,7 +11,7 @@ def _execute_steps(env):
     print(env.action_space)
     print(env.action_space.sample())
 
-    n_steps = 10
+    n_steps = 1
     for step in range(n_steps):
         print("Step {}".format(step + 1))
         obs, reward, done, info = env.step(1)
@@ -29,5 +29,14 @@ def test_cryptoenv():
     # _execute_steps(env)
 
 
+def test_observations():
+    from stable_baselines3.common.envs import SimpleMultiObsEnv
+    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+    env = SimpleMultiObsEnv(random_start=False)
+
+
 if __name__ == "__main__":
-    test_cryptoenv()
+    env = CryptoTradingEnv(window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100)
+    _execute_steps(env)
+    # test_observations()

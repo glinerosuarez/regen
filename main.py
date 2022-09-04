@@ -16,7 +16,7 @@ from vm import KlineProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
-time_steps = 9
+time_steps = 1_000_000
 window_size = 5
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
@@ -37,7 +37,7 @@ def train():
     tmp_path = "output/logs/"
     new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
 
-    model = PPO("MultiInputPolicy", env, verbose=1, n_steps=time_steps, batch_size=time_steps)
+    model = PPO("MultiInputPolicy", env, verbose=1)
     model.set_logger(new_logger)
     model.learn(total_timesteps=time_steps)
 
