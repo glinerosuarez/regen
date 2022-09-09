@@ -17,12 +17,13 @@ from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
 time_steps = 1_000_000
-window_size = 5
+window_size = 1_440
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
 
 
 def train():
+    # TODO: Save logs and progress per execution
     # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
     # TODO: Train with more than 1 vectorized DummyVecEnv
     # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?

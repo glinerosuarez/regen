@@ -1,10 +1,11 @@
-import random
-
-import numpy as np
 import time
+import random
 from typing import Optional
 from collections import defaultdict
 from functools import cached_property
+
+import numpy as np
+from sklearn import preprocessing
 
 import log
 import configuration
@@ -68,22 +69,25 @@ class CryptoViewModel:
         self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        """Flatten and normalize an observation"""
         obs = obs.copy()  # it's ok to shallow copy because we only store doubles, and I don't think that will change
         # The initial price is the last price in the first observation
         # TODO: Init price should be the price we last traded at, so we should keep track of that price across episodes
         if self.init_price is None:  # This should only happen when in the beginning of a new episode
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
-
         # TODO: does this break markov rules?
         # We normalize prices dividing by the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
-        obs[:, :4] = obs[:, :4] / non_null_last_trade_price
-        obs[:, :4] = (obs[:, :4] - obs[:, :4].mean()) / obs[:, :4].std()  # TODO: remove possibility of div by 0
+        prices = (obs[:, :4] / non_null_last_trade_price).flatten()
+        #breakpoint()
+        #prices = preprocessing.normalize(prices.reshape(1, -1))  # TODO: evaluate other normalization techniques
         # Normalize volumes
         # TODO: possible div by zero when all volumes are equal
         # TODO:not sure about how to normalize vols, is it necessary to take into account other obs for the calculation?
-        obs[:, -1] = (obs[:, -1] - obs[:, -1].mean()) / obs[:, -1].std()
-        return obs
+        #vols = obs[:, -1].flatten()
+        #vols = preprocessing.normalize(vols.reshape(1, -1))
+        #return np.hstack((prices, vols))
+        return prices
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -172,6 +176,7 @@ class CryptoViewModel:
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
+                self.logger.info(f"{self.last_trade_price=} {self.last_price=}")
                 step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
 
             self.last_trade_price = self.last_price  # Update last trade price

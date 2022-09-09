@@ -20,7 +20,7 @@ class CryptoTradingEnv(gym.Env):
     base_asset: CryptoAsset = field()
     quote_asset: CryptoAsset = field()
     base_balance: float = field()
-    shape: tuple[int, int] = field(init=False)
+    shape: tuple[int] = field(init=False)
     vm: CryptoViewModel = field(init=False)
     action_space: spaces.Discrete = field(init=False)
     observation_space: spaces.Box = field(init=False)
@@ -37,9 +37,9 @@ class CryptoTradingEnv(gym.Env):
         )
 
     @shape.default
-    def init_shape(self) -> tuple[int, int]:
+    def init_shape(self) -> tuple[int]:
         # Shape of a single observation.
-        return self.window_size, 5
+        return self.window_size * 4  # 5 here means number of features, atm: open, high, low, close and volume values
 
     @action_space.default
     def init_action_space(self) -> spaces.Discrete:
@@ -52,7 +52,7 @@ class CryptoTradingEnv(gym.Env):
         return spaces.Dict(
             {
                 # Prices contain the OHCL values for the last window_size prices.
-                "klines": spaces.Box(low=-np.inf, high=np.inf, shape=self.shape, dtype=np.float32),
+                "klines": spaces.Box(low=-np.inf, high=np.inf, shape=(self.shape,), dtype=np.float32),
                 # Current position the agent has.
                 "position": spaces.Discrete(len(Position)),
             }
