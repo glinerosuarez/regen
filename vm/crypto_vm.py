@@ -79,14 +79,14 @@ class CryptoViewModel:
         # We normalize prices dividing by the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
         prices = (obs[:, :4] / non_null_last_trade_price).flatten()
-        #breakpoint()
-        #prices = preprocessing.normalize(prices.reshape(1, -1))  # TODO: evaluate other normalization techniques
+        # breakpoint()
+        # prices = preprocessing.normalize(prices.reshape(1, -1))  # TODO: evaluate other normalization techniques
         # Normalize volumes
         # TODO: possible div by zero when all volumes are equal
         # TODO:not sure about how to normalize vols, is it necessary to take into account other obs for the calculation?
-        #vols = obs[:, -1].flatten()
-        #vols = preprocessing.normalize(vols.reshape(1, -1))
-        #return np.hstack((prices, vols))
+        # vols = obs[:, -1].flatten()
+        # vols = preprocessing.normalize(vols.reshape(1, -1))
+        # return np.hstack((prices, vols))
         return prices
 
     def reset(self):

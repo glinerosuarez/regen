@@ -11,7 +11,7 @@ def _execute_steps(env):
     print(env.action_space)
     print(env.action_space.sample())
 
-    n_steps = 1
+    n_steps = 3_000
     for step in range(n_steps):
         print("Step {}".format(step + 1))
         obs, reward, done, info = env.step(1)
@@ -37,6 +37,9 @@ def test_observations():
 
 
 if __name__ == "__main__":
-    env = CryptoTradingEnv(window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100)
+    env = CryptoTradingEnv(
+        window_size=1_440, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
+    )
+    breakpoint()
     _execute_steps(env)
     # test_observations()
