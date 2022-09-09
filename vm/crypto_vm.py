@@ -5,7 +5,6 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
-from sklearn import preprocessing
 
 import log
 import configuration
