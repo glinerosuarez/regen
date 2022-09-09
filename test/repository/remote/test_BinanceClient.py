@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pendulum
+
 from consts import Side, OrderType
 from repository.remote import BinanceClient
 from consts import CryptoAsset, TimeInForce
@@ -46,14 +48,15 @@ def test_get_account_info():
 
 
 def test_get_klines_data():
-    close_time = datetime(year=2022, month=8, day=13, hour=13, minute=35)
-    open_time = datetime(year=2022, month=8, day=13, hour=13, minute=30)
+    now = pendulum.now()
+    close_time = now.subtract(minutes=1).end_of("minute")
+    open_time = now.subtract(minutes=6).start_of("minute")
     response = client.get_klines_data(
         TradingPair(CryptoAsset.BNB, CryptoAsset.USDT), Interval.M_1, open_time, close_time
     )
     assert len(response) == 6
     assert response[0].open_time == open_time.timestamp() * 1_000
-    assert response[-1].open_time == close_time.timestamp() * 1_000
+    assert response[-1].close_time == int(close_time.timestamp() * 1_000)
 
 
 def test_place_test_order():

@@ -1,7 +1,10 @@
 import time
+import random
 from typing import Optional
 from collections import defaultdict
 from functools import cached_property
+
+import numpy as np
 
 import log
 import configuration
@@ -60,9 +63,30 @@ class CryptoViewModel:
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
-        self.initial_price = None
+        self.init_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
         self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
+
+    def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        """Flatten and normalize an observation"""
+        obs = obs.copy()  # it's ok to shallow copy because we only store doubles, and I don't think that will change
+        # The initial price is the last price in the first observation
+        # TODO: Init price should be the price we last traded at, so we should keep track of that price across episodes
+        if self.init_price is None:  # This should only happen when in the beginning of a new episode
+            self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
+        # TODO: does this break markov rules?
+        # We normalize prices dividing by the last trade price
+        non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
+        prices = (obs[:, :4] / non_null_last_trade_price).flatten()
+        # breakpoint()
+        # prices = preprocessing.normalize(prices.reshape(1, -1))  # TODO: evaluate other normalization techniques
+        # Normalize volumes
+        # TODO: possible div by zero when all volumes are equal
+        # TODO:not sure about how to normalize vols, is it necessary to take into account other obs for the calculation?
+        # vols = obs[:, -1].flatten()
+        # vols = preprocessing.normalize(vols.reshape(1, -1))
+        # return np.hstack((prices, vols))
+        return prices
 
     def reset(self):
         self.logger.debug("Resetting environment.")
@@ -86,14 +110,12 @@ class CryptoViewModel:
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation()
-        # The initial price is the last price in the first observation
-        self.initial_price = self.last_observation[-1][3]
-        # We normalize prices dividing by the initial price
-        self.last_observation[:, :3] = self.last_observation[:, :3] / self.initial_price
-        return dict(klines=self.last_observation, position=Position.Long.value)
+
+        return dict(klines=self.normalize_obs(self.last_observation), position=Position.Long.value)
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
+        # breakpoint()
         self.done = False
 
         step_reward = self._calculate_reward(action)
@@ -114,12 +136,8 @@ class CryptoViewModel:
         if self.current_tick >= configuration.settings.ticks_per_episode:
             self.done = True
 
-        # We normalize prices dividing by the last trade price
-        non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.initial_price
-        self.last_observation[:, :3] = self.last_observation[:, :3] / non_null_last_trade_price
-
         return (
-            dict(klines=self.last_observation, position=self.position.value),
+            dict(klines=self.normalize_obs(self.last_observation), position=self.position.value),
             step_reward,
             self.done,
             info,
@@ -150,12 +168,14 @@ class CryptoViewModel:
         #  agent takes a trade action and the moment the order is processed (measure that time on average), to start
         #  with, I think we could take a random value from (open, close) of the next observation (because we get a new
         #  observation every minute, frequently)
+        # breakpoint()
         step_reward = 0.0
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
+                self.logger.info(f"{self.last_trade_price=} {self.last_price=}")
                 step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
 
             self.last_trade_price = self.last_price  # Update last trade price

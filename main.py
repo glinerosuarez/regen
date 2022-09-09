@@ -5,7 +5,6 @@ from typing import Optional
 
 import pendulum
 from stable_baselines3 import PPO
-from stable_baselines3.ppo.policies import MlpPolicy
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.cmd_util import make_vec_env
 
@@ -17,13 +16,14 @@ from vm import KlineProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
-time_steps = 9
-window_size = 5
+time_steps = 1_000_000
+window_size = 1_440
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
 
 
 def train():
+    # TODO: Save logs and progress per execution
     # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
     # TODO: Train with more than 1 vectorized DummyVecEnv
     # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
@@ -38,7 +38,7 @@ def train():
     tmp_path = "output/logs/"
     new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
 
-    model = PPO(MlpPolicy, env, verbose=1, n_steps=time_steps, batch_size=time_steps)
+    model = PPO("MultiInputPolicy", env, verbose=1)
     model.set_logger(new_logger)
     model.learn(total_timesteps=time_steps)
 
