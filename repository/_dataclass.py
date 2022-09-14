@@ -26,11 +26,14 @@ class DataClass:
         """Attributes and their corresponding values as a dict."""
         return cattr.unstructure(self)
 
-    def copy(self, with_: dict) -> "DataClass":
+    def copy(self, with_: Optional[dict] = None) -> "DataClass":
         """
         Create a deep copy of this instance.
         :param with_: Properties to replace in the new object.
         """
+        if with_ is None:
+            with_ = {}
+
         attribs = copy.deepcopy(
             {  # Copy only constructor params
                 k: v for k, v in self.__dict__.items() if k in inspect.signature(self.__init__).parameters
