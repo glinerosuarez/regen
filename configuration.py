@@ -13,6 +13,10 @@ settings = Dynaconf(
         Validator("app_name", is_type_of=str),
         Validator("db_name", is_type_of=str),
         Validator("ticks_per_episode", is_type_of=int),
+        Validator("db_user", is_type_of=str),
+        Validator("db_password", is_type_of=str),
+        Validator("db_host", is_type_of=str),
+        Validator("db_name", is_type_of=str),
     ],
 )
 

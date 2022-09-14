@@ -1,3 +1,4 @@
+import enum
 import json
 
 import cattr
@@ -8,7 +9,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
-from typing import List, Optional, Type, Any, Callable
+from typing import List, Optional, Type, Any, Callable, Iterable
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 from consts import TimeInForce, OrderType, Side
@@ -38,11 +39,59 @@ from consts import Position, Action
 
 
 class DataBaseManager:
+    class EngineType(enum.Enum):
+        SQLite = "sqlite"
+        PostgreSQL = "postgreSQL"
 
     _engine: Optional[Engine] = None
     _mapper_registry = registry()
 
-    def __init__(self, db_name: str):
+    @staticmethod
+    def _build_engine_string(
+        e_type: EngineType,
+        db_name: str,
+        host: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> str:
+        if e_type == DataBaseManager.EngineType.PostgreSQL:
+            return f"postgresql+psycopg2://{user}:{password}@{host}:5432/{db_name}"
+        elif e_type == DataBaseManager.EngineType.SQLite:
+            return f"sqlite+pysqlite:///{db_name}"
+        else:
+            raise ValueError(f"unimplemented engine type: {e_type}")
+
+    @staticmethod
+    def _create_postgres_engine(
+        db_name: str,
+        host: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+    ):
+        return create_engine(
+            DataBaseManager._build_engine_string(DataBaseManager.EngineType.PostgreSQL, db_name, host, user, password),
+            echo=False,
+            future=True,
+        )
+
+    @staticmethod
+    def _create_sqlite_engine(db_name: str):
+        return create_engine(
+            DataBaseManager._build_engine_string(DataBaseManager.EngineType.SQLite, db_name),
+            echo=False,
+            future=True,
+            # It's safe to do this because we never update objects from other threads, in fact, we never update.
+            connect_args={"check_same_thread": False},
+        )
+
+    def __init__(
+        self,
+        db_name: str,
+        engine_type: EngineType = EngineType.SQLite,
+        host: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+    ):
         """
         :param db_name: Name of the database
         """
@@ -53,24 +102,27 @@ class DataBaseManager:
 
         # Connect to a database or create a new database if it does not exist.
         if DataBaseManager._engine is None:
-            DataBaseManager._engine = create_engine(
-                f"sqlite+pysqlite:///{self.db_name}",
-                echo=False,
-                future=True,
-                # It's safe to do this because we never update objects from other threads, in fact, we never update.
-                connect_args={"check_same_thread": False},
-            )
+            if engine_type == DataBaseManager.EngineType.SQLite:
+                DataBaseManager._engine = DataBaseManager._create_sqlite_engine(db_name)
+            elif engine_type == DataBaseManager.EngineType.PostgreSQL:
+                DataBaseManager._engine = DataBaseManager._create_postgres_engine(db_name, host, user, password)
         session_factory = sessionmaker(bind=DataBaseManager._engine)
         self.session = scoped_session(session_factory)
 
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)
 
-    def insert(self, record: DataClass) -> None:
+    def insert(self, records: DataClass | Iterable[DataClass]) -> int:
         """Insert a new row into a SQL table."""
+
         exception = None
+
         try:
-            self.session.add(record)
+            match records:
+                case [*rows]:
+                    self.session.bulk_save_objects(rows)
+                case _:
+                    self.session.add(records)
             self.session.commit()
         except IntegrityError as ie:
             exception = ie
@@ -177,7 +229,7 @@ class _EncodedDataClass(types.UserDefinedType):
         self.type_ = type_
 
     def get_col_spec(self, **kw):
-        return "DATA"
+        return "JSON"
 
     def bind_processor(self, dialect):
         def process(value):
@@ -217,7 +269,7 @@ class Order(DataClass):
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
-        Column("fills", _EncodedDataClass(List[Fill])),
+        Column("fills", _EncodedDataClass(List[Fill])),  # TODO: create a fills table
     )
 
     symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)
@@ -287,7 +339,7 @@ class EnvState(DataClass):
         Column("episode_id", Integer, nullable=False),
         Column("tick", BigInteger, nullable=False),
         Column("price", Float, nullable=False),
-        Column("position", Enum(Position), nullable=False),
+        Column("position", Enum(Position, name="tradingposition"), nullable=False),
         Column("action", Enum(Action), nullable=False),
         Column("is_trade", Boolean, nullable=False),
         Column("ts", Float, nullable=False),
@@ -327,15 +379,15 @@ class Kline(DataClass):
         DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("pair", _EncodedDataClass(TradingPair)),
-        Column("open_time", Integer, nullable=False, unique=True),
+        Column("open_time", BigInteger, nullable=False, unique=True),
         Column("open_value", Float, nullable=False),
         Column("high", Float, nullable=False),
         Column("low", Float, nullable=False),
         Column("close_value", Float, nullable=False),
         Column("volume", Float, nullable=False),
-        Column("close_time", Integer, nullable=False, unique=True),
+        Column("close_time", BigInteger, nullable=False, unique=True),
         Column("quote_asset_vol", Float, nullable=False),
-        Column("trades", Integer, nullable=False),
+        Column("trades", BigInteger, nullable=False),
         Column("taker_buy_base_vol", Float, nullable=False),
         Column("taker_buy_quote_vol", Float, nullable=False),
         Column("created_at", DateTime, server_default=func.now()),
