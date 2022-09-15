@@ -74,7 +74,7 @@ class KlineProducer(threading.Thread):
         self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
         # TODO: This will return all the klines records in the database regardless of their trading pair.
-        async for db_kline in get_db_async_generator(configuration.settings.db_name, Kline, self._BUFFER_SIZE):
+        async for db_kline in get_db_async_generator(Kline, self._BUFFER_SIZE):
             self.queue.put(db_kline)
 
         while True:  # Get klines from api

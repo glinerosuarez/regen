@@ -8,7 +8,6 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.env_util import make_vec_env
 
-import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
 from repository.remote import BinanceClient
@@ -17,7 +16,7 @@ from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
 time_steps = 1_000_000
-window_size = 1_440
+window_size = 5
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
 
@@ -71,7 +70,7 @@ def collect_data(
 
         limit = 1_000
         api_client = BinanceClient()
-        db_manager = DataBaseManager(configuration.settings.db_name)
+        db_manager = DataBaseManager.init()
 
         start = start.start_of("minute")
         end = end.end_of("minute")

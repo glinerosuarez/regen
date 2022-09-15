@@ -49,7 +49,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
-        self.db_manager = DataBaseManager(configuration.settings.db_name)
+        self.db_manager = DataBaseManager.init()
 
         self.episode_id = None
         self.position = Position.Short
@@ -175,7 +175,6 @@ class CryptoViewModel:
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                self.logger.info(f"last_trade_price: {self.last_trade_price} last_price: {self.last_price}")
                 step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
 
             self.last_trade_price = self.last_price  # Update last trade price

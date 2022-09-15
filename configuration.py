@@ -17,6 +17,7 @@ settings = Dynaconf(
         Validator("db_password", is_type_of=str),
         Validator("db_host", is_type_of=str),
         Validator("db_name", is_type_of=str),
+        Validator("db_type", is_in=["sqlite", "postgres"]),
     ],
 )
 

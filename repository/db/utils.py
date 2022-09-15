@@ -1,18 +1,35 @@
 import asyncio
 from typing import AsyncIterator, Iterator, List, Type
 
+import contextvars
+
+import functools
+
 from repository._dataclass import DataClass
 from repository.db._db_manager import DataBaseManager
 
 
-def get_db_generator(db_name: str, table: Type[DataClass], page_size: int) -> Iterator[DataClass]:
+async def to_thread(func, *args, **kwargs):
+    """Asynchronously run function *func* in a separate thread.
+    Any *args and **kwargs supplied for this function are directly passed
+    to *func*. Also, the current :class:`contextvars.Context` is propogated,
+    allowing context variables from the main thread to be accessed in the
+    separate thread.
+    Return a coroutine that can be awaited to get the eventual result of *func*.
+    """
+    loop = asyncio.events.get_running_loop()
+    ctx = contextvars.copy_context()
+    func_call = functools.partial(ctx.run, func, *args, **kwargs)
+    return await loop.run_in_executor(None, func_call)
+
+
+def get_db_generator(table: Type[DataClass], page_size: int) -> Iterator[DataClass]:
     """
     Get a generator that returns all the rows in a table
-    :param db_name: Name of the database
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
-    db_manager = DataBaseManager(db_name)
+    db_manager = DataBaseManager.init()
 
     def _get_page_generator() -> Iterator[List[DataClass]]:
         offset = 0
@@ -26,16 +43,15 @@ def get_db_generator(db_name: str, table: Type[DataClass], page_size: int) -> It
         yield from page
 
 
-async def get_db_async_generator(db_name: str, table: Type[DataClass], page_size: int) -> AsyncIterator[DataClass]:
+async def get_db_async_generator(table: Type[DataClass], page_size: int) -> AsyncIterator[DataClass]:
     """
     Get an asynchronous generator that returns all the rows in a table
-    :param db_name: Name of the database
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
 
     async def select_page(offset: int):
-        return await asyncio.to_thread(DataBaseManager(db_name).select, table=table, offset=offset, limit=page_size)
+        return await to_thread(DataBaseManager.init().select, table=table, offset=offset, limit=page_size)
 
     async def _get_page_generator() -> AsyncIterator[List[DataClass]]:
         offset = 0
