@@ -17,6 +17,7 @@ import configuration
 from consts import TimeInForce, OrderType, Side
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
+from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
 from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
     create_engine,
@@ -256,7 +257,10 @@ class _EncodedDataClass(types.UserDefinedType):
     def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
-                value = cattr.structure(value, self.type_)
+                if isinstance(dialect, SQLiteDialect_pysqlite):
+                    value = cattr.structure(json.loads(value), self.type_)
+                else:
+                    value = cattr.structure(value, self.type_)
             return value
 
         return process
