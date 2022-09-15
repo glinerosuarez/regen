@@ -1,3 +1,5 @@
+# TODO: test with sqlite
+"""
 import time
 
 import configuration
@@ -9,6 +11,7 @@ from vm.crypto_vm import CryptoViewModel
 
 def test_crypto_vm():
     DataBaseManager._engine = None
+    configuration.settings.ticks_per_episode = 3
     db_manager = DataBaseManager(configuration.settings.db_name)
 
     print(db_manager.select_all(Kline))
@@ -24,3 +27,4 @@ def test_crypto_vm():
     print(vm.step(Action.Buy))
 
     print("It's over my friend")
+"""
