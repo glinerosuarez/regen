@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
 from sqlalchemy.engine import Engine
-from typing import List, Optional, Type, Any, Callable, Iterable
+from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 from consts import TimeInForce, OrderType, Side
@@ -112,17 +112,18 @@ class DataBaseManager:
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)
 
-    def insert(self, records: DataClass | Iterable[DataClass]) -> int:
+    def insert(self, records: Union[DataClass, List[DataClass]]) -> int:
         """Insert a new row into a SQL table."""
 
         exception = None
 
         try:
-            match records:
-                case [*rows]:
-                    self.session.bulk_save_objects(rows)
-                case _:
-                    self.session.add(records)
+            if isinstance(records, list):
+                self.session.bulk_save_objects(records)
+            elif isinstance(records, DataClass):
+                self.session.add(records)
+            else:
+                raise ValueError(f"Unsupported type {type(records)} for records")
             self.session.commit()
         except IntegrityError as ie:
             exception = ie
@@ -135,8 +136,8 @@ class DataBaseManager:
     @staticmethod
     def _apply_conditions(
         table: Type[DataClass],
-        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
-        function: Callable = select,
+        conditions: Optional[Union[BinaryExpression, List[BinaryExpression]]] = None,
+        function=select,
     ):
         """
         Apply sql.expression and conditions to a table.
@@ -145,20 +146,19 @@ class DataBaseManager:
         :param function: SQLAlchemy sql.expression that allows for the where clause.
         :return: SQLAlchemy executable query object.
         """
-        match conditions:
-            case None:
-                sql_statement = function(table)
-            case [*cond]:
-                sql_statement = function(table).where(and_(*cond))
-            case _:
-                sql_statement = function(table).where(conditions)
+        if conditions is None:
+            sql_statement = function(table)
+        elif isinstance(conditions, list):
+            sql_statement = function(table).where(and_(*conditions))
+        else:
+            sql_statement = function(table).where(conditions)
 
         return sql_statement
 
     def select(
         self,
         table: Type[DataClass],
-        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        conditions: Optional[Union[BinaryExpression, List[BinaryExpression]]] = None,
         offset: int = 0,
         limit: int = 0,
     ) -> list:
@@ -184,7 +184,7 @@ class DataBaseManager:
         return [data[0] for data in self.session.execute(select(table))]
 
     def select_max(
-        self, col: InstrumentedAttribute, condition: Optional[BinaryExpression | bool] = None
+        self, col: InstrumentedAttribute, condition: Optional[Union[BinaryExpression, bool]] = None
     ) -> Optional[Any]:
         """
         Return the biggest value in a column.
@@ -200,7 +200,7 @@ class DataBaseManager:
     def delete(
         self,
         table: Type[DataClass],
-        conditions: Optional[BinaryExpression | list[BinaryExpression]] = None,
+        conditions: Optional[Union[BinaryExpression, List[BinaryExpression]]] = None,
         commit: bool = False,
     ) -> int:
         """
@@ -435,5 +435,5 @@ class Observation(DataClass):
     id: int = field(init=False)
     execution_id: str
     episode_id: int
-    klines: list[Kline]
+    klines: List[Kline]
     created_at: pendulum.DateTime = field(init=False, converter=pendulum.DateTime)

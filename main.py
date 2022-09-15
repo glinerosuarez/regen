@@ -132,10 +132,9 @@ if __name__ == "__main__":
         collect_data(pendulum.now())
     elif isinstance(args.collect, str):
         num, unit = args.collect.split()
-        match unit:
-            case "years":
-                collect_data(start_time=pendulum.now().subtract(years=int(num)), end_time=pendulum.now())
-            case _:
-                raise ValueError(f"Illegal unit: {unit}")
+        if unit == "years":
+            collect_data(start_time=pendulum.now().subtract(years=int(num)), end_time=pendulum.now())
+        else:
+            raise ValueError(f"Illegal unit: {unit}")
     elif args.collect > 0:
         collect_data(pendulum.now(), n_obs=args.collect)

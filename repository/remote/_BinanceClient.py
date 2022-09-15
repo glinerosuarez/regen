@@ -84,7 +84,7 @@ class BinanceClient:
         try:
             response = self.client.klines(symbol=str(pair), interval=interval.value, **args)
         except requests.exceptions.ConnectionError as connection_err:
-            self.logger.error(f"Remote disconnected: {connection_err=}")
+            self.logger.error(f"Remote disconnected connection_err: {connection_err}")
             self.client = self._get_client(False)
             return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
