@@ -8,7 +8,6 @@ from typing import Optional, Iterator, Tuple
 import pendulum
 import numpy as np
 
-import configuration
 import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
