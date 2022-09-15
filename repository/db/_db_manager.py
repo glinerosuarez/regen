@@ -12,9 +12,12 @@ from sqlalchemy.engine import Engine
 from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
+
+import configuration
 from consts import TimeInForce, OrderType, Side
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
+from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
 from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
     create_engine,
@@ -82,6 +85,18 @@ class DataBaseManager:
             future=True,
             # It's safe to do this because we never update objects from other threads, in fact, we never update.
             connect_args={"check_same_thread": False},
+        )
+
+    @staticmethod
+    def init():
+        return DataBaseManager(
+            configuration.settings.db_name,
+            DataBaseManager.EngineType.PostgreSQL
+            if configuration.settings.db_type == "postgres"
+            else DataBaseManager.EngineType.SQLite,
+            configuration.settings.db_host,
+            configuration.settings.db_user,
+            configuration.settings.db_password,
         )
 
     def __init__(
@@ -242,7 +257,10 @@ class _EncodedDataClass(types.UserDefinedType):
     def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
-                value = cattr.structure(json.loads(value), self.type_)
+                if isinstance(dialect, SQLiteDialect_pysqlite):
+                    value = cattr.structure(json.loads(value), self.type_)
+                else:
+                    value = cattr.structure(value, self.type_)
             return value
 
         return process
