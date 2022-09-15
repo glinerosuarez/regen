@@ -1,8 +1,8 @@
 import time
 import random
-from typing import Optional
+from typing import Optional, Tuple
 from collections import defaultdict
-from functools import cached_property
+from cached_property import cached_property
 
 import numpy as np
 
@@ -175,7 +175,7 @@ class CryptoViewModel:
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                self.logger.info(f"{self.last_trade_price=} {self.last_price=}")
+                self.logger.info(f"last_trade_price: {self.last_trade_price} last_price: {self.last_price}")
                 step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
 
             self.last_trade_price = self.last_price  # Update last trade price
@@ -217,7 +217,7 @@ class CryptoViewModel:
         for key, value in info.items():
             self.history[key].append(value)
 
-    def _place_order(self, side: Side) -> tuple[float, float]:
+    def _place_order(self, side: Side) -> Tuple[float, float]:
         # order = self.client.place_order(
         #    pair=self.trading_pair,
         #    side=side,
@@ -237,5 +237,5 @@ class CryptoViewModel:
 
     def _get_price(self):
         price = self.last_observation[-1][3]
-        self.logger.debug(f"Returning {price=} for {self.last_observation=}")
+        self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
         return price

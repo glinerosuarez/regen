@@ -1,5 +1,6 @@
 attrs
 binance-connector
+cached-property
 cattrs
 dynaconf
 gym
