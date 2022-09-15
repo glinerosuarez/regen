@@ -3,7 +3,7 @@ import logging
 
 import threading
 from queue import Queue
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Tuple
 
 import pendulum
 import numpy as np
@@ -135,7 +135,7 @@ class ObsProducer:
             if chunk_size == self.window_size:
                 yield chunk[:, :-1].astype(self._OBS_TYPE)
 
-    def get_observation(self) -> tuple[np.ndarray, Optional[bool]]:
+    def get_observation(self) -> Tuple[np.ndarray, Optional[bool]]:
         """
         Deliver an observation either from the database or a new one from the api.
         :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is

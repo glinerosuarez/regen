@@ -4,7 +4,7 @@ set -e
 
 # Formatter
 pip install black
-black -l 120 -t py310 --check .
+black -l 120 -t py37 --check .
 
 # Linter
 pip install flake8
