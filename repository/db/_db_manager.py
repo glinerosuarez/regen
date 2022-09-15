@@ -90,7 +90,9 @@ class DataBaseManager:
     def init():
         return DataBaseManager(
             configuration.settings.db_name,
-            DataBaseManager.EngineType.PostgreSQL if configuration.settings.db_type == "postgres" else DataBaseManager.EngineType.SQLite,
+            DataBaseManager.EngineType.PostgreSQL 
+            if configuration.settings.db_type == "postgres" 
+            else DataBaseManager.EngineType.SQLite,
             configuration.settings.db_host,
             configuration.settings.db_user,
             configuration.settings.db_password,
