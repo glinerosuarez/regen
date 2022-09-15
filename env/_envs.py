@@ -1,5 +1,5 @@
 import subprocess
-from typing import Optional
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
@@ -20,7 +20,7 @@ class CryptoTradingEnv(gym.Env):
     base_asset: CryptoAsset = field()
     quote_asset: CryptoAsset = field()
     base_balance: float = field()
-    shape: tuple[int] = field(init=False)
+    shape: Tuple[int] = field(init=False)
     vm: CryptoViewModel = field(init=False)
     action_space: spaces.Discrete = field(init=False)
     observation_space: spaces.Box = field(init=False)
@@ -37,7 +37,7 @@ class CryptoTradingEnv(gym.Env):
         )
 
     @shape.default
-    def init_shape(self) -> tuple[int]:
+    def init_shape(self) -> Tuple[int]:
         # Shape of a single observation.
         return self.window_size * 4  # 5 here means number of features, atm: open, high, low, close and volume values
 

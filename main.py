@@ -6,7 +6,7 @@ from typing import Optional
 import pendulum
 from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
-from stable_baselines3.common.cmd_util import make_vec_env
+from stable_baselines3.common.env_util import make_vec_env
 
 import configuration
 from consts import CryptoAsset
