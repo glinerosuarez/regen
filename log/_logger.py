@@ -32,7 +32,7 @@ class LoggerFactory:
             return logger
         else:
             # Set severity level.
-            logger.setLevel(logging.DEBUG)
+            logger.setLevel(logging.WARNING)
 
             # Create stderr handler.
             h_err: StreamHandler = StreamHandler(stderr)
@@ -67,16 +67,16 @@ class LoggerFactory:
             return logger
         else:
             # Set severity level.
-            logger.setLevel(logging.INFO)
+            logger.setLevel(logging.WARNING)
 
             # Create file stderr handler.
             err_handler = logging.FileHandler("output/logs/" + filename + "_stderr.log")
-            err_handler.setLevel(logging.INFO)
+            err_handler.setLevel(logging.WARNING)
             err_handler.addFilter(StdErrFilter())
 
             # Create stdout handler.
             out_handler = logging.FileHandler("output/logs/" + filename + "_stdout.log")
-            out_handler.setLevel(logging.INFO)
+            out_handler.setLevel(logging.WARNING)
             out_handler.addFilter(StdOutFilter())
 
             # Create formatter.
