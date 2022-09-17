@@ -75,13 +75,18 @@ class CryptoViewModel:
         if self.init_price is None:  # This should only happen when in the beginning of a new episode
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
         # TODO: does this break markov rules?
-        # We normalize prices dividing by the last trade price
+        # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
-        prices = (obs[:, :4] / non_null_last_trade_price).flatten()
-        std = prices.std()
-        prices = (prices - prices.mean()) / std
-        if np.isnan(prices).any() or std < 0.000001:
-            breakpoint()
+        prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
+        #std = prices.std()
+        #prices = (prices - prices.mean()) / std
+        #if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
+        #    self.logger.error(
+        #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
+        #        f"equal, this is an unlikely event probably due to an error in the source."
+        #    )
+        #
+        #    breakpoint()
 
         # Normalize volumes
         # TODO: possible div by zero when all volumes are equal
