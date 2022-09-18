@@ -13,11 +13,13 @@ settings = Dynaconf(
         Validator("app_name", is_type_of=str),
         Validator("db_name", is_type_of=str),
         Validator("ticks_per_episode", is_type_of=int),
-        Validator("db_user", is_type_of=str),
-        Validator("db_password", is_type_of=str),
-        Validator("db_host", is_type_of=str),
+        Validator("db_user", default=None),
+        Validator("db_password", default=None),
+        Validator("db_host", default=None),
         Validator("db_name", is_type_of=str),
         Validator("db_type", is_in=["sqlite", "postgres"]),
+        Validator("enable_live_mode", is_type_of=bool, default=False),
+        Validator("klines_buffer_size", is_type_of=int, default=10_000),
     ],
 )
 

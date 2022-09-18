@@ -22,25 +22,28 @@ class BinanceClient:
     Binance api client.
     """
 
-    @staticmethod
-    def _get_client(use_default_url: bool = True) -> Spot:
+    def get_client(self, use_default_url: bool = True) -> Spot:
         """
         Init a new spot client.
         :param use_default_url: If True, then use the first url provided in settings.bnb_client_key, else choose a
             random one.
         """
-        base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice(settings.bnb_base_url)
-        return Spot(base_url=base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
+        if (self._client is None) or (not use_default_url):
+            base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice(settings.bnb_base_url)
+            self._client = Spot(base_url=base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
+            return self._client
+        else:
+            return self._client
 
     def __init__(self):
-        self.client: Spot = self._get_client()
+        self._client = None
         self.logger: Logger = LoggerFactory.get_console_logger(__name__)
 
     def get_account_info(self) -> AccountInfo:
         """
         Get account information
         """
-        return AccountInfo(**self.client.account())
+        return AccountInfo(**self.get_client().account())
 
     def get_price(self, pair: TradingPair) -> float:
         """
@@ -48,7 +51,7 @@ class BinanceClient:
         :param pair: trading pair.
         :return: Latest price for a symbol
         """
-        return float(self.client.ticker_price(str(pair))["price"])
+        return float(self.get_client().ticker_price(str(pair))["price"])
 
     def get_current_avg_price(self, pair: TradingPair) -> AvgPrice:
         """
@@ -56,7 +59,7 @@ class BinanceClient:
         :param pair: trading pair.
         :return: AvgPrice record
         """
-        return AvgPrice(**self.client.avg_price(str(pair)))
+        return AvgPrice(**self.get_client().avg_price(str(pair)))
 
     def get_klines_data(
         self,
@@ -82,11 +85,10 @@ class BinanceClient:
         # Arguments to kwargs
         args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
         try:
-            response = self.client.klines(symbol=str(pair), interval=interval.value, **args)
+            response = self.get_client().klines(symbol=str(pair), interval=interval.value, **args)
         except requests.exceptions.ConnectionError as connection_err:
             self.logger.error(f"Remote disconnected connection_err: {connection_err}")
-            self.client = self._get_client(False)
-            return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
+            return self.get_client(False).get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
             Kline(
@@ -144,9 +146,9 @@ class BinanceClient:
         )
         try:
             if is_test:
-                self.client.new_order_test(**args)
+                self.get_client().new_order_test(**args)
                 return None
             else:
-                return Order(**self.client.new_order(**args))
+                return Order(**self.get_client().new_order(**args))
         except ClientError as e:
             LoggerFactory.get_console_logger(__name__).error(e)
