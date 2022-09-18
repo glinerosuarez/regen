@@ -21,6 +21,7 @@ class BinanceClient:
     """
     Binance api client.
     """
+
     def get_client(self, use_default_url: bool = True) -> Spot:
         """
         Init a new spot client.
