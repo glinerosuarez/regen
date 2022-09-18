@@ -15,7 +15,7 @@ from vm import KlineProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
-time_steps = 1_000_000
+time_steps = 471_040
 window_size = 5
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
