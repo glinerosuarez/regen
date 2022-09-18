@@ -18,6 +18,8 @@ settings = Dynaconf(
         Validator("db_host", default=None),
         Validator("db_name", is_type_of=str),
         Validator("db_type", is_in=["sqlite", "postgres"]),
+        Validator("enable_live_mode", is_type_of=bool, default=False),
+        Validator("klines_buffer_size", is_type_of=int, default=10_000),
     ],
 )
 
