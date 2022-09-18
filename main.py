@@ -8,6 +8,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.env_util import make_vec_env
 
+import configuration
 from consts import CryptoAsset
 from env import CryptoTradingEnv
 from repository.remote import BinanceClient
@@ -15,7 +16,6 @@ from vm import KlineProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
-time_steps = 471_040
 window_size = 5
 base_asset = CryptoAsset.BNB
 quote_asset = CryptoAsset.BUSD
@@ -39,11 +39,12 @@ def train():
 
     model = PPO("MultiInputPolicy", env, verbose=1)
     model.set_logger(new_logger)
-    model.learn(total_timesteps=time_steps)
+    steps = configuration.settings.time_steps
+    model.learn(total_timesteps=steps)
 
     ts = datetime.today()
     model.save(
-        f"output/models/PPO_{base_asset.name}{quote_asset.name}_{time_steps}_{ts.year}{ts.month}{ts.day}"
+        f"output/models/PPO_{base_asset.name}{quote_asset.name}_{steps}_{ts.year}{ts.month}{ts.day}"
         f"{ts.hour}{ts.minute}{ts.second}"
     )
 
