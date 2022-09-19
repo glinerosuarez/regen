@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 from itertools import chain
 from typing import Optional
 
@@ -8,45 +7,23 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.env_util import make_vec_env
 
-import configuration
-from consts import CryptoAsset
 from env import CryptoTradingEnv
+from execution import ExecutionContext
 from repository.remote import BinanceClient
 from vm import KlineProducer
 from repository.db import DataBaseManager
 from repository import TradingPair, Interval
 
-window_size = 5
-base_asset = CryptoAsset.BNB
-quote_asset = CryptoAsset.BUSD
-
 
 def train():
-    # TODO: Save logs and progress per execution
     # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
     # TODO: Train with more than 1 vectorized DummyVecEnv
     # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
-    # TODO: Use callbacks to get bets models or to log values
+    # TODO: Use callbacks to get best models or to log values
     # TODO: Implement tensorboard, weights and biases
     # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
 
-    env = CryptoTradingEnv(window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=100)
-    env = make_vec_env(lambda: env, n_envs=1)
-
-    # set up logger
-    tmp_path = "output/logs/"
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
-
-    model = PPO("MultiInputPolicy", env, verbose=1)
-    model.set_logger(new_logger)
-    steps = configuration.settings.time_steps
-    model.learn(total_timesteps=steps)
-
-    ts = datetime.today()
-    model.save(
-        f"output/models/PPO_{base_asset.name}{quote_asset.name}_{steps}_{ts.year}{ts.month}{ts.day}"
-        f"{ts.hour}{ts.minute}{ts.second}"
-    )
+    ExecutionContext().train()
 
 
 def collect_data(

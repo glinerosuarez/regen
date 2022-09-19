@@ -3,7 +3,7 @@ import copy
 import cattr
 import inspect
 
-from attr import attrs, attrib
+from attr import attrs, attrib, define
 from consts import CryptoAsset
 from attr.validators import instance_of
 from typing import List, Union, Optional
