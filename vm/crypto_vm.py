@@ -2,16 +2,13 @@ import time
 import random
 from typing import Optional, Tuple
 from collections import defaultdict
-from cached_property import cached_property
 
 import numpy as np
 
 import conf
 import log
-import configuration
-from consts import CryptoAsset, Side
+from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
-from consts import Action, Position
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
 from repository import EnvState, TradingPair
@@ -143,7 +140,7 @@ class CryptoViewModel:
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
-        if self.current_tick >= configuration.settings.ticks_per_episode:
+        if self.current_tick >= conf.settings.ticks_per_episode:
             self.done = True
 
         return (

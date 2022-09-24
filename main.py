@@ -3,11 +3,8 @@ from itertools import chain
 from typing import Optional
 
 import pendulum
-from stable_baselines3 import PPO
-from stable_baselines3.common.logger import configure
-from stable_baselines3.common.env_util import make_vec_env
 
-from env import CryptoTradingEnv
+from conf.consts import CryptoAsset
 from execution import ExecutionContext
 from repository.remote import BinanceClient
 from vm import KlineProducer
@@ -35,6 +32,7 @@ def collect_data(
     :param end_time: close time for the last kline, it will be converted to the end of the interval
     :param n_obs: total number of records to get.
     """
+    base_asset, quote_asset = CryptoAsset.BNB, CryptoAsset.BUSD
 
     def get_kline_history(start: pendulum.DateTime, end: pendulum.DateTime, interval: Interval = Interval.M_1) -> None:
         """
@@ -58,7 +56,7 @@ def collect_data(
         for next_point in points:
             end_point = next_point.end_of("minute")
             for kl in api_client.get_klines_data(
-                TradingPair(CryptoAsset.BNB, CryptoAsset.BUSD), Interval.M_1, start_point, end_point, limit
+                TradingPair(base_asset, quote_asset), Interval.M_1, start_point, end_point, limit
             ):
                 db_manager.insert(kl)
 

@@ -50,4 +50,4 @@ class ExecutionContext:
         self._execution.end = pendulum.now().timestamp()
         self.db_manager.session.commit()
 
-        self.model.save(conf.settings.output_dir / self.exec_id / f"model/PPO")
+        self.model.save(conf.settings.output_dir / self.exec_id / "model/PPO")
