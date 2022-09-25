@@ -18,7 +18,7 @@ settings = Dynaconf(
         Validator("db_name", is_type_of=str),
         Validator("base_asset", is_type_of=str, is_in=CryptoAsset.__members__, default=CryptoAsset.BNB.value),
         Validator("quote_asset", is_type_of=str, is_in=CryptoAsset.__members__, default=CryptoAsset.BUSD.value),
-        Validator("window_size", is_type_of=int),
+        Validator("window_size", is_type_of=int, default=5),
         Validator("ticks_per_episode", is_type_of=int),
         Validator("time_steps", is_type_of=int),
         Validator("output_dir", is_type_of=str, default=str((Path() / "output").absolute())),
