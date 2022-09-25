@@ -13,8 +13,8 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-import configuration
-from consts import TimeInForce, OrderType, Side, Algorithm
+import conf
+from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
@@ -38,7 +38,6 @@ from sqlalchemy import (
 )
 
 from log import LoggerFactory
-from consts import Position, Action
 
 
 class DataBaseManager:
@@ -90,13 +89,13 @@ class DataBaseManager:
     @staticmethod
     def init():
         return DataBaseManager(
-            configuration.settings.db_name,
+            conf.settings.db_name,
             DataBaseManager.EngineType.PostgreSQL
-            if configuration.settings.db_type == "postgres"
+            if conf.settings.db_type == "postgres"
             else DataBaseManager.EngineType.SQLite,
-            configuration.settings.db_host,
-            configuration.settings.db_user,
-            configuration.settings.db_password,
+            conf.settings.db_host,
+            conf.settings.db_user,
+            conf.settings.db_password,
         )
 
     def __init__(
