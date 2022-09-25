@@ -18,8 +18,6 @@ from repository.db import Kline, get_db_async_generator
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
 
-    # TODO: test that kline values don't differ after some time
-
     def __init__(self, trading_pair: TradingPair, daemon: bool = True):
         super(KlineProducer, self).__init__(daemon=daemon)
 
@@ -76,7 +74,6 @@ class KlineProducer(threading.Thread):
             schedule_task = asyncio.create_task(self.schedule_job())  # Start getting klines from the api
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
-        # TODO: This will return all the klines records in the database regardless of their trading pair.
         async for db_kline in get_db_async_generator(Kline, conf.settings.klines_buffer_size):
             self.queue.put(db_kline)
 

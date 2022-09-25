@@ -112,7 +112,6 @@ class DataBaseManager:
         """
         self.db_name = db_name
 
-        # TODO: It seems this function is not working, I'm not seeing the log files created
         self.logger = LoggerFactory.get_file_logger(
             name="sqlalchemy",
             filename=conf.settings.output_dir / "logs" / "db",
@@ -290,7 +289,7 @@ class Order(DataClass):
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
-        Column("fills", _EncodedDataClass(List[Fill])),  # TODO: create a fills table
+        Column("fills", _EncodedDataClass(List[Fill])),
     )
 
     symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)

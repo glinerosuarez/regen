@@ -46,7 +46,6 @@ class CryptoTradingEnv(gym.Env):
         # Actions of the format Buy x%, Sell x%, Hold, etc.
         return spaces.Discrete(len(Action))
 
-    # TODO: sb recommends to flatten the klines array
     @observation_space.default
     def init_observation_space(self) -> spaces.Dict:
         return spaces.Dict(

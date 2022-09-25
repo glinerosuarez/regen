@@ -11,7 +11,7 @@ from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
-from repository import EnvState, TradingPair, DataSourceException
+from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
@@ -70,7 +70,6 @@ class CryptoViewModel:
         """Flatten and normalize an observation"""
         obs = obs.copy()  # it's ok to shallow copy because we only store doubles, and I don't think that will change
         # The initial price is the last price in the first observation
-        # TODO: Init price should be the price we last traded at, so we should keep track of that price across episodes
         if self.init_price is None:  # This should only happen when in the beginning of a new episode
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
         # TODO: does this break markov rules?
@@ -80,14 +79,14 @@ class CryptoViewModel:
         std = prices.std()
         prices = (prices - prices.mean()) / std
         if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
-            raise DataSourceException(
+            self.logger.error(
                 f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
                 f"equal, this is an unlikely event probably due to an error in the source."
             )
+            self.logger.warning("returning an array of zeros for this observation.")
+            return np.zeros(prices.shape)
 
         # Normalize volumes
-        # TODO: possible div by zero when all volumes are equal
-        # TODO:not sure about how to normalize vols, is it necessary to take into account other obs for the calculation?
         # vols = obs[:, -1].flatten()
         # vols = preprocessing.normalize(vols.reshape(1, -1))
         # return np.hstack((prices, vols))
@@ -100,8 +99,6 @@ class CryptoViewModel:
         self.current_tick = self.window_size
 
         # We always start longing
-        # TODO: Remove the option that allows passing quote balance, since our purpose is always to accumulate the base
-        #  asset
         if self.base_balance < self.quote_balance:
             self._place_order(Side.SELL)
 
@@ -224,7 +221,6 @@ class CryptoViewModel:
         #    quantity=self.balance,
         #    new_client_order_id=self.execution_id
         # )
-        # TODO: Get trade price.
         # TODO: Add a trade_fee_percent to make training harder for the agent
         price = self._get_price()
         # The price and quantity will be returned by client.place_order.
