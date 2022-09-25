@@ -11,7 +11,7 @@ from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
-from repository import EnvState, TradingPair
+from repository import EnvState, TradingPair, DataSourceException
 
 
 class CryptoViewModel:
@@ -79,13 +79,11 @@ class CryptoViewModel:
         prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
         std = prices.std()
         prices = (prices - prices.mean()) / std
-        # if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
-        #    self.logger.error(
-        #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
-        #        f"equal, this is an unlikely event probably due to an error in the source."
-        #    )
-        #
-        #    breakpoint()
+        if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
+            raise DataSourceException(
+                f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
+                f"equal, this is an unlikely event probably due to an error in the source."
+            )
 
         # Normalize volumes
         # TODO: possible div by zero when all volumes are equal
