@@ -29,8 +29,12 @@ class BinanceClient:
             random one.
         """
         if (self._client is None) or (not use_default_url):
-            base_url = conf.settings.bnb_base_url[0] if use_default_url is True else random.choice(conf.settings.bnb_base_url)
-            self._client = Spot(base_url=base_url, key=conf.settings.bnb_client_key, secret=conf.settings.bnb_client_secret)
+            base_url = (
+                conf.settings.bnb_base_url[0] if use_default_url is True else random.choice(conf.settings.bnb_base_url)
+            )
+            self._client = Spot(
+                base_url=base_url, key=conf.settings.bnb_client_key, secret=conf.settings.bnb_client_secret
+            )
             return self._client
         else:
             return self._client
