@@ -1,6 +1,6 @@
 [default]
 app_name = "regen"
-time_steps = 471_040  # Number of time steps to train the model
+time_steps = 500_000  # Number of time steps to train the model
 ticks_per_episode = 1_440  # at 1 tick per second, this means that an episode last 1 hour - window_size minutes aprox.
 
 [development]

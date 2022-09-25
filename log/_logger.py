@@ -70,12 +70,12 @@ class LoggerFactory:
             logger.setLevel(logging.WARNING)
 
             # Create file stderr handler.
-            err_handler = logging.FileHandler("output/logs/" + filename + "_stderr.log")
+            err_handler = logging.FileHandler(filename + "_stderr.log")
             err_handler.setLevel(logging.WARNING)
             err_handler.addFilter(StdErrFilter())
 
             # Create stdout handler.
-            out_handler = logging.FileHandler("output/logs/" + filename + "_stdout.log")
+            out_handler = logging.FileHandler(filename + "_stdout.log")
             out_handler.setLevel(logging.WARNING)
             out_handler.addFilter(StdOutFilter())
 
