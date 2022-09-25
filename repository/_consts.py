@@ -1,7 +1,8 @@
 import enum
 from typing import Union
 from attr import attrs, attrib
-from consts import CryptoAsset
+
+from conf.consts import CryptoAsset
 from repository._dataclass import DataClass
 
 
