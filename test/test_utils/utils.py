@@ -1,4 +1,4 @@
-from consts import CryptoAsset
+from conf.consts import CryptoAsset
 from repository.db import Kline, DataBaseManager
 from repository import TradingPair
 

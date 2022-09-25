@@ -504,6 +504,6 @@ class Execution(DataClass):
 
     __mapper_args__ = {  # type: ignore
         "properties": {
-            "settings": relationship("train_settings", uselist=False, backref="execution"),
+            "settings": relationship("TrainSettings", uselist=False, backref="Execution"),
         }
     }
