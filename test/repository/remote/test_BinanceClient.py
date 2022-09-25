@@ -2,9 +2,8 @@ from datetime import datetime
 
 import pendulum
 
-from consts import Side, OrderType
+from conf.consts import CryptoAsset, Side, OrderType, TimeInForce
 from repository.remote import BinanceClient
-from consts import CryptoAsset, TimeInForce
 from functions.utils import datetime_to_ts_ms
 from repository._dataclass import TradingPair
 from repository._consts import AccountType, AccountPermission, Interval
