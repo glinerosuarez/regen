@@ -3,6 +3,7 @@ import copy
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+import conf
 from conf.consts import Position, Action, CryptoAsset
 from repository._dataclass import TradingPair
 from test import test_utils
@@ -10,8 +11,10 @@ from repository import AccountType, Observation
 from repository.db import DataBaseManager, Order, AccountInfo, EnvState, Kline
 
 db_name = ":memory:"
+conf.settings.execution_id = 1
 db_manager = DataBaseManager(db_name)
 db_manager2 = DataBaseManager(db_name)
+
 data = Order(
     symbol="BNBBUSD",
     orderId="12345",

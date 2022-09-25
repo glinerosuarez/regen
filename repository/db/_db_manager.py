@@ -115,7 +115,7 @@ class DataBaseManager:
         # TODO: It seems this function is not working, I'm not seeing the log files created
         self.logger = LoggerFactory.get_file_logger(
             name="sqlalchemy",
-            filename=conf.settings.output_dir / conf.settings.execution_id / "logs" / "db",
+            filename=conf.settings.output_dir / str(conf.settings.execution_id) / "logs" / "db",
         )
 
         # Connect to a database or create a new database if it does not exist.
