@@ -4,9 +4,9 @@ from typing import Optional, Tuple
 import gym
 import numpy as np
 from gym import spaces
-from consts import Action, Position
 from attr import define, field
-from consts import CryptoAsset
+
+from conf.consts import CryptoAsset, Action, Position
 from vm.crypto_vm import CryptoViewModel
 
 

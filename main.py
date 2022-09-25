@@ -20,7 +20,8 @@ def train():
     # TODO: Implement tensorboard, weights and biases
     # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
 
-    ExecutionContext().train()
+    context = ExecutionContext()
+    context.train()
 
 
 def collect_data(

@@ -15,11 +15,6 @@ class ExecutionContext:
         pair = TradingPair(conf.settings.base_asset, conf.settings.quote_asset)
         self.db_manager = DataBaseManager.init()
 
-        env = CryptoTradingEnv(
-            window_size=conf.settings.window_size, base_asset=pair.base, quote_asset=pair.quote, base_balance=100
-        )
-        self.env = make_vec_env(lambda: env, n_envs=1)
-
         self._execution = Execution(
             pair=pair,
             algorithm=conf.consts.Algorithm.PPO,
@@ -29,7 +24,7 @@ class ExecutionContext:
                 db_name=conf.settings.db_name,
                 window_size=conf.settings.window_size,
                 ticks_per_episode=conf.settings.ticks_per_episode,
-                is_live_mode=conf.settings.is_live_mode,
+                is_live_mode=conf.settings.enable_live_mode,
                 klines_buffer_size=conf.settings.klines_buffer_size,
             ),
         )
@@ -37,8 +32,13 @@ class ExecutionContext:
         self.exec_id = str(self._execution.id)
         conf.settings.execution_id = self.exec_id
 
+        env = CryptoTradingEnv(
+            window_size=conf.settings.window_size, base_asset=pair.base, quote_asset=pair.quote, base_balance=100
+        )
+        self.env = make_vec_env(lambda: env, n_envs=1)
+
         # set up logger
-        logs_path = conf.settings.output_dir / self.exec_id / "logs/"
+        logs_path = str(conf.settings.output_dir / self.exec_id / "logs/")
         train_logger = logger.configure(logs_path, ["stdout", "csv", "tensorboard"])
 
         self.model = PPO("MultiInputPolicy", env, verbose=1)

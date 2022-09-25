@@ -499,7 +499,7 @@ class Execution(DataClass):
     algorithm: Algorithm
     n_steps: int
     start: float
-    end: float
+    end: float = field(init=False)
     settings: TrainSettings
 
     __mapper_args__ = {  # type: ignore

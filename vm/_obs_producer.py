@@ -8,7 +8,7 @@ from typing import Optional, Iterator, Tuple
 import pendulum
 import numpy as np
 
-import configuration
+import conf
 import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
@@ -26,10 +26,10 @@ class KlineProducer(threading.Thread):
         now = pendulum.now()
         self.trading_pair = trading_pair
         # True to continuously request new klines from the api
-        self.enable_live_mode = configuration.settings.enable_live_mode
-        self.queue = Queue(configuration.settings.klines_buffer_size)  # interface to expose klines to the main thread
+        self.enable_live_mode = conf.settings.enable_live_mode
+        self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
         # buffer for klines that come directly from the api
-        self._api_queue = asyncio.Queue(configuration.settings.klines_buffer_size)
+        self._api_queue = asyncio.Queue(conf.settings.klines_buffer_size)
         self.client = BinanceClient()
         self.last_stime = now.subtract(minutes=1).start_of("minute")  # we will start getting klines from this minute
         self.last_etime = now.subtract(minutes=1).end_of("minute")
@@ -77,7 +77,7 @@ class KlineProducer(threading.Thread):
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
         # TODO: This will return all the klines records in the database regardless of their trading pair.
-        async for db_kline in get_db_async_generator(Kline, configuration.settings.klines_buffer_size):
+        async for db_kline in get_db_async_generator(Kline, conf.settings.klines_buffer_size):
             self.queue.put(db_kline)
 
         while self.enable_live_mode:  # Get klines from api

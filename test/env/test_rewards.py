@@ -1,8 +1,8 @@
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from consts import CryptoAsset
+import conf
+from conf.consts import CryptoAsset, Action
 from env import CryptoTradingEnv
-from consts import Action
 from repository import TradingPair
 from repository.db import DataBaseManager, Kline
 
@@ -291,6 +291,7 @@ klines = [
 
 
 def test_rewards():
+    conf.settings.execution_id = 1
     db_client = DataBaseManager("test_regen")
     db_client.delete(Kline, commit=True)
 
