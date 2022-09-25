@@ -4,9 +4,10 @@ import cattr
 import inspect
 
 from attr import attrs, attrib
-from consts import CryptoAsset
 from attr.validators import instance_of
 from typing import List, Union, Optional
+
+from conf.consts import CryptoAsset
 
 
 @attrs

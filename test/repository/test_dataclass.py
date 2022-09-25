@@ -1,6 +1,6 @@
 import numpy as np
 
-from consts import CryptoAsset
+from conf.consts import CryptoAsset
 from repository.db import Kline
 from repository._dataclass import TradingPair
 

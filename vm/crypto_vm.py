@@ -2,15 +2,13 @@ import time
 import random
 from typing import Optional, Tuple
 from collections import defaultdict
-from cached_property import cached_property
 
 import numpy as np
 
+import conf
 import log
-import configuration
-from consts import CryptoAsset, Side
+from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
-from consts import Action, Position
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
 from repository import EnvState, TradingPair
@@ -35,6 +33,7 @@ class CryptoViewModel:
         if not base_balance and not quote_balance:
             raise ValueError("Both base_balance and quote_balance are equal to zero, you need assets to create the env")
 
+        self.execution_id = conf.settings.execution_id
         self.base_asset = base_asset
         self.quote_asset = quote_asset
         self.trading_pair = TradingPair(base_asset, quote_asset)
@@ -141,7 +140,7 @@ class CryptoViewModel:
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
-        if self.current_tick >= configuration.settings.ticks_per_episode:
+        if self.current_tick >= conf.settings.ticks_per_episode:
             self.done = True
 
         return (
@@ -150,11 +149,6 @@ class CryptoViewModel:
             self.done,
             info,
         )
-
-    @cached_property
-    def execution_id(self) -> int:
-        last_exec_id = self.db_manager.select_max(EnvState.execution_id)
-        return 1 if last_exec_id is None else last_exec_id + 1
 
     def _get_last_episode_id(self) -> Optional[int]:
         """Get the last episode id in this execution, return None if there's no last episode id."""

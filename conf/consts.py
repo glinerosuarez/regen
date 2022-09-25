@@ -87,3 +87,7 @@ class Position(enum.Enum):
 
     def opposite(self):
         return Position.Short if self == Position.Long else Position.Long
+
+
+class Algorithm(enum.Enum):
+    PPO = "ppo"

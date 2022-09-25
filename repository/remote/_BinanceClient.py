@@ -7,13 +7,13 @@ import requests
 from binance.spot import Spot
 from binance.error import ClientError
 
+import conf
+from conf.consts import Side, OrderType, TimeInForce
 from log import LoggerFactory
 from repository import Interval
-from configuration import settings
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
 from repository._dataclass import TradingPair
-from consts import Side, OrderType, TimeInForce
 from repository.db import AccountInfo, Order, Kline
 
 
@@ -29,8 +29,12 @@ class BinanceClient:
             random one.
         """
         if (self._client is None) or (not use_default_url):
-            base_url = settings.bnb_base_url[0] if use_default_url is True else random.choice(settings.bnb_base_url)
-            self._client = Spot(base_url=base_url, key=settings.bnb_client_key, secret=settings.bnb_client_secret)
+            base_url = (
+                conf.settings.bnb_base_url[0] if use_default_url is True else random.choice(conf.settings.bnb_base_url)
+            )
+            self._client = Spot(
+                base_url=base_url, key=conf.settings.bnb_client_key, secret=conf.settings.bnb_client_secret
+            )
             return self._client
         else:
             return self._client

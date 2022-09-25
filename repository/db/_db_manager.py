@@ -13,8 +13,8 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-import configuration
-from consts import TimeInForce, OrderType, Side
+import conf
+from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
@@ -38,7 +38,6 @@ from sqlalchemy import (
 )
 
 from log import LoggerFactory
-from consts import Position, Action
 
 
 class DataBaseManager:
@@ -90,13 +89,13 @@ class DataBaseManager:
     @staticmethod
     def init():
         return DataBaseManager(
-            configuration.settings.db_name,
+            conf.settings.db_name,
             DataBaseManager.EngineType.PostgreSQL
-            if configuration.settings.db_type == "postgres"
+            if conf.settings.db_type == "postgres"
             else DataBaseManager.EngineType.SQLite,
-            configuration.settings.db_host,
-            configuration.settings.db_user,
-            configuration.settings.db_password,
+            conf.settings.db_host,
+            conf.settings.db_user,
+            conf.settings.db_password,
         )
 
     def __init__(
@@ -455,3 +454,56 @@ class Observation(DataClass):
     episode_id: int
     klines: List[Kline]
     created_at: pendulum.DateTime = field(init=False, converter=pendulum.DateTime)
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class TrainSettings:
+    __table__ = Table(
+        "train_settings",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("execution_id", ForeignKey("execution.id")),
+        Column("db_name", String, nullable=False),
+        Column("window_size", Integer, nullable=False),
+        Column("ticks_per_episode", Integer, nullable=False),
+        Column("is_live_mode", Boolean, nullable=False),
+        Column("klines_buffer_size", Integer, nullable=False),
+    )
+
+    id: int = field(init=False)
+    execution_id: int = field(init=False)
+    db_name: str
+    window_size: int
+    ticks_per_episode: int
+    is_live_mode: bool
+    klines_buffer_size: int
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class Execution(DataClass):
+    __table__ = Table(
+        "execution",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("pair", _EncodedDataClass(TradingPair), nullable=False),
+        Column("algorithm", Enum(Algorithm), nullable=False),
+        Column("n_steps", BigInteger, nullable=False),
+        Column("start", Float, nullable=False, unique=True),
+        Column("end", Float, nullable=True, unique=True),
+    )
+
+    id: int = field(init=False)
+    pair: TradingPair = field(converter=TradingPair.structure, validator=instance_of(TradingPair))
+    algorithm: Algorithm
+    n_steps: int
+    start: float
+    end: float = field(init=False)
+    settings: TrainSettings
+
+    __mapper_args__ = {  # type: ignore
+        "properties": {
+            "settings": relationship("TrainSettings", uselist=False, backref="Execution"),
+        }
+    }

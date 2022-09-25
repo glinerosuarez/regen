@@ -1,6 +1,7 @@
 from stable_baselines3.common.env_checker import check_env
 
-from consts import CryptoAsset
+import conf
+from conf.consts import CryptoAsset
 from env import CryptoTradingEnv
 
 
@@ -29,14 +30,8 @@ def test_cryptoenv():
     # _execute_steps(env)
 
 
-def test_observations():
-    from stable_baselines3.common.envs import SimpleMultiObsEnv
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-
-    env = SimpleMultiObsEnv(random_start=False)
-
-
 if __name__ == "__main__":
+    conf.settings.execution_id = 10
     env = CryptoTradingEnv(
         window_size=1_440, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
     )

@@ -1,8 +1,8 @@
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from consts import CryptoAsset
+import conf
+from conf.consts import CryptoAsset, Action
 from env import CryptoTradingEnv
-from consts import Action
 from repository import TradingPair
 from repository.db import DataBaseManager, Kline
 
@@ -291,7 +291,10 @@ klines = [
 
 
 def test_rewards():
-    db_client = DataBaseManager("test_regen")
+    conf.settings.execution_id = 1
+    DataBaseManager._engine = None
+
+    db_client = DataBaseManager("test_rewards_db")
     db_client.delete(Kline, commit=True)
 
     for kl in klines:
@@ -349,7 +352,3 @@ def test_rewards():
         total_reward += reward[0]
 
     assert round(total_reward, 7) == round(expected_reward, 7)
-
-
-if __name__ == "__main__":
-    test_rewards()
