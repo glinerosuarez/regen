@@ -59,7 +59,7 @@ class DataBaseManager:
         if e_type == DataBaseManager.EngineType.PostgreSQL:
             return f"postgresql+psycopg2://{user}:{password}@{host}:5432/{db_name}"
         elif e_type == DataBaseManager.EngineType.SQLite:
-            db_filename = ":memory:" if db_name == ":memory:" else {conf.settings.db_file_location} / {db_name}
+            db_filename = ":memory:" if db_name == ":memory:" else f"{conf.settings.db_file_location}/{db_name}"
             return f"sqlite+pysqlite:///{db_filename}"
         else:
             raise ValueError(f"unimplemented engine type: {e_type}")
