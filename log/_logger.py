@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from sys import stderr, stdout
 from logging import Logger, StreamHandler, Formatter, LogRecord, Filter
 
@@ -59,6 +60,7 @@ class LoggerFactory:
 
     @staticmethod
     def get_file_logger(name: str, filename: str = "logs") -> Logger:
+        filename = str(Path(filename).absolute())
         # Create logger.
         logger: Logger = logging.getLogger(name)
 
