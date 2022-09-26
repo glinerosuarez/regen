@@ -12,3 +12,6 @@ __pycache__
 .idea
 .pytest_cache
 __pycache__
+
+# database
+db_snapshots

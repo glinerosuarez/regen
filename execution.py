@@ -2,6 +2,7 @@ import pendulum
 from stable_baselines3 import PPO
 from stable_baselines3.common import logger
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import VecNormalize
 
 import conf
 from env import CryptoTradingEnv
@@ -35,6 +36,7 @@ class ExecutionContext:
         env = CryptoTradingEnv(
             window_size=conf.settings.window_size, base_asset=pair.base, quote_asset=pair.quote, base_balance=100
         )
+        env = VecNormalize(env, norm_obs=False, norm_reward=True)
         self.env = make_vec_env(lambda: env, n_envs=1)
 
         # set up logger
