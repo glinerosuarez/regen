@@ -362,6 +362,8 @@ class EnvState(DataClass):
         Column("position", Enum(Position, name="tradingposition"), nullable=False),
         Column("action", Enum(Action), nullable=False),
         Column("is_trade", Boolean, nullable=False),
+        Column("reward", Float, nullable=True),
+        Column("cum_reward", Float, nullable=True),
         Column("ts", Float, nullable=False),
     )
 
@@ -373,6 +375,8 @@ class EnvState(DataClass):
     position: Position = attrib()
     action: Action = attrib()
     is_trade: bool = attrib()
+    reward: float = attrib()
+    cum_reward: float = attrib()
     ts: float = attrib()
 
     @state_id.default

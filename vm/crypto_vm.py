@@ -176,17 +176,17 @@ class CryptoViewModel:
 
             self.last_trade_price = self.last_price  # Update last trade price
 
-            self._store_env_state_data(action, is_trade=True)
+            self._store_env_state_data(action, step_reward, is_trade=True)
             self._update_balances(action, quantity, self.last_price)
 
             self.position = self.position.opposite()
         else:
             self.last_price = self._get_price()
-            self._store_env_state_data(action, is_trade=False)
+            self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
 
-    def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
+    def _store_env_state_data(self, action: Action, reward: float, is_trade: bool) -> None:
         self.db_manager.insert(
             EnvState(
                 execution_id=self.execution_id,
@@ -196,6 +196,8 @@ class CryptoViewModel:
                 position=self.position,
                 action=action,
                 is_trade=is_trade,
+                reward=reward,
+                cum_reward=reward + self.total_reward,
                 ts=time.time(),
             )
         )
