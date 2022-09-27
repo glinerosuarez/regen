@@ -5,7 +5,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
 import conf
-from env import CryptoTradingEnv
+from env import CryptoTradingEnv, build_crypto_trading_env
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution, TrainSettings
 
@@ -33,17 +33,15 @@ class ExecutionContext:
         self.exec_id = str(self._execution.id)
         conf.settings.execution_id = self.exec_id
 
-        env = CryptoTradingEnv(
+        self.env = build_crypto_trading_env(
             window_size=conf.settings.window_size, base_asset=pair.base, quote_asset=pair.quote, base_balance=100
         )
-        env = VecNormalize(env, norm_obs=False, norm_reward=True)
-        self.env = make_vec_env(lambda: env, n_envs=1)
 
         # set up logger
         logs_path = str(conf.settings.output_dir / self.exec_id / "logs/")
         train_logger = logger.configure(logs_path, ["stdout", "csv", "tensorboard"])
 
-        self.model = PPO("MultiInputPolicy", env, verbose=1)
+        self.model = PPO("MultiInputPolicy", self.env, verbose=1)
         self.model.set_logger(train_logger)
 
     def train(self):

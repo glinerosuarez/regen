@@ -5,13 +5,24 @@ import gym
 import numpy as np
 from gym import spaces
 from attr import define, field
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import VecNormalize
 
 from conf.consts import CryptoAsset, Action, Position
 from vm.crypto_vm import CryptoViewModel
 
 
+def build_crypto_trading_env(window_size: int, base_asset: CryptoAsset, quote_asset: CryptoAsset, base_balance: float):
+    env = _CryptoTradingEnv(
+        window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=base_balance
+    )
+    env = make_vec_env(lambda: env, n_envs=1)
+    return VecNormalize(env, norm_obs=False, norm_reward=True)
+
+
+
 @define
-class CryptoTradingEnv(gym.Env):
+class _CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
 
     metadata = {"render.modes": ["live"]}

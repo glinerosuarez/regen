@@ -58,6 +58,8 @@ env_state = EnvState(
     position=Position.Long,
     action=Action.Sell,
     is_trade=False,
+    reward=0.01,
+    cum_reward=0.1,
     ts=1651992028.7183151,
 )
 
