@@ -25,7 +25,9 @@ def _execute_steps(env):
 
 def test_cryptoenv():
     # WARNING: since the minimum observation frequency is 1 min, this will take several minutes to run.
-    env = build_crypto_trading_env(window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100)
+    env = build_crypto_trading_env(
+        window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
+    )
     check_env(env)
     # _execute_steps(env)
 

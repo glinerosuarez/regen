@@ -20,7 +20,6 @@ def build_crypto_trading_env(window_size: int, base_asset: CryptoAsset, quote_as
     return VecNormalize(env, norm_obs=False, norm_reward=True)
 
 
-
 @define
 class _CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
