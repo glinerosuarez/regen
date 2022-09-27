@@ -1,11 +1,9 @@
 import pendulum
 from stable_baselines3 import PPO
 from stable_baselines3.common import logger
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import VecNormalize
 
 import conf
-from env import CryptoTradingEnv, build_crypto_trading_env
+from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution, TrainSettings
 
