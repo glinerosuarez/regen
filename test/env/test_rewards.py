@@ -1,8 +1,6 @@
-from stable_baselines3.common.vec_env import DummyVecEnv
-
 import conf
 from conf.consts import CryptoAsset, Action
-from env import CryptoTradingEnv
+from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import DataBaseManager, Kline
 
@@ -341,8 +339,9 @@ def test_rewards():
     )
 
     total_reward = 0
-    env = CryptoTradingEnv(window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100)
-    env = DummyVecEnv([lambda: env])
+    env = build_crypto_trading_env(
+        window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
+    )
     # env = VecNormalize(env, norm_obs_keys=["klines"])
     obs = env.reset()
 
