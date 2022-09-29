@@ -1,3 +1,5 @@
+import numpy as np
+
 import conf
 from conf.consts import CryptoAsset, Action
 from env import build_crypto_trading_env
@@ -292,7 +294,7 @@ def test_rewards():
     conf.settings.execution_id = 1
     DataBaseManager._engine = None
 
-    db_client = DataBaseManager("test_rewards_db")
+    db_client = DataBaseManager("test_rewards")
     db_client.delete(Kline, commit=True)
 
     for kl in klines:
@@ -332,22 +334,54 @@ def test_rewards():
         23.5594,
     ]
 
-    expected_reward = (
-        ((prices[0] - prices[4]) / prices[0])
-        + ((prices[6] - prices[7]) / prices[6])
-        + ((prices[11] - prices[13]) / prices[11])
-    )
+    expected_rewards = [
+        0, 0, 0, 0,
+        ((prices[0] - prices[4]) / prices[0]), 0, 0,
+        ((prices[6] - prices[7]) / prices[6]), 0, 0, 0 , 0, 0,
+        ((prices[11] - prices[13]) / prices[11])
+    ]
 
-    total_reward = 0
+    # Normalize expected rewards
+    mean = 0
+    var = 1
+    count = 1e-4
+    norm_expected_rewards = []
+    for r in expected_rewards:
+        delta = r - mean
+        tot_count = count + 1
+
+        new_mean = mean + delta * 1 / tot_count
+        m_a = var * count
+        m_b = 0
+        m_2 = m_a + m_b + np.square(delta) * count * 1 / (count + 1)
+        new_var = m_2 / (count + 1)
+
+        new_count = 1 + count
+
+        mean = new_mean
+        var = new_var
+        count = new_count
+
+        norm_expected_rewards.append(np.clip(r / np.sqrt(var + 1e-8), - 10, 10))
+
+    tot_expected_reward = sum(norm_expected_rewards)
+
+    rewards = []
+    DataBaseManager._engine = None
+    del db_client
+    conf.settings.db_name = "test_rewards"
     env = build_crypto_trading_env(
         window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
     )
-    # env = VecNormalize(env, norm_obs_keys=["klines"])
     obs = env.reset()
 
     for i, a in enumerate(actions):
         action = [a]
         obs, reward, done, info = env.step(action)
-        total_reward += reward[0]
+        rewards.append(reward[0])
 
-    assert round(total_reward, 7) == round(expected_reward, 7)
+    assert round(sum(rewards), 1) == round(tot_expected_reward, 1)
+
+
+if __name__ == '__main__':
+    test_rewards()

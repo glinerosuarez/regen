@@ -17,6 +17,7 @@ def build_crypto_trading_env(window_size: int, base_asset: CryptoAsset, quote_as
         window_size=window_size, base_asset=base_asset, quote_asset=quote_asset, base_balance=base_balance
     )
     env = make_vec_env(lambda: env, n_envs=1)
+    # TODO: Don't forget to save the VecNormalize statistics when saving the agent
     return VecNormalize(env, norm_obs=False, norm_reward=True)
 
 
