@@ -335,10 +335,20 @@ def test_rewards():
     ]
 
     expected_rewards = [
-        0, 0, 0, 0,
-        ((prices[0] - prices[4]) / prices[0]), 0, 0,
-        ((prices[6] - prices[7]) / prices[6]), 0, 0, 0 , 0, 0,
-        ((prices[11] - prices[13]) / prices[11])
+        0,
+        0,
+        0,
+        0,
+        ((prices[0] - prices[4]) / prices[0]) * 100,
+        0,
+        0,
+        ((prices[6] - prices[7]) / prices[6]) * 100,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ((prices[11] - prices[13]) / prices[11]) * 100,
     ]
 
     # Normalize expected rewards
@@ -362,7 +372,7 @@ def test_rewards():
         var = new_var
         count = new_count
 
-        norm_expected_rewards.append(np.clip(r / np.sqrt(var + 1e-8), - 10, 10))
+        norm_expected_rewards.append(np.clip(r / np.sqrt(var + 1e-8), -10, 10))
 
     tot_expected_reward = sum(norm_expected_rewards)
 
@@ -383,5 +393,5 @@ def test_rewards():
     assert round(sum(rewards), 1) == round(tot_expected_reward, 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_rewards()

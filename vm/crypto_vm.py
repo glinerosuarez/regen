@@ -172,7 +172,7 @@ class CryptoViewModel:
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
+                step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
 
             self.last_trade_price = self.last_price  # Update last trade price
 
