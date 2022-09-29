@@ -76,15 +76,15 @@ class CryptoViewModel:
         # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
         prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
-        std = prices.std()
-        prices = (prices - prices.mean()) / std
-        if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
-            self.logger.error(
-                f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
-                f"equal, this is an unlikely event probably due to an error in the source."
-            )
-            self.logger.warning("returning an array of zeros for this observation.")
-            return np.zeros(prices.shape)
+        # std = prices.std()
+        # prices = (prices - prices.mean()) / std
+        # if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
+        #    self.logger.error(
+        #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
+        #        f"equal, this is an unlikely event probably due to an error in the source."
+        #    )
+        #    self.logger.warning("returning an array of zeros for this observation.")
+        #    return np.zeros(prices.shape)
 
         # Normalize volumes
         # vols = obs[:, -1].flatten()
