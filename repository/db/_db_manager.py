@@ -9,7 +9,6 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
-from sqlalchemy.engine import Engine
 from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError

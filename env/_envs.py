@@ -8,7 +8,7 @@ from attr import define, field
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
-from conf.consts import CryptoAsset, Action, Position
+from conf.consts import Action, Position
 from vm.crypto_vm import CryptoViewModel
 
 
