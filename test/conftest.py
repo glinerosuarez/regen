@@ -335,6 +335,14 @@ def db_manager(db_name) -> DataBaseManager:
     return DataBaseManager(db_name)
 
 
+@pytest.fixture(autouse=True)
+def remove_db_file(db_name) -> None:
+    try:
+        yield
+    finally:
+        Path(db_name).unlink()
+
+
 @pytest.fixture
 def vm(base, quote, db_manager, ticks_per_episode, execution_id, window_size) -> CryptoViewModel:
     return CryptoViewModel(
@@ -348,10 +356,5 @@ def vm(base, quote, db_manager, ticks_per_episode, execution_id, window_size) ->
 
 
 @pytest.fixture
-def insert_klines(db_name, db_manager, klines_data):
+def insert_klines(db_name, db_manager, klines_data) -> None:
     db_manager.insert(klines_data)
-    yield
-    for kl in klines_data:
-        db_manager.delete(Kline, conditions=Kline.id == kl.id, commit=True)
-
-    Path(db_name).unlink()  # remove db file
