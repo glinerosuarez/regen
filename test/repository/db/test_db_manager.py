@@ -158,3 +158,11 @@ def test_delete():
     assert db_manager2.delete(Observation, [Observation.episode_id > 5, Observation.episode_id % 2 == 0]) == 3
     results = db_manager.select_all(Observation)
     assert [r.episode_id for r in results] == [1, 2, 3, 4, 5, 7, 9]
+
+
+def test_multiple_managers():
+    m1 = DataBaseManager(":memory:")
+    m2 = DataBaseManager(":memory:")
+
+    m1.insert(kline)
+    breakpoint()

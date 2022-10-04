@@ -1,5 +1,6 @@
 import enum
 import json
+from pathlib import Path
 
 import cattr
 import numpy as np
@@ -13,7 +14,6 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-import conf
 from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
@@ -45,13 +45,13 @@ class DataBaseManager:
         SQLite = "sqlite"
         PostgreSQL = "postgreSQL"
 
-    _engine: Optional[Engine] = None
     _mapper_registry = registry()
 
     @staticmethod
     def _build_engine_string(
         e_type: EngineType,
         db_name: str,
+        db_file_location: Optional[str] = None,
         host: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
@@ -59,7 +59,8 @@ class DataBaseManager:
         if e_type == DataBaseManager.EngineType.PostgreSQL:
             return f"postgresql+psycopg2://{user}:{password}@{host}:5432/{db_name}"
         elif e_type == DataBaseManager.EngineType.SQLite:
-            db_filename = ":memory:" if db_name == ":memory:" else f"{conf.settings.db_file_location}/{db_name}"
+            db_file_location = "." if db_file_location is None else db_file_location
+            db_filename = ":memory:" if db_name == ":memory:" else f"{db_file_location}/{db_name}"
             return f"sqlite+pysqlite:///{db_filename}"
         else:
             raise ValueError(f"unimplemented engine type: {e_type}")
@@ -78,25 +79,13 @@ class DataBaseManager:
         )
 
     @staticmethod
-    def _create_sqlite_engine(db_name: str):
+    def _create_sqlite_engine(db_name: str, db_file_location: Union[str, Path]):
         return create_engine(
-            DataBaseManager._build_engine_string(DataBaseManager.EngineType.SQLite, db_name),
+            DataBaseManager._build_engine_string(DataBaseManager.EngineType.SQLite, db_name, db_file_location),
             echo=False,
             future=True,
             # It's safe to do this because we never update objects from other threads, in fact, we never update.
             connect_args={"check_same_thread": False},
-        )
-
-    @staticmethod
-    def init():
-        return DataBaseManager(
-            conf.settings.db_name,
-            DataBaseManager.EngineType.PostgreSQL
-            if conf.settings.db_type == "postgres"
-            else DataBaseManager.EngineType.SQLite,
-            conf.settings.db_host,
-            conf.settings.db_user,
-            conf.settings.db_password,
         )
 
     def __init__(
@@ -106,28 +95,30 @@ class DataBaseManager:
         host: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
+        db_file_location: Optional[Union[str, Path]] = None,
+        logs_dir: Optional[Union[str, Path]] = None,
     ):
         """
         :param db_name: Name of the database
         """
+        logs_dir = Path() if logs_dir is None else Path(logs_dir)
         self.db_name = db_name
 
         self.logger = LoggerFactory.get_file_logger(
             name="sqlalchemy",
-            filename=conf.settings.output_dir / "logs" / "db",
+            filename=logs_dir / "logs" / "db",
         )
 
         # Connect to a database or create a new database if it does not exist.
-        if DataBaseManager._engine is None:
-            if engine_type == DataBaseManager.EngineType.SQLite:
-                DataBaseManager._engine = DataBaseManager._create_sqlite_engine(db_name)
-            elif engine_type == DataBaseManager.EngineType.PostgreSQL:
-                DataBaseManager._engine = DataBaseManager._create_postgres_engine(db_name, host, user, password)
-        session_factory = sessionmaker(bind=DataBaseManager._engine)
+        if engine_type == DataBaseManager.EngineType.SQLite:
+            self.engine = DataBaseManager._create_sqlite_engine(db_name, db_file_location)
+        elif engine_type == DataBaseManager.EngineType.PostgreSQL:
+            self.engine = DataBaseManager._create_postgres_engine(db_name, host, user, password)
+        session_factory = sessionmaker(bind=self.engine)
         self.session = scoped_session(session_factory)
 
         # Create tables.
-        DataBaseManager._mapper_registry.metadata.create_all(DataBaseManager._engine)
+        DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
     def insert(self, records: Union[DataClass, List[DataClass]]) -> int:
         """Insert a new row into a SQL table."""

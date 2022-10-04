@@ -1,14 +1,15 @@
+from typing import List
+
 import numpy as np
+import pytest
 
-import conf
-from conf.consts import CryptoAsset, Action
+from conf.consts import Action
 from env import build_crypto_trading_env
-from repository.db import DataBaseManager
 
 
-def test_rewards(insert_klines):
-
-    actions = [
+@pytest.fixture
+def actions() -> List[Action]:
+    return [
         Action.Sell,
         Action.Sell,
         Action.Sell,
@@ -25,7 +26,10 @@ def test_rewards(insert_klines):
         Action.Buy,
     ]
 
-    prices = [
+
+@pytest.fixture
+def prices() -> List[float]:
+    return [
         23.5678,
         23.5661,
         23.5591,
@@ -42,7 +46,10 @@ def test_rewards(insert_klines):
         23.5594,
     ]
 
-    expected_rewards = [
+
+@pytest.fixture
+def expected_rewards(prices) -> List[float]:
+    return [
         0,
         0,
         0,
@@ -59,6 +66,9 @@ def test_rewards(insert_klines):
         ((prices[11] - prices[13]) / prices[11]) * 100,
     ]
 
+
+@pytest.fixture
+def tot_expected_reward(expected_rewards) -> float:
     # Normalize expected rewards
     mean = 0
     var = 1
@@ -82,15 +92,13 @@ def test_rewards(insert_klines):
 
         norm_expected_rewards.append(np.clip(r / np.sqrt(var + 1e-8), -10, 10))
 
-    tot_expected_reward = sum(norm_expected_rewards)
+    return sum(norm_expected_rewards)
 
+
+def test_rewards(insert_klines, vm, actions, tot_expected_reward):
     rewards = []
-    # DataBaseManager._engine = None
-    # del db_client
-    # conf.settings.db_name = "test_rewards"
-    env = build_crypto_trading_env(
-        window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
-    )
+
+    env = build_crypto_trading_env(vm)
     obs = env.reset()
 
     for i, a in enumerate(actions):

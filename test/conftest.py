@@ -1,34 +1,45 @@
+from pathlib import Path
 from typing import List
 
 import pytest
 
-import conf
 from conf.consts import CryptoAsset
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
+from vm.crypto_vm import CryptoViewModel
 
 
-@pytest.fixture(scope="session", autouse=True)
-def set_session_id():
-    conf.settings.execution_id = 24
+@pytest.fixture
+def execution_id() -> str:
+    return "24"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def base() -> CryptoAsset:
     return CryptoAsset.BNB
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def quote() -> CryptoAsset:
     return CryptoAsset.BUSD
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def trading_pair(base: CryptoAsset, quote: CryptoAsset) -> TradingPair:
     return TradingPair(base=base, quote=quote)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
+def ticks_per_episode() -> int:
+    return 1_440
+
+
+@pytest.fixture
+def window_size() -> int:
+    return 5
+
+
+@pytest.fixture
 def klines_data(trading_pair: TradingPair) -> List[Kline]:
     return [
         Kline(
@@ -314,19 +325,33 @@ def klines_data(trading_pair: TradingPair) -> List[Kline]:
     ]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def db_name() -> str:
-    ":memory:"
+    return "test_db"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def db_manager(db_name) -> DataBaseManager:
     return DataBaseManager(db_name)
 
 
 @pytest.fixture
-def insert_klines(db_manager, klines_data):
+def vm(base, quote, db_manager, ticks_per_episode, execution_id, window_size) -> CryptoViewModel:
+    return CryptoViewModel(
+        base_asset=base,
+        quote_asset=quote,
+        db_manager=db_manager,
+        ticks_per_episode=ticks_per_episode,
+        execution_id=execution_id,
+        window_size=window_size,
+    )
+
+
+@pytest.fixture
+def insert_klines(db_name, db_manager, klines_data):
     db_manager.insert(klines_data)
     yield
     for kl in klines_data:
         db_manager.delete(Kline, conditions=Kline.id == kl.id, commit=True)
+
+    Path(db_name).unlink()  # remove db file

@@ -5,7 +5,6 @@ from collections import defaultdict
 
 import numpy as np
 
-import conf
 import log
 from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
@@ -19,8 +18,11 @@ class CryptoViewModel:
         self,
         base_asset: CryptoAsset,
         quote_asset: CryptoAsset,
+        db_manager: DataBaseManager,
+        ticks_per_episode: int,
+        execution_id: str,
         window_size: int,
-        base_balance: float = 0,
+        base_balance: float = 100,
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
@@ -33,7 +35,8 @@ class CryptoViewModel:
         if not base_balance and not quote_balance:
             raise ValueError("Both base_balance and quote_balance are equal to zero, you need assets to create the env")
 
-        self.execution_id = conf.settings.execution_id
+        self.execution_id = execution_id
+        self.ticks_per_episode = ticks_per_episode
         self.base_asset = base_asset
         self.quote_asset = quote_asset
         self.trading_pair = TradingPair(base_asset, quote_asset)
@@ -48,8 +51,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
-        self.db_manager = DataBaseManager.init()
-
+        self.db_manager = db_manager
         self.episode_id = None
         self.position = Position.Short
         self.start_tick = window_size
@@ -64,7 +66,7 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.init_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
+        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
@@ -135,7 +137,7 @@ class CryptoViewModel:
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
-        if self.current_tick >= conf.settings.ticks_per_episode:
+        if self.current_tick >= self.ticks_per_episode:
             self.done = True
 
         return (
