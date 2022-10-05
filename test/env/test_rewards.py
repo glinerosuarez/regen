@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from conf.consts import Action
-from env import build_crypto_trading_env
+from test.env.utils import normalize_rewards
 
 
 @pytest.fixture
@@ -69,37 +69,14 @@ def expected_rewards(prices) -> List[float]:
 
 @pytest.fixture
 def tot_expected_reward(expected_rewards) -> float:
-    # Normalize expected rewards
-    mean = 0
-    var = 1
-    count = 1e-4
-    norm_expected_rewards = []
-    for r in expected_rewards:
-        delta = r - mean
-        tot_count = count + 1
-
-        new_mean = mean + delta * 1 / tot_count
-        m_a = var * count
-        m_b = 0
-        m_2 = m_a + m_b + np.square(delta) * count * 1 / (count + 1)
-        new_var = m_2 / (count + 1)
-
-        new_count = 1 + count
-
-        mean = new_mean
-        var = new_var
-        count = new_count
-
-        norm_expected_rewards.append(np.clip(r / np.sqrt(var + 1e-8), -10, 10))
-
-    return sum(norm_expected_rewards)
+    norm_rewards = normalize_rewards([np.array([r]) for r in expected_rewards])
+    return sum(norm_rewards)[0]
 
 
-def test_rewards(insert_klines, vm, actions, tot_expected_reward):
+def test_rewards(insert_klines, env, actions, tot_expected_reward):
     rewards = []
 
-    env = build_crypto_trading_env(vm)
-    obs = env.reset()
+    env.reset()
 
     for i, a in enumerate(actions):
         action = [a]

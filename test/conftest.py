@@ -1,4 +1,5 @@
 from pathlib import Path
+import random
 from typing import List
 
 import pytest
@@ -7,6 +8,11 @@ from conf.consts import CryptoAsset
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
 from vm.crypto_vm import CryptoViewModel
+
+
+@pytest.fixture(autouse=True, scope="session")
+def set_random_seed() -> None:
+    random.seed(24)
 
 
 @pytest.fixture
