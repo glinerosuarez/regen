@@ -340,7 +340,9 @@ def remove_db_file(db_name) -> None:
     try:
         yield
     finally:
-        Path(db_name).unlink()
+        db_file_path = Path(db_name)
+        if db_file_path.is_file():
+            db_file_path.unlink()
 
 
 @pytest.fixture
