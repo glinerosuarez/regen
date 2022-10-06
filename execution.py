@@ -49,14 +49,11 @@ class ExecutionContext:
             base_asset=conf.settings.base_asset,
             quote_asset=conf.settings.quote_asset,
             window_size=conf.settings.window_size,
-            base_balance=0,
             db_manager=self.db_manager,
             ticks_per_episode=conf.settings.ticks_per_episode,
             execution_id=self.exec_id,
         )
-        self.env = build_crypto_trading_env(
-            window_size=conf.settings.window_size, base_asset=pair.base, quote_asset=pair.quote, base_balance=100, vm=vm
-        )
+        self.env = build_crypto_trading_env(vm=vm)
 
         # set up logger
         logs_path = str(conf.settings.output_dir / self.exec_id / "logs/")
