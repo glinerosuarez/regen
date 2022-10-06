@@ -1,4 +1,3 @@
-# TODO: test with sqlite
 """
 import time
 

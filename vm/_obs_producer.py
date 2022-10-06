@@ -12,19 +12,18 @@ import conf
 import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
-from repository.db import Kline, get_db_async_generator
+from repository.db import Kline, get_db_async_generator, DataBaseManager
 
 
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
 
-    # TODO: test that kline values don't differ after some time
-
-    def __init__(self, trading_pair: TradingPair, daemon: bool = True):
+    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, daemon: bool = True):
         super(KlineProducer, self).__init__(daemon=daemon)
 
         now = pendulum.now()
         self.trading_pair = trading_pair
+        self.db_manager = db_manager
         # True to continuously request new klines from the api
         self.enable_live_mode = conf.settings.enable_live_mode
         self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
@@ -76,8 +75,7 @@ class KlineProducer(threading.Thread):
             schedule_task = asyncio.create_task(self.schedule_job())  # Start getting klines from the api
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
-        # TODO: This will return all the klines records in the database regardless of their trading pair.
-        async for db_kline in get_db_async_generator(Kline, conf.settings.klines_buffer_size):
+        async for db_kline in get_db_async_generator(self.db_manager, Kline, conf.settings.klines_buffer_size):
             self.queue.put(db_kline)
 
         while self.enable_live_mode:  # Get klines from api
@@ -94,24 +92,27 @@ class KlineProducer(threading.Thread):
 
 class ObsProducer:
     _OBS_TYPE = "float32"
-    _KLINE_FEATURES = 5
 
-    def __init__(self, trading_pair: TradingPair, window_size: int):
+    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, window_size: int):
         self.window_size = window_size
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
-        self.producer = KlineProducer(trading_pair)
+        self.producer = KlineProducer(db_manager, trading_pair)
         if not self.producer.is_alive():
             self.producer.start()
 
         self.chunks_generator = self.get_kline_chunk()
         self.next_chunk = None
 
+    @property
+    def n_features(self) -> int:
+        return 5  # Number of features to return for each kline record
+
     def get_kline_chunk(self) -> Iterator[Optional[np.ndarray]]:
         """A generator that yields chunks of klines."""
 
         def get_empty_chunk() -> np.ndarray:
-            return np.zeros((self.window_size, self._KLINE_FEATURES + 1))  # The ´+ 1´ is to keep track of the open time
+            return np.zeros((self.window_size, self.n_features + 1))  # The ´+ 1´ is to keep track of the open time
 
         def kline_to_np(kline: Kline) -> np.ndarray:
             return np.array((kline.open_value, kline.high, kline.low, kline.close_value, kline.volume, kline.open_time))

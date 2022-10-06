@@ -17,4 +17,4 @@ pytest -vv --full-trace \
   test/repository/test_dataclass.py \
   test/repository/db/test_db_manager.py \
   test/repository/remote/test_BinanceClient.py \
-  test/env/test_rewards.py
+  test/env/

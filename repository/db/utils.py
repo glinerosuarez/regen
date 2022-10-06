@@ -23,13 +23,13 @@ async def to_thread(func, *args, **kwargs):
     return await loop.run_in_executor(None, func_call)
 
 
-def get_db_generator(table: Type[DataClass], page_size: int) -> Iterator[DataClass]:
+def get_db_generator(db_manager: DataBaseManager, table: Type[DataClass], page_size: int) -> Iterator[DataClass]:
     """
     Get a generator that returns all the rows in a table
+    :param db_manager:
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
-    db_manager = DataBaseManager.init()
 
     def _get_page_generator() -> Iterator[List[DataClass]]:
         offset = 0
@@ -43,15 +43,18 @@ def get_db_generator(table: Type[DataClass], page_size: int) -> Iterator[DataCla
         yield from page
 
 
-async def get_db_async_generator(table: Type[DataClass], page_size: int) -> AsyncIterator[DataClass]:
+async def get_db_async_generator(
+    db_manager: DataBaseManager, table: Type[DataClass], page_size: int
+) -> AsyncIterator[DataClass]:
     """
     Get an asynchronous generator that returns all the rows in a table
+    :param db_manager:
     :param table: Table from which we'll get the rows.
     :param page_size: Max number of rows to store in memory.
     """
 
     async def select_page(offset: int):
-        return await to_thread(DataBaseManager.init().select, table=table, offset=offset, limit=page_size)
+        return await to_thread(db_manager.select, table=table, offset=offset, limit=page_size)
 
     async def _get_page_generator() -> AsyncIterator[List[DataClass]]:
         offset = 0

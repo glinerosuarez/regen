@@ -1,6 +1,8 @@
 import logging
+from pathlib import Path
 from sys import stderr, stdout
 from logging import Logger, StreamHandler, Formatter, LogRecord, Filter
+from typing import Union
 
 
 class StdErrFilter(Filter):
@@ -58,7 +60,8 @@ class LoggerFactory:
         return logger
 
     @staticmethod
-    def get_file_logger(name: str, filename: str = "logs") -> Logger:
+    def get_file_logger(name: str, filename: Union[str, Path] = "logs") -> Logger:
+        filename = str(Path(filename).absolute())
         # Create logger.
         logger: Logger = logging.getLogger(name)
 
@@ -70,12 +73,12 @@ class LoggerFactory:
             logger.setLevel(logging.WARNING)
 
             # Create file stderr handler.
-            err_handler = logging.FileHandler("output/logs/" + filename + "_stderr.log")
+            err_handler = logging.FileHandler(filename + "_stderr.log")
             err_handler.setLevel(logging.WARNING)
             err_handler.addFilter(StdErrFilter())
 
             # Create stdout handler.
-            out_handler = logging.FileHandler("output/logs/" + filename + "_stdout.log")
+            out_handler = logging.FileHandler(filename + "_stdout.log")
             out_handler.setLevel(logging.WARNING)
             out_handler.addFilter(StdOutFilter())
 

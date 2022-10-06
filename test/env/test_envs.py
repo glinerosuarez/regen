@@ -2,7 +2,8 @@ from stable_baselines3.common.env_checker import check_env
 
 import conf
 from conf.consts import CryptoAsset
-from env import CryptoTradingEnv
+from env import build_crypto_trading_env
+from env._envs import CryptoTradingEnv
 
 
 def _execute_steps(env):
@@ -12,7 +13,7 @@ def _execute_steps(env):
     print(env.action_space)
     print(env.action_space.sample())
 
-    n_steps = 3_000
+    n_steps = 4
     for step in range(n_steps):
         print("Step {}".format(step + 1))
         obs, reward, done, info = env.step(1)
@@ -23,16 +24,16 @@ def _execute_steps(env):
             env.reset()
 
 
-def test_cryptoenv():
+def test_cryptoenv(insert_klines, vm):
     # WARNING: since the minimum observation frequency is 1 min, this will take several minutes to run.
-    env = CryptoTradingEnv(window_size=5, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100)
+    env = CryptoTradingEnv(vm)
     check_env(env)
     # _execute_steps(env)
 
 
 if __name__ == "__main__":
     conf.settings.execution_id = 10
-    env = CryptoTradingEnv(
+    env = build_crypto_trading_env(
         window_size=1_440, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
     )
     breakpoint()

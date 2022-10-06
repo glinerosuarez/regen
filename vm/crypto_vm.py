@@ -5,7 +5,6 @@ from collections import defaultdict
 
 import numpy as np
 
-import conf
 import log
 from conf.consts import CryptoAsset, Position, Side, Action
 from vm._obs_producer import ObsProducer
@@ -19,8 +18,11 @@ class CryptoViewModel:
         self,
         base_asset: CryptoAsset,
         quote_asset: CryptoAsset,
+        db_manager: DataBaseManager,
+        ticks_per_episode: int,
+        execution_id: str,
         window_size: int,
-        base_balance: float = 0,
+        base_balance: float = 100,
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
@@ -33,7 +35,8 @@ class CryptoViewModel:
         if not base_balance and not quote_balance:
             raise ValueError("Both base_balance and quote_balance are equal to zero, you need assets to create the env")
 
-        self.execution_id = conf.settings.execution_id
+        self.execution_id = execution_id
+        self.ticks_per_episode = ticks_per_episode
         self.base_asset = base_asset
         self.quote_asset = quote_asset
         self.trading_pair = TradingPair(base_asset, quote_asset)
@@ -48,8 +51,7 @@ class CryptoViewModel:
         # security, so this is the fee the exchange charges for buying.
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
-        self.db_manager = DataBaseManager.init()
-
+        self.db_manager = db_manager
         self.episode_id = None
         self.position = Position.Short
         self.start_tick = window_size
@@ -64,13 +66,12 @@ class CryptoViewModel:
         self.last_trade_price = None
         self.init_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(self.trading_pair, self.window_size)
+        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
         obs = obs.copy()  # it's ok to shallow copy because we only store doubles, and I don't think that will change
         # The initial price is the last price in the first observation
-        # TODO: Init price should be the price we last traded at, so we should keep track of that price across episodes
         if self.init_price is None:  # This should only happen when in the beginning of a new episode
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
         # TODO: does this break markov rules?
@@ -84,12 +85,10 @@ class CryptoViewModel:
         #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
         #        f"equal, this is an unlikely event probably due to an error in the source."
         #    )
-        #
-        #    breakpoint()
+        #    self.logger.warning("returning an array of zeros for this observation.")
+        #    return np.zeros(prices.shape)
 
         # Normalize volumes
-        # TODO: possible div by zero when all volumes are equal
-        # TODO:not sure about how to normalize vols, is it necessary to take into account other obs for the calculation?
         # vols = obs[:, -1].flatten()
         # vols = preprocessing.normalize(vols.reshape(1, -1))
         # return np.hstack((prices, vols))
@@ -102,8 +101,6 @@ class CryptoViewModel:
         self.current_tick = self.window_size
 
         # We always start longing
-        # TODO: Remove the option that allows passing quote balance, since our purpose is always to accumulate the base
-        #  asset
         if self.base_balance < self.quote_balance:
             self._place_order(Side.SELL)
 
@@ -140,7 +137,7 @@ class CryptoViewModel:
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
-        if self.current_tick >= conf.settings.ticks_per_episode:
+        if self.current_tick >= self.ticks_per_episode:
             self.done = True
 
         return (
@@ -177,21 +174,21 @@ class CryptoViewModel:
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                step_reward = (self.last_trade_price - self.last_price) / self.last_trade_price
+                step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
 
             self.last_trade_price = self.last_price  # Update last trade price
 
-            self._store_env_state_data(action, is_trade=True)
+            self._store_env_state_data(action, step_reward, is_trade=True)
             self._update_balances(action, quantity, self.last_price)
 
             self.position = self.position.opposite()
         else:
             self.last_price = self._get_price()
-            self._store_env_state_data(action, is_trade=False)
+            self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
 
-    def _store_env_state_data(self, action: Action, is_trade: bool) -> None:
+    def _store_env_state_data(self, action: Action, reward: float, is_trade: bool) -> None:
         self.db_manager.insert(
             EnvState(
                 execution_id=self.execution_id,
@@ -201,6 +198,8 @@ class CryptoViewModel:
                 position=self.position,
                 action=action,
                 is_trade=is_trade,
+                reward=reward,
+                cum_reward=reward + self.total_reward,
                 ts=time.time(),
             )
         )
@@ -226,7 +225,6 @@ class CryptoViewModel:
         #    quantity=self.balance,
         #    new_client_order_id=self.execution_id
         # )
-        # TODO: Get trade price.
         # TODO: Add a trade_fee_percent to make training harder for the agent
         price = self._get_price()
         # The price and quantity will be returned by client.place_order.
