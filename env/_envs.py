@@ -13,13 +13,13 @@ from vm.crypto_vm import CryptoViewModel
 
 
 def build_crypto_trading_env(vm: CryptoViewModel):
-    env = make_vec_env(lambda: _CryptoTradingEnv(vm), n_envs=1)
+    env = make_vec_env(lambda: CryptoTradingEnv(vm), n_envs=1)
     # TODO: Don't forget to save the VecNormalize statistics when saving the agent
     return VecNormalize(env, norm_obs_keys=["klines"])
 
 
 @define
-class _CryptoTradingEnv(gym.Env):
+class CryptoTradingEnv(gym.Env):
     """Crypto asset trading environment that follows gym interface."""
 
     metadata = {"render.modes": ["live"]}
