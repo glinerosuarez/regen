@@ -160,14 +160,6 @@ class CryptoViewModel:
         )
 
     def _calculate_reward(self, action: Action):
-        # TODO: During training, the reward is computed based on the close price of the observation that the agent
-        #  interacted with, in practice, this price will vary because of the succeeding market movements and the fact
-        #  that we always buy at market price (for simplicity, we could change that in the future), this makes things
-        #  easier for the agent, this difference will depend mainly on the time that elapses between the moment the
-        #  agent takes a trade action and the moment the order is processed (measure that time on average), to start
-        #  with, I think we could take a random value from (open, close) of the next observation (because we get a new
-        #  observation every minute, frequently)
-        # breakpoint()
         step_reward = 0.0
         if self._is_trade(action):
             quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
@@ -225,7 +217,6 @@ class CryptoViewModel:
         #    quantity=self.balance,
         #    new_client_order_id=self.execution_id
         # )
-        # TODO: Add a trade_fee_percent to make training harder for the agent
         price = self._get_price()
         # The price and quantity will be returned by client.place_order.
         if side == Side.BUY:

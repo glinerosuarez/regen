@@ -13,13 +13,6 @@ from repository import TradingPair, Interval
 
 
 def train():
-    # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
-    # TODO: Train with more than 1 vectorized DummyVecEnv
-    # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
-    # TODO: Use callbacks to get best models or to log values
-    # TODO: Implement tensorboard, weights and biases
-    # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
-
     context = ExecutionContext()
     context.train()
 
