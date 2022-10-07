@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from cached_property import cached_property
 import pendulum
 from stable_baselines3 import PPO
@@ -21,8 +23,7 @@ class ExecutionContext:
             conf.settings.db_host,
             conf.settings.db_user,
             conf.settings.db_password,
-            conf.settings.db_file_location,
-            conf.settings.output_dir,
+            Path(conf.settings.db_file_location),
         )
 
     def __init__(self):

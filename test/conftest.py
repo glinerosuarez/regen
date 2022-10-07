@@ -346,6 +346,7 @@ def remove_db_file(db_name) -> None:
     try:
         yield
     finally:
+        # TODO: create a temporary path instead https://docs.pytest.org/en/7.1.x/how-to/tmp_path.html
         db_file_path = Path(db_name)
         if db_file_path.is_file():
             db_file_path.unlink()

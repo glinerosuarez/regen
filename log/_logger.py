@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from sys import stderr, stdout
 from logging import Logger, StreamHandler, Formatter, LogRecord, Filter
-from typing import Union
+from typing import Union, Optional
 
 
 class StdErrFilter(Filter):
@@ -60,8 +60,7 @@ class LoggerFactory:
         return logger
 
     @staticmethod
-    def get_file_logger(name: str, filename: Union[str, Path] = "logs") -> Logger:
-        filename = str(Path(filename).absolute())
+    def get_file_logger(name: str, file_dir: Path = Path()/"logs", preffix: Optional[str] = None) -> Logger:
         # Create logger.
         logger: Logger = logging.getLogger(name)
 
@@ -73,12 +72,20 @@ class LoggerFactory:
             logger.setLevel(logging.WARNING)
 
             # Create file stderr handler.
-            err_handler = logging.FileHandler(filename + "_stderr.log")
+            stderr_filename = file_dir / f"{'' if preffix is None else preffix + '_'}stderr.log"
+            if not stderr_filename.is_file():
+                stderr_filename.parent.mkdir(parents=True, exist_ok=True)
+                stderr_filename.touch()  # Create file if it does not exist
+            err_handler = logging.FileHandler(str(stderr_filename.absolute()))
             err_handler.setLevel(logging.WARNING)
             err_handler.addFilter(StdErrFilter())
 
             # Create stdout handler.
-            out_handler = logging.FileHandler(filename + "_stdout.log")
+            stdout_filename = file_dir / f"{'' if preffix is None else preffix + '_'}stdout.log"
+            if not stdout_filename.is_file():
+                stdout_filename.parent.mkdir(parents=True, exist_ok=True)
+                stdout_filename.touch()  # Create file if it does not exist
+            out_handler = logging.FileHandler(str(stdout_filename.absolute()))
             out_handler.setLevel(logging.WARNING)
             out_handler.addFilter(StdOutFilter())
 

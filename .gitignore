@@ -14,6 +14,7 @@ __pycache__
 regen
 test_ep
 db_snapshots/**
+tmp/**
 
 # Terraform files
 **/.terraform.lock.hcl
