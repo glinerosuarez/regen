@@ -67,5 +67,5 @@ class ExecutionContext:
             self.model.learn(total_timesteps=conf.settings.time_steps)
         finally:
             self.model.save(conf.settings.output_dir / self.exec_id / "model/PPO")
-            self.db_manager.session.commit()
             self._execution.end = pendulum.now().timestamp()
+            self.db_manager.session.commit()
