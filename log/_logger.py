@@ -60,7 +60,7 @@ class LoggerFactory:
         return logger
 
     @staticmethod
-    def get_file_logger(name: str, file_dir: Path = Path()/"logs", preffix: Optional[str] = None) -> Logger:
+    def get_file_logger(name: str, file_dir: Path = Path() / "logs", preffix: Optional[str] = None) -> Logger:
         # Create logger.
         logger: Logger = logging.getLogger(name)
 

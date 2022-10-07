@@ -94,14 +94,10 @@ class DataBaseManager:
         host: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
-        files_dir: Optional[Path] = Path()/"output",
+        files_dir: Optional[Path] = Path() / "output",
     ):
         self.db_name = db_name
-        self.logger = LoggerFactory.get_file_logger(
-            name="sqlalchemy",
-            file_dir=files_dir / "logs",
-            preffix="db"
-        )
+        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", file_dir=files_dir / "logs", preffix="db")
 
         # Connect to a database or create a new database if it does not exist.
         if engine_type == DataBaseManager.EngineType.SQLite:

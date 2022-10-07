@@ -7,9 +7,9 @@ from repository import EnvState
 from repository.db import DataBaseManager, Execution
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     execution_id = "1"
-    db_manager = DataBaseManager(db_name="regen_latest", files_dir=Path()/"tmp")
+    db_manager = DataBaseManager(db_name="regen_latest", files_dir=Path() / "tmp")
     exec_data: Execution = db_manager.select(Execution, Execution.id == execution_id)[0]
     cum_reward = 0
     base_balance = 1
