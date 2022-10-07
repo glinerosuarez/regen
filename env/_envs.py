@@ -1,5 +1,6 @@
 import subprocess
-from typing import Optional, Tuple
+from pathlib import Path
+from typing import Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -14,8 +15,12 @@ from vm.crypto_vm import CryptoViewModel
 
 def build_crypto_trading_env(vm: CryptoViewModel):
     env = make_vec_env(lambda: CryptoTradingEnv(vm), n_envs=1)
-    # TODO: Don't forget to save the VecNormalize statistics when saving the agent
     return VecNormalize(env, norm_obs_keys=["klines"])
+
+
+def load_crypto_trading_env(stats_path: Union[str, Path], vm: CryptoViewModel):
+    env = make_vec_env(lambda: CryptoTradingEnv(vm), n_envs=1)
+    return VecNormalize.load(stats_path, env)
 
 
 @define

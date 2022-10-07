@@ -19,6 +19,7 @@ class CryptoViewModel:
         base_asset: CryptoAsset,
         quote_asset: CryptoAsset,
         db_manager: DataBaseManager,
+        api_client: BinanceClient,
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
@@ -52,6 +53,10 @@ class CryptoViewModel:
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
         self.db_manager = db_manager
+        self.client = api_client
+
+        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
+
         self.episode_id = None
         self.position = Position.Short
         self.start_tick = window_size
@@ -60,13 +65,11 @@ class CryptoViewModel:
         self.done = None
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
-        self.client = BinanceClient()
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
         self.init_price = None
         self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""

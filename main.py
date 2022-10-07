@@ -5,7 +5,7 @@ from typing import Optional
 import pendulum
 
 from conf.consts import CryptoAsset
-from execution import ExecutionContext
+from exec import ExecutionContext
 from repository.remote import BinanceClient
 from vm import KlineProducer
 from repository.db import DataBaseManager

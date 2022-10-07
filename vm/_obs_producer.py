@@ -18,22 +18,35 @@ from repository.db import Kline, get_db_async_generator, DataBaseManager
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
 
-    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, daemon: bool = True):
+    def __init__(
+        self, db_manager: DataBaseManager,
+        api_manager: BinanceClient,
+        trading_pair: TradingPair,
+        enable_live_mode: bool = False,
+        get_data_from_db: bool = True,
+        max_api_klines: Optional[int] = None,
+        daemon: bool = True
+    ):
         super(KlineProducer, self).__init__(daemon=daemon)
 
         now = pendulum.now()
+
         self.trading_pair = trading_pair
         self.db_manager = db_manager
-        # True to continuously request new klines from the api
-        self.enable_live_mode = conf.settings.enable_live_mode
+        self.client = api_manager
+        self.logger = log.LoggerFactory.get_console_logger(__name__, logging.DEBUG)
+
+        self.get_data_from_db = get_data_from_db  # True to get klines from Kline sql table
+        self.enable_live_mode = enable_live_mode  # True to continuously request new klines from the api
+        self.max_api_klines = max_api_klines  # Total number of klines to request from the api
+
+        self.max_klines =
         self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
         # buffer for klines that come directly from the api
         self._api_queue = asyncio.Queue(conf.settings.klines_buffer_size)
-        self.client = BinanceClient()
         self.last_stime = now.subtract(minutes=1).start_of("minute")  # we will start getting klines from this minute
         self.last_etime = now.subtract(minutes=1).end_of("minute")
         self.background_tasks = set()
-        self.logger = log.LoggerFactory.get_console_logger(__name__, logging.DEBUG)
 
     async def get_pending(self):
         """
@@ -75,17 +88,23 @@ class KlineProducer(threading.Thread):
             schedule_task = asyncio.create_task(self.schedule_job())  # Start getting klines from the api
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
-        async for db_kline in get_db_async_generator(self.db_manager, Kline, conf.settings.klines_buffer_size):
-            self.queue.put(db_kline)
+        if self.get_data_from_db is True:
+            async for db_kline in get_db_async_generator(self.db_manager, Kline, conf.settings.klines_buffer_size):
+                self.queue.put(db_kline)
 
-        while self.enable_live_mode:  # Get klines from api
-            self.queue.put(await self._api_queue.get())
+        if self.max_api_klines is None:
+            while self.enable_live_mode:  # Get klines from api
+                self.queue.put(await self._api_queue.get())
+        else:
+            for _ in range(self.max_api_klines):
+                self.queue.put(await self._api_queue.get())
 
     def run(self):
         asyncio.run(self.main())
 
     def get_klines(self) -> Iterator[Kline]:
         """Return a generator that produces klines as they are available."""
+
         while True:
             yield self.queue.get()
 
