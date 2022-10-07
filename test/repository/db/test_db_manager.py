@@ -104,7 +104,7 @@ def test_env_state(db_manager, env_state):
     records = db_manager.select_all(EnvState)
     assert records[0] == env_state
     # Test select_max
-    assert db_manager.select_max(EnvState.state_id) == "1-1-1"
+    assert db_manager.select_max(EnvState.id) == 1
 
 
 def test_obs_kline_relationship(db_name, db_manager, insert_klines, observation):
