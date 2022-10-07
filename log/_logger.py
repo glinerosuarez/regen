@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from sys import stderr, stdout
 from logging import Logger, StreamHandler, Formatter, LogRecord, Filter
-from typing import Union, Optional
+from typing import Optional
 
 
 class StdErrFilter(Filter):
