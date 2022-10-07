@@ -50,7 +50,7 @@ class DataBaseManager:
     def _build_engine_string(
         e_type: EngineType,
         db_name: str,
-        db_file_location: Optional[str] = None,
+        db_file_location: Optional[Path] = None,
         host: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
@@ -58,7 +58,7 @@ class DataBaseManager:
         if e_type == DataBaseManager.EngineType.PostgreSQL:
             return f"postgresql+psycopg2://{user}:{password}@{host}:5432/{db_name}"
         elif e_type == DataBaseManager.EngineType.SQLite:
-            db_file_location = "." if db_file_location is None else db_file_location
+            db_file_location = "." if db_file_location is None else str(db_file_location.absolute())
             db_filename = ":memory:" if db_name == ":memory:" else f"{db_file_location}/{db_name}"
             return f"sqlite+pysqlite:///{db_filename}"
         else:
@@ -94,23 +94,14 @@ class DataBaseManager:
         host: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
-        db_file_location: Optional[Union[str, Path]] = None,
-        logs_dir: Optional[Union[str, Path]] = None,
+        files_dir: Optional[Path] = Path() / "output",
     ):
-        """
-        :param db_name: Name of the database
-        """
-        logs_dir = Path() if logs_dir is None else Path(logs_dir)
         self.db_name = db_name
-
-        self.logger = LoggerFactory.get_file_logger(
-            name="sqlalchemy",
-            filename=logs_dir / "logs" / "db",
-        )
+        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", file_dir=files_dir / "logs", preffix="db")
 
         # Connect to a database or create a new database if it does not exist.
         if engine_type == DataBaseManager.EngineType.SQLite:
-            self.engine = DataBaseManager._create_sqlite_engine(db_name, db_file_location)
+            self.engine = DataBaseManager._create_sqlite_engine(db_name, files_dir)
         elif engine_type == DataBaseManager.EngineType.PostgreSQL:
             self.engine = DataBaseManager._create_postgres_engine(db_name, host, user, password)
         session_factory = sessionmaker(bind=self.engine)
@@ -344,7 +335,7 @@ class EnvState(DataClass):
     __table__ = Table(
         "env_state",
         DataBaseManager._mapper_registry.metadata,
-        Column("state_id", String, primary_key=True, nullable=False),
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("execution_id", Integer, nullable=False),
         Column("episode_id", Integer, nullable=False),
         Column("tick", BigInteger, nullable=False),
@@ -357,10 +348,10 @@ class EnvState(DataClass):
         Column("ts", Float, nullable=False),
     )
 
+    id: int = attrib(init=False)
     execution_id: int = attrib(converter=int)
     episode_id: int = attrib(converter=int)
     tick: int = attrib(converter=int)
-    state_id: str = attrib(init=False)
     price: float = attrib(converter=float)
     position: Position = attrib()
     action: Action = attrib()
@@ -368,10 +359,6 @@ class EnvState(DataClass):
     reward: float = attrib()
     cum_reward: float = attrib()
     ts: float = attrib()
-
-    @state_id.default
-    def _id(self):
-        return "-".join([str(self.execution_id), str(self.episode_id), str(self.tick)])
 
 
 # TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique

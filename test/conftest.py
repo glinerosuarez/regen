@@ -337,18 +337,8 @@ def db_name() -> str:
 
 
 @pytest.fixture
-def db_manager(db_name) -> DataBaseManager:
-    return DataBaseManager(db_name)
-
-
-@pytest.fixture(autouse=True)
-def remove_db_file(db_name) -> None:
-    try:
-        yield
-    finally:
-        db_file_path = Path(db_name)
-        if db_file_path.is_file():
-            db_file_path.unlink()
+def db_manager(db_name, tmp_path) -> DataBaseManager:
+    return DataBaseManager(db_name, files_dir=tmp_path)
 
 
 @pytest.fixture

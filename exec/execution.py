@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from cached_property import cached_property
 import pendulum
 from stable_baselines3 import PPO
@@ -21,8 +23,7 @@ class ExecutionContext:
             conf.settings.db_host,
             conf.settings.db_user,
             conf.settings.db_password,
-            conf.settings.db_file_location,
-            conf.settings.output_dir,
+            Path(conf.settings.db_file_location),
         )
 
     def __init__(self):
@@ -67,5 +68,5 @@ class ExecutionContext:
             self.model.learn(total_timesteps=conf.settings.time_steps)
         finally:
             self.model.save(conf.settings.output_dir / self.exec_id / "model/PPO")
-            self.db_manager.session.commit()
             self._execution.end = pendulum.now().timestamp()
+            self.db_manager.session.commit()
