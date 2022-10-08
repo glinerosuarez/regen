@@ -3,9 +3,11 @@ from typing import List, Optional
 
 import pytest
 from dynaconf import Dynaconf
+from stable_baselines3.common.vec_env import VecEnv
 
 from conf import load_settings
 from conf.consts import CryptoAsset
+from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
 from repository.remote import BinanceClient
@@ -411,6 +413,11 @@ def vm(
         execution_id=execution_id,
         window_size=window_size,
     )
+
+
+@pytest.fixture
+def env(vm) -> VecEnv:
+    return build_crypto_trading_env(vm=vm)
 
 
 @pytest.fixture
