@@ -128,3 +128,7 @@ def test_delete(insert_klines, db_manager):
     assert db_manager.delete(Kline, [Kline.id > 5, Kline.id % 2 == 0]) == 8
     results = db_manager.select_all(Kline)
     assert [r.id for r in results] == [1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 17, 19]
+
+
+def test_count_rows(insert_klines, db_manager):
+    assert db_manager.count_rows(Kline.id) == 20

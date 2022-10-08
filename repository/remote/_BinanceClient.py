@@ -4,10 +4,11 @@ from typing import Optional, List
 
 import pendulum
 import requests
+from attr import define, field
+from attrs import validators
 from binance.spot import Spot
 from binance.error import ClientError
 
-import conf
 from conf.consts import Side, OrderType, TimeInForce
 from log import LoggerFactory
 from repository import Interval
@@ -17,10 +18,14 @@ from repository._dataclass import TradingPair
 from repository.db import AccountInfo, Order, Kline
 
 
+@define
 class BinanceClient:
-    """
-    Binance api client.
-    """
+    """Binance api client."""
+    base_urls: List[str] = field(validator=validators.instance_of(list))
+    client_key: str
+    client_secret: str
+    _client: Optional[Spot] = field(init=False, default=None)
+    logger: Logger = field(init=False, default=LoggerFactory.get_console_logger(__name__))
 
     def get_client(self, use_default_url: bool = True) -> Spot:
         """
@@ -29,19 +34,11 @@ class BinanceClient:
             random one.
         """
         if (self._client is None) or (not use_default_url):
-            base_url = (
-                conf.settings.bnb_base_url[0] if use_default_url is True else random.choice(conf.settings.bnb_base_url)
-            )
-            self._client = Spot(
-                base_url=base_url, key=conf.settings.bnb_client_key, secret=conf.settings.bnb_client_secret
-            )
+            base_url = (self.base_urls[0] if use_default_url is True else random.choice(self.base_urls))
+            self._client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
             return self._client
         else:
             return self._client
-
-    def __init__(self):
-        self._client = None
-        self.logger: Logger = LoggerFactory.get_console_logger(__name__)
 
     def get_account_info(self) -> AccountInfo:
         """

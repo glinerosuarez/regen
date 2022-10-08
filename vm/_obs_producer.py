@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 
 import threading
@@ -17,6 +18,21 @@ from repository.db import Kline, get_db_async_generator, DataBaseManager
 
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
+
+    def _get_kline_counter(self) -> Iterator[None]:
+        if self.enable_live_mode is True:
+            if self.max_api_klines is None:
+                return itertools.repeat(None)
+            else:
+                if self.get_data_from_db is True:
+                    return itertools.repeat(None, self.db_manager.count_rows(Kline.id) + self.max_api_klines)
+                else:
+                    return itertools.repeat(None, self.max_api_klines)
+        else:
+            if self.get_data_from_db is True:
+                return itertools.repeat(None, self.db_manager.count_rows(Kline.id))
+            else:
+                return itertools.repeat(None, 0)
 
     def __init__(
         self, db_manager: DataBaseManager,
@@ -40,7 +56,6 @@ class KlineProducer(threading.Thread):
         self.enable_live_mode = enable_live_mode  # True to continuously request new klines from the api
         self.max_api_klines = max_api_klines  # Total number of klines to request from the api
 
-        self.max_klines =
         self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
         # buffer for klines that come directly from the api
         self._api_queue = asyncio.Queue(conf.settings.klines_buffer_size)
@@ -104,19 +119,18 @@ class KlineProducer(threading.Thread):
 
     def get_klines(self) -> Iterator[Kline]:
         """Return a generator that produces klines as they are available."""
-
-        while True:
+        for _ in self._get_kline_counter():
             yield self.queue.get()
 
 
 class ObsProducer:
     _OBS_TYPE = "float32"
 
-    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, window_size: int):
+    def __init__(self, kline_producer: KlineProducer, window_size: int):
         self.window_size = window_size
         self.logger = log.LoggerFactory.get_console_logger(__name__)
 
-        self.producer = KlineProducer(db_manager, trading_pair)
+        self.producer = kline_producer
         if not self.producer.is_alive():
             self.producer.start()
 

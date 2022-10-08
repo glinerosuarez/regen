@@ -6,9 +6,9 @@ ticks_per_episode = 1_440  # at 1 tick per second, this means that an episode la
 [development]
 db_type = "sqlite"
 db_name = "test_regen"
-bnb_base_url = ["https://testnet.binance.vision"] # The base endpoint this client will send requests to.
+bnb_base_urls = ["https://testnet.binance.vision"] # The base endpoint this client will send requests to.
 
 [production]
 db_type = "sqlite"
 db_name = "regen"
-bnb_base_url = ["https://api.binance.com", "https://api1.binance.com", "https://api2.binance.com", "https://api3.binance.com"]
+bnb_base_urls = ["https://api.binance.com", "https://api1.binance.com", "https://api2.binance.com", "https://api3.binance.com"]

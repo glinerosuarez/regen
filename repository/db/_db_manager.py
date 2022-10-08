@@ -216,6 +216,14 @@ class DataBaseManager:
 
         return rowcount
 
+    def count_rows(self, col: InstrumentedAttribute, ) -> int:
+        """
+        Count rows in a table
+        :param col: column whose rows we want to count
+        :return: row count
+        """
+        return self.session.query(col).count()
+
 
 class _EncodedDataClass(types.UserDefinedType):
     """

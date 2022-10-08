@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 import log
-from conf.consts import CryptoAsset, Position, Side, Action
+from conf.consts import Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
@@ -16,10 +16,10 @@ from repository import EnvState, TradingPair
 class CryptoViewModel:
     def __init__(
         self,
-        base_asset: CryptoAsset,
-        quote_asset: CryptoAsset,
+        trading_pair: TradingPair,
         db_manager: DataBaseManager,
         api_client: BinanceClient,
+        obs_producer: ObsProducer,
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
@@ -38,9 +38,7 @@ class CryptoViewModel:
 
         self.execution_id = execution_id
         self.ticks_per_episode = ticks_per_episode
-        self.base_asset = base_asset
-        self.quote_asset = quote_asset
-        self.trading_pair = TradingPair(base_asset, quote_asset)
+        self.trading_pair = trading_pair
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
         self.base_balance = base_balance
@@ -54,8 +52,7 @@ class CryptoViewModel:
 
         self.db_manager = db_manager
         self.client = api_client
-
-        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
+        self.obs_producer = obs_producer
 
         self.episode_id = None
         self.position = Position.Short
@@ -81,20 +78,6 @@ class CryptoViewModel:
         # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
         non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
         prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
-        # std = prices.std()
-        # prices = (prices - prices.mean()) / std
-        # if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
-        #    self.logger.error(
-        #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
-        #        f"equal, this is an unlikely event probably due to an error in the source."
-        #    )
-        #    self.logger.warning("returning an array of zeros for this observation.")
-        #    return np.zeros(prices.shape)
-
-        # Normalize volumes
-        # vols = obs[:, -1].flatten()
-        # vols = preprocessing.normalize(vols.reshape(1, -1))
-        # return np.hstack((prices, vols))
         return prices
 
     def reset(self):
