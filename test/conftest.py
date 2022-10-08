@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Optional
 
 import pytest
 from dynaconf import Dynaconf
@@ -9,12 +9,33 @@ from conf.consts import CryptoAsset
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
 from repository.remote import BinanceClient
+from vm._obs_producer import ObsProducer, KlineProducer
 from vm.crypto_vm import CryptoViewModel
 
 
 @pytest.fixture(autouse=True)
 def settings() -> Dynaconf:
     return load_settings("development")
+
+
+@pytest.fixture
+def enable_live_mode() -> bool:
+    return False
+
+
+@pytest.fixture
+def get_data_from_db() -> bool:
+    return True
+
+
+@pytest.fixture
+def max_api_klines() -> Optional[bool]:
+    return None
+
+
+@pytest.fixture
+def klines_buffer_size() -> int:
+    return 10_000
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -358,11 +379,34 @@ def api_client(settings) -> BinanceClient:
 
 
 @pytest.fixture
-def vm(base, quote, db_manager, ticks_per_episode, execution_id, window_size) -> CryptoViewModel:
-    return CryptoViewModel(
-        base_asset=base,
-        quote_asset=quote,
+def kline_producer(
+    db_manager, api_client, trading_pair, enable_live_mode, get_data_from_db, max_api_klines, klines_buffer_size
+) -> KlineProducer:
+    return KlineProducer(
         db_manager=db_manager,
+        api_manager=api_client,
+        trading_pair=trading_pair,
+        enable_live_mode=enable_live_mode,
+        get_data_from_db=get_data_from_db,
+        max_api_klines=max_api_klines,
+        klines_buffer_size=klines_buffer_size,
+    )
+
+
+@pytest.fixture
+def obs_producer(kline_producer, window_size) -> ObsProducer:
+    return ObsProducer(kline_producer=kline_producer, window_size=window_size)
+
+
+@pytest.fixture
+def vm(
+    trading_pair, db_manager, api_client, obs_producer, ticks_per_episode, execution_id, window_size
+) -> CryptoViewModel:
+    return CryptoViewModel(
+        trading_pair=trading_pair,
+        db_manager=db_manager,
+        api_client=api_client,
+        obs_producer=obs_producer,
         ticks_per_episode=ticks_per_episode,
         execution_id=execution_id,
         window_size=window_size,
