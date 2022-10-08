@@ -31,7 +31,7 @@ settings = Dynaconf(
         Validator("get_data_from_db", is_type_of=bool, default=True),
         Validator("max_api_klines", default=None),
         Validator("klines_buffer_size", is_type_of=int, default=10_000),
-        Validator("path_to_env_stats", is_type_of=str, default="output/1/env/env.pkl")
+        Validator("path_to_env_stats", is_type_of=str, default="output/1/env/env.pkl"),
     ],
 )
 
@@ -39,6 +39,5 @@ settings = Dynaconf(
 settings.validators.validate()
 
 # Conversions
-settings.output_dir = Path(settings.output_dir)
 settings.base_asset = CryptoAsset(settings.base_asset)
 settings.quote_asset = CryptoAsset(settings.quote_asset)

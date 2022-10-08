@@ -35,13 +35,14 @@ class KlineProducer(threading.Thread):
                 return itertools.repeat(None, 0)
 
     def __init__(
-        self, db_manager: DataBaseManager,
+        self,
+        db_manager: DataBaseManager,
         api_manager: BinanceClient,
         trading_pair: TradingPair,
         enable_live_mode: bool = False,
         get_data_from_db: bool = True,
         max_api_klines: Optional[int] = None,
-        daemon: bool = True
+        daemon: bool = True,
     ):
         super(KlineProducer, self).__init__(daemon=daemon)
 

@@ -6,6 +6,7 @@ import pendulum
 
 from conf.consts import CryptoAsset
 from exec import ExecutionContext
+from inject import injector
 from repository.remote import BinanceClient
 from vm import KlineProducer
 from repository.db import DataBaseManager
@@ -13,7 +14,17 @@ from repository import TradingPair, Interval
 
 
 def train():
-    context = ExecutionContext()
+
+    context = ExecutionContext(
+        pair=injector.trading_pair,
+        db_manager=injector.db_manager,
+        execution=injector.execution,
+        exec_id=injector.exec_id,
+        vm=injector.vm,
+        env=injector.env,
+        output_dir=injector.output_dir,
+        time_steps=injector.time_steps,
+    )
     context.train()
 
 

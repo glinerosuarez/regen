@@ -21,6 +21,7 @@ from repository.db import AccountInfo, Order, Kline
 @define
 class BinanceClient:
     """Binance api client."""
+
     base_urls: List[str] = field(validator=validators.instance_of(list))
     client_key: str
     client_secret: str
@@ -34,7 +35,7 @@ class BinanceClient:
             random one.
         """
         if (self._client is None) or (not use_default_url):
-            base_url = (self.base_urls[0] if use_default_url is True else random.choice(self.base_urls))
+            base_url = self.base_urls[0] if use_default_url is True else random.choice(self.base_urls)
             self._client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
             return self._client
         else:
@@ -77,7 +78,7 @@ class BinanceClient:
         :param interval: the interval of kline, e.g 1m, 5m, 1h, 1d, etc.
         :param start_time: datetime to get aggregate trades from INCLUSIVE.
         :param end_time: datetime to get aggregate trades until INCLUSIVE.
-        :param limit: limit the results. Default 500; max 1000.
+        :param limit: limit the results. Default 500; max 500.
         """
         # Convert datetimes to ts
         start_time_ts = None if start_time is None else int(start_time.timestamp() * 1000)
