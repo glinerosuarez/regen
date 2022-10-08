@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pendulum
 from cached_property import cached_property
+from dynaconf import Dynaconf
 from stable_baselines3.common.vec_env import VecEnv
 
 import conf
@@ -14,37 +15,42 @@ from vm.crypto_vm import CryptoViewModel
 
 
 class DependencyInjector:
+    
+    @cached_property
+    def settings(self) -> Dynaconf:
+        return conf.load_settings()
+    
     @property
     def output_dir(self) -> Path:
-        return Path(conf.settings.output_dir)
+        return Path(self.settings.output_dir)
 
     @property
     def time_steps(self) -> int:
-        return conf.settings.time_steps
+        return self.settings.time_steps
 
     @property
     def trading_pair(self) -> TradingPair:
-        return TradingPair(conf.settings.base_asset, conf.settings.quote_asset)
+        return TradingPair(self.settings.base_asset, self.settings.quote_asset)
 
     @cached_property
     def db_manager(self) -> DataBaseManager:
         return DataBaseManager(
-            conf.settings.db_name,
+            self.settings.db_name,
             DataBaseManager.EngineType.PostgreSQL
-            if conf.settings.db_type == "postgres"
+            if self.settings.db_type == "postgres"
             else DataBaseManager.EngineType.SQLite,
-            conf.settings.db_host,
-            conf.settings.db_user,
-            conf.settings.db_password,
-            Path(conf.settings.db_file_location),
+            self.settings.db_host,
+            self.settings.db_user,
+            self.settings.db_password,
+            Path(self.settings.db_file_location),
         )
 
     @property
     def api_client(self) -> BinanceClient:
         return BinanceClient(
-            base_urls=conf.settings.bnb_base_urls,
-            client_key=conf.settings.bnb_client_key,
-            client_secret=conf.settings.bnb_client_secret,
+            base_urls=self.settings.bnb_base_urls,
+            client_key=self.settings.bnb_client_key,
+            client_secret=self.settings.bnb_client_secret,
         )
 
     @property
@@ -53,28 +59,29 @@ class DependencyInjector:
             db_manager=self.db_manager,
             api_manager=self.api_client,
             trading_pair=self.trading_pair,
-            enable_live_mode=conf.settings.enable_live_mode,
-            get_data_from_db=conf.settings.get_data_from_db,
-            max_api_klines=conf.settings.max_api_klines,
+            enable_live_mode=self.settings.enable_live_mode,
+            get_data_from_db=self.settings.get_data_from_db,
+            max_api_klines=self.settings.max_api_klines,
+            klines_buffer_size=self.settings.klines_buffer_size,
         )
 
     @property
     def obs_producer(self) -> ObsProducer:
-        return ObsProducer(kline_producer=self.kline_producer, window_size=conf.settings.window_size)
+        return ObsProducer(kline_producer=self.kline_producer, window_size=self.settings.window_size)
 
     @cached_property
     def execution(self):
         return Execution(
             pair=self.trading_pair,
             algorithm=conf.consts.Algorithm.PPO,
-            n_steps=conf.settings.time_steps,
+            n_steps=self.settings.time_steps,
             start=pendulum.now("UTC").timestamp(),
             settings=TrainSettings(
-                db_name=conf.settings.db_name,
-                window_size=conf.settings.window_size,
-                ticks_per_episode=conf.settings.ticks_per_episode,
-                is_live_mode=conf.settings.enable_live_mode,
-                klines_buffer_size=conf.settings.klines_buffer_size,
+                db_name=self.settings.db_name,
+                window_size=self.settings.window_size,
+                ticks_per_episode=self.settings.ticks_per_episode,
+                is_live_mode=self.settings.enable_live_mode,
+                klines_buffer_size=self.settings.klines_buffer_size,
             ),
         )
 
@@ -90,9 +97,9 @@ class DependencyInjector:
             db_manager=self.db_manager,
             api_client=self.api_client,
             obs_producer=self.obs_producer,
-            ticks_per_episode=conf.settings.ticks_per_episode,
+            ticks_per_episode=self.settings.ticks_per_episode,
             execution_id=self.exec_id,
-            window_size=conf.settings.window_size,
+            window_size=self.settings.window_size,
         )
 
     @property

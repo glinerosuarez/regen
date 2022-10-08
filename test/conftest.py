@@ -1,13 +1,20 @@
-from pathlib import Path
 import random
 from typing import List
 
 import pytest
+from dynaconf import Dynaconf
 
+from conf import load_settings
 from conf.consts import CryptoAsset
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
+from repository.remote import BinanceClient
 from vm.crypto_vm import CryptoViewModel
+
+
+@pytest.fixture(autouse=True)
+def settings() -> Dynaconf:
+    return load_settings("development")
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -339,6 +346,15 @@ def db_name() -> str:
 @pytest.fixture
 def db_manager(db_name, tmp_path) -> DataBaseManager:
     return DataBaseManager(db_name, files_dir=tmp_path)
+
+
+@pytest.fixture
+def api_client(settings) -> BinanceClient:
+    return BinanceClient(
+        base_urls=["https://testnet.binance.vision"],
+        client_key=settings.bnb_client_key,
+        client_secret=settings.bnb_client_secret,
+    )
 
 
 @pytest.fixture

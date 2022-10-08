@@ -9,7 +9,6 @@ from typing import Optional, Iterator, Tuple
 import pendulum
 import numpy as np
 
-import conf
 import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
@@ -42,6 +41,7 @@ class KlineProducer(threading.Thread):
         enable_live_mode: bool = False,
         get_data_from_db: bool = True,
         max_api_klines: Optional[int] = None,
+        klines_buffer_size: int = 10_000,
         daemon: bool = True,
     ):
         super(KlineProducer, self).__init__(daemon=daemon)
@@ -56,10 +56,10 @@ class KlineProducer(threading.Thread):
         self.get_data_from_db = get_data_from_db  # True to get klines from Kline sql table
         self.enable_live_mode = enable_live_mode  # True to continuously request new klines from the api
         self.max_api_klines = max_api_klines  # Total number of klines to request from the api
-
-        self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
+        self.klines_buffer_size = klines_buffer_size
+        self.queue = Queue(klines_buffer_size)  # interface to expose klines to the main thread
         # buffer for klines that come directly from the api
-        self._api_queue = asyncio.Queue(conf.settings.klines_buffer_size)
+        self._api_queue = asyncio.Queue(klines_buffer_size)
         self.last_stime = now.subtract(minutes=1).start_of("minute")  # we will start getting klines from this minute
         self.last_etime = now.subtract(minutes=1).end_of("minute")
         self.background_tasks = set()
@@ -105,7 +105,7 @@ class KlineProducer(threading.Thread):
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
         if self.get_data_from_db is True:
-            async for db_kline in get_db_async_generator(self.db_manager, Kline, conf.settings.klines_buffer_size):
+            async for db_kline in get_db_async_generator(self.db_manager, Kline, self.klines_buffer_size):
                 self.queue.put(db_kline)
 
         if self.max_api_klines is None:

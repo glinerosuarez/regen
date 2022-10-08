@@ -1,2 +1,2 @@
 import conf.consts
-from conf._configuration import settings
+from conf._configuration import load_settings
