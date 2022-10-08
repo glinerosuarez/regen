@@ -6,7 +6,6 @@ from stable_baselines3 import PPO
 from stable_baselines3.common import logger
 from stable_baselines3.common.vec_env import VecNormalize
 
-from env import load_crypto_trading_env
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution
 from vm.crypto_vm import CryptoViewModel
