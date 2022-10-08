@@ -45,4 +45,3 @@ def load_settings(env: Optional[str] = None):
     settings.quote_asset = CryptoAsset(settings.quote_asset)
 
     return settings
-

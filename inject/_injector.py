@@ -15,11 +15,10 @@ from vm.crypto_vm import CryptoViewModel
 
 
 class DependencyInjector:
-    
     @cached_property
     def settings(self) -> Dynaconf:
         return conf.load_settings()
-    
+
     @property
     def output_dir(self) -> Path:
         return Path(self.settings.output_dir)
