@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import pendulum
 from cached_property import cached_property
@@ -6,12 +7,13 @@ from dynaconf import Dynaconf
 from stable_baselines3.common.vec_env import VecEnv
 
 import conf
-from env import build_crypto_trading_env
+from env import build_crypto_trading_env, load_crypto_trading_env
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution, TrainSettings
 from repository.remote import BinanceClient
 from vm._obs_producer import ObsProducer, KlineProducer
 from vm.crypto_vm import CryptoViewModel
+from exec import ExecutionContext
 
 
 class DependencyInjector:
@@ -30,6 +32,16 @@ class DependencyInjector:
     @property
     def trading_pair(self) -> TradingPair:
         return TradingPair(self.settings.base_asset, self.settings.quote_asset)
+
+    @property
+    def load_from_execution_id(self) -> Optional[int]:
+        value = self.settings.load_from_execution_id
+
+        if value is None:
+            return value
+        else:
+            assert isinstance(value, int), f"load_from_execution_id must be an int not {type(value)}"
+            return value
 
     @cached_property
     def db_manager(self) -> DataBaseManager:
@@ -70,24 +82,23 @@ class DependencyInjector:
 
     @cached_property
     def execution(self):
-        return Execution(
+        value = Execution(
             pair=self.trading_pair,
             algorithm=conf.consts.Algorithm.PPO,
             n_steps=self.settings.time_steps,
             start=pendulum.now("UTC").timestamp(),
+            output_dir=str(self.output_dir),
             settings=TrainSettings(
                 db_name=self.settings.db_name,
                 window_size=self.settings.window_size,
                 ticks_per_episode=self.settings.ticks_per_episode,
                 is_live_mode=self.settings.enable_live_mode,
                 klines_buffer_size=self.settings.klines_buffer_size,
+                load_from_execution_id=self.load_from_execution_id,
             ),
         )
-
-    @cached_property
-    def exec_id(self):
-        self.db_manager.insert(self.execution)
-        return str(self.execution.id)
+        self.db_manager.insert(value)
+        return value
 
     @property
     def vm(self) -> CryptoViewModel:
@@ -97,13 +108,26 @@ class DependencyInjector:
             api_client=self.api_client,
             obs_producer=self.obs_producer,
             ticks_per_episode=self.settings.ticks_per_episode,
-            execution_id=self.exec_id,
+            execution_id=str(self.execution.id),
             window_size=self.settings.window_size,
         )
 
     @property
     def env(self) -> VecEnv:
-        return build_crypto_trading_env(vm=self.vm)
+        if self.execution.settings.load_from_execution_id is None:
+            return build_crypto_trading_env(vm=self.vm)
+        else:
+            return load_crypto_trading_env(self.execution.load_model_path, self.vm)
+
+    @property
+    def execution_context(self) -> ExecutionContext:
+        return ExecutionContext(
+            execution=self.execution,
+            db_manager=self.db_manager,
+            vm=self.vm,
+            env=self.env,
+            output_dir=self.output_dir,
+        )
 
 
 injector = DependencyInjector()

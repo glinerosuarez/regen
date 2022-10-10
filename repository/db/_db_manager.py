@@ -464,6 +464,7 @@ class TrainSettings:
         Column("ticks_per_episode", Integer, nullable=False),
         Column("is_live_mode", Boolean, nullable=False),
         Column("klines_buffer_size", Integer, nullable=False),
+        Column("load_from_execution_id", Integer, nullable=True),
     )
 
     id: int = field(init=False)
@@ -473,6 +474,7 @@ class TrainSettings:
     ticks_per_episode: int
     is_live_mode: bool
     klines_buffer_size: int
+    load_from_execution_id: int
 
 
 @DataBaseManager._mapper_registry.mapped
@@ -486,6 +488,7 @@ class Execution(DataClass):
         Column("algorithm", Enum(Algorithm), nullable=False),
         Column("n_steps", BigInteger, nullable=False),
         Column("start", Float, nullable=False, unique=True),
+        Column("output_dir", String, nullable=True),
         Column("end", Float, nullable=True, unique=True),
     )
 
@@ -494,6 +497,7 @@ class Execution(DataClass):
     algorithm: Algorithm
     n_steps: int
     start: float
+    output_dir: str
     end: float = field(init=False)
     settings: TrainSettings
 
@@ -502,3 +506,7 @@ class Execution(DataClass):
             "settings": relationship("TrainSettings", uselist=False, backref="Execution"),
         }
     }
+
+    @property
+    def load_model_path(self) -> Path:
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / "env/env.pkl"
