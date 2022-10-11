@@ -516,4 +516,4 @@ class Execution(DataClass):
 
     @property
     def load_env_path(self) -> Path:
-        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / f"env/env.pkl"
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / "env/env.pkl"

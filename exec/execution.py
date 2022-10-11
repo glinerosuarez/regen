@@ -43,7 +43,7 @@ class ExecutionContext:
     @cached_property
     def model(self) -> BaseAlgorithm:
         if self.execution.settings.load_from_execution_id is None:
-            self.logger.info(f"Training model from scratch.")
+            self.logger.info("Training model from scratch.")
             return PPO("MultiInputPolicy", self.env, verbose=1)
         else:
             self.logger.info(f"Loading model from path: {self.execution.load_model_path}.")

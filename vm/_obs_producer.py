@@ -10,7 +10,6 @@ import pendulum
 import numpy as np
 from cached_property import cached_property
 
-import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
 from repository.db import Kline, get_db_async_generator, DataBaseManager
@@ -22,7 +21,7 @@ class KlineProducer(threading.Thread):
     def _get_kline_counter(self) -> Iterator[None]:
         if self.enable_live_mode is True:
             if self.max_api_klines is None:
-                self.logger.info(f"Returning an infinite number of klines.")
+                self.logger.info("Returning an infinite number of klines.")
                 return itertools.repeat(None)
             else:
                 if self.get_data_from_db is True:
@@ -38,7 +37,7 @@ class KlineProducer(threading.Thread):
                 self.logger.info(f"Returning {n_klines} klines.")
                 return itertools.repeat(None, n_klines)
             else:
-                self.logger.info(f"Returning 0 klines.")
+                self.logger.info("Returning 0 klines.")
                 return itertools.repeat(None, 0)
 
     def __init__(

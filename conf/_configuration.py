@@ -36,6 +36,7 @@ def load_settings(env: Optional[str] = None):
             Validator("klines_buffer_size", is_type_of=int, default=10_000),
             Validator("path_to_env_stats", is_type_of=str, default="output/1/env/env.pkl"),
             Validator("load_from_execution_id", default=None),
+            Validator("update_klines_db", is_type_of=bool, default=False),
         ],
     )
 

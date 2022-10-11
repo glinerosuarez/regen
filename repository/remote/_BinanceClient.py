@@ -11,7 +11,6 @@ from binance.error import ClientError
 from cached_property import cached_property
 
 from conf.consts import Side, OrderType, TimeInForce
-from log import LoggerFactory
 from repository import Interval
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
