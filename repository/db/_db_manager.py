@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm, CryptoAsset
 from repository._dataclass import DataClass, TradingPair
-from repository._consts import Fill, AccountType, Balance, AccountPermission
+from repository._consts import AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
 from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
