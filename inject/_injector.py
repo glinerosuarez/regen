@@ -1,3 +1,5 @@
+import logging
+from logging import Logger
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +10,7 @@ from stable_baselines3.common.vec_env import VecEnv
 
 import conf
 from env import build_crypto_trading_env, load_crypto_trading_env
+from log import LoggerFactory
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution, TrainSettings
 from repository.remote import BinanceClient
@@ -17,6 +20,11 @@ from exec import ExecutionContext
 
 
 class DependencyInjector:
+    def get_logger(self, name: str, security_level: int = logging.INFO) -> Logger:
+        return LoggerFactory.get_file_logger(
+            name, self.output_dir / str(self.execution.id) / "logs/", security_level=security_level
+        )
+
     @cached_property
     def settings(self) -> Dynaconf:
         return conf.load_settings()
@@ -34,13 +42,13 @@ class DependencyInjector:
         return TradingPair(self.settings.base_asset, self.settings.quote_asset)
 
     @property
-    def load_from_execution_id(self) -> Optional[int]:
+    def load_from_execution_id(self) -> Optional[str]:
         value = self.settings.load_from_execution_id
 
         if value is None:
             return value
         else:
-            assert isinstance(value, int), f"load_from_execution_id must be an int not {type(value)}"
+            assert isinstance(value, str), f"load_from_execution_id must be an instance of str not {type(value)}"
             return value
 
     @cached_property
@@ -62,6 +70,7 @@ class DependencyInjector:
             base_urls=self.settings.bnb_base_urls,
             client_key=self.settings.bnb_client_key,
             client_secret=self.settings.bnb_client_secret,
+            logger=self.get_logger("BinanceClient", security_level=logging.DEBUG),
         )
 
     @property
@@ -70,6 +79,7 @@ class DependencyInjector:
             db_manager=self.db_manager,
             api_manager=self.api_client,
             trading_pair=self.trading_pair,
+            logger=self.get_logger("KlineProducer"),
             enable_live_mode=self.settings.enable_live_mode,
             get_data_from_db=self.settings.get_data_from_db,
             max_api_klines=self.settings.max_api_klines,
@@ -78,7 +88,11 @@ class DependencyInjector:
 
     @property
     def obs_producer(self) -> ObsProducer:
-        return ObsProducer(kline_producer=self.kline_producer, window_size=self.settings.window_size)
+        return ObsProducer(
+            kline_producer=self.kline_producer,
+            window_size=self.settings.window_size,
+            logger=self.get_logger("ObsProducer", logging.DEBUG),
+        )
 
     @cached_property
     def execution(self):
@@ -114,10 +128,13 @@ class DependencyInjector:
 
     @property
     def env(self) -> VecEnv:
+        logger = self.get_logger("Injector")
         if self.execution.settings.load_from_execution_id is None:
+            logger.info("Building a new environment.")
             return build_crypto_trading_env(vm=self.vm)
         else:
-            return load_crypto_trading_env(self.execution.load_model_path, self.vm)
+            logger.info(f"Loading environment from {self.execution.load_env_path}.")
+            return load_crypto_trading_env(self.execution.load_env_path, self.vm)
 
     @property
     def execution_context(self) -> ExecutionContext:

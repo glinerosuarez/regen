@@ -90,4 +90,4 @@ class Position(enum.Enum):
 
 
 class Algorithm(enum.Enum):
-    PPO = "ppo"
+    PPO = "PPO"

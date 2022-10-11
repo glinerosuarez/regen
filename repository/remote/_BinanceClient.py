@@ -1,6 +1,6 @@
 import random
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import pendulum
 import requests
@@ -8,6 +8,7 @@ from attr import define, field
 from attrs import validators
 from binance.spot import Spot
 from binance.error import ClientError
+from cached_property import cached_property
 
 from conf.consts import Side, OrderType, TimeInForce
 from log import LoggerFactory
@@ -18,34 +19,29 @@ from repository._dataclass import TradingPair
 from repository.db import AccountInfo, Order, Kline
 
 
-@define
+@define(slots=False)
 class BinanceClient:
     """Binance api client."""
 
     base_urls: List[str] = field(validator=validators.instance_of(list))
     client_key: str
     client_secret: str
-    _client: Optional[Spot] = field(init=False, default=None)
-    logger: Logger = field(init=False, default=LoggerFactory.get_console_logger(__name__))
+    logger: Logger
 
-    def get_client(self, use_default_url: bool = True) -> Spot:
-        """
-        Init a new spot client.
-        :param use_default_url: If True, then use the first url provided in settings.bnb_client_key, else choose a
-            random one.
-        """
-        if (self._client is None) or (not use_default_url):
-            base_url = self.base_urls[0] if use_default_url is True else random.choice(self.base_urls)
-            self._client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
-            return self._client
-        else:
-            return self._client
+    @cached_property
+    def _spot_client(self) -> Spot:
+        """Init a new spot client."""
+        base_url = random.choice(self.base_urls)
+        return Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
+
+    def _invalidate_spot_client_cache(self) -> None:
+        del self.__dict__["_spot_client"]
 
     def get_account_info(self) -> AccountInfo:
         """
         Get account information
         """
-        return AccountInfo(**self.get_client().account())
+        return AccountInfo(**self._spot_client.account())
 
     def get_price(self, pair: TradingPair) -> float:
         """
@@ -53,7 +49,7 @@ class BinanceClient:
         :param pair: trading pair.
         :return: Latest price for a symbol
         """
-        return float(self.get_client().ticker_price(str(pair))["price"])
+        return float(self._spot_client.ticker_price(str(pair))["price"])
 
     def get_current_avg_price(self, pair: TradingPair) -> AvgPrice:
         """
@@ -61,14 +57,14 @@ class BinanceClient:
         :param pair: trading pair.
         :return: AvgPrice record
         """
-        return AvgPrice(**self.get_client().avg_price(str(pair)))
+        return AvgPrice(**self._spot_client.avg_price(str(pair)))
 
     def get_klines_data(
         self,
         pair: TradingPair,
         interval: Interval,
-        start_time: Optional[pendulum.DateTime] = None,
-        end_time: Optional[pendulum.DateTime] = None,
+        start_time: Union[Optional[pendulum.DateTime], int] = None,
+        end_time: Union[Optional[pendulum.DateTime], int] = None,
         limit: Optional[int] = None,
     ) -> List[Kline]:
         """
@@ -81,16 +77,19 @@ class BinanceClient:
         :param limit: limit the results. Default 500; max 500.
         """
         # Convert datetimes to ts
-        start_time_ts = None if start_time is None else int(start_time.timestamp() * 1000)
-        end_time_ts = None if end_time is None else int(end_time.timestamp() * 1000)
+        if isinstance(start_time, pendulum.DateTime):
+            start_time = int(start_time.timestamp() * 1000)
+        if isinstance(end_time, pendulum.DateTime):
+            end_time = int(end_time.timestamp() * 1000)
 
         # Arguments to kwargs
-        args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
+        args = remove_none_args({"startTime": start_time, "endTime": end_time, "limit": limit})
         try:
-            response = self.get_client().klines(symbol=str(pair), interval=interval.value, **args)
+            response = self._spot_client.klines(symbol=str(pair), interval=interval.value, **args)
         except requests.exceptions.ConnectionError as connection_err:
             self.logger.error(f"Remote disconnected connection_err: {connection_err}")
-            return self.get_client(False).get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
+            self._invalidate_spot_client_cache()
+            return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
             Kline(
@@ -148,9 +147,9 @@ class BinanceClient:
         )
         try:
             if is_test:
-                self.get_client().new_order_test(**args)
+                self._spot_client.new_order_test(**args)
                 return None
             else:
-                return Order(**self.get_client().new_order(**args))
+                return Order(**self._spot_client.new_order(**args))
         except ClientError as e:
-            LoggerFactory.get_console_logger(__name__).error(e)
+            self.logger.error(e)

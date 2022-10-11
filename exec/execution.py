@@ -46,7 +46,7 @@ class ExecutionContext:
             self.logger.info(f"Training model from scratch.")
             return PPO("MultiInputPolicy", self.env, verbose=1)
         else:
-            self.logger.info(f"Loading model from path: {self.model_path}.")
+            self.logger.info(f"Loading model from path: {self.execution.load_model_path}.")
             return PPO.load(self.execution.load_model_path, env=self.env)
 
     def train(self) -> None:

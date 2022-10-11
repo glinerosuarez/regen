@@ -1,5 +1,6 @@
 import enum
 import json
+import logging
 from pathlib import Path
 
 import cattr
@@ -97,7 +98,9 @@ class DataBaseManager:
         files_dir: Optional[Path] = Path() / "output",
     ):
         self.db_name = db_name
-        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", file_dir=files_dir / "logs", preffix="db")
+        self.logger = LoggerFactory.get_file_logger(
+            name="sqlalchemy", file_dir=files_dir / "logs", preffix="db", security_level=logging.WARNING
+        )
 
         # Connect to a database or create a new database if it does not exist.
         if engine_type == DataBaseManager.EngineType.SQLite:
@@ -509,4 +512,8 @@ class Execution(DataClass):
 
     @property
     def load_model_path(self) -> Path:
-        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / "env/env.pkl"
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / f"model/{self.algorithm.value}"
+
+    @property
+    def load_env_path(self) -> Path:
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / f"env/env.pkl"
