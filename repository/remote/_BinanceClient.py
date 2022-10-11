@@ -31,7 +31,9 @@ class BinanceClient:
     def _spot_client(self) -> Spot:
         """Init a new spot client."""
         base_url = random.choice(self.base_urls)
-        return Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
+        client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
+        self.logger.debug(f"Getting new spot client {client} with base_url: {base_url}")
+        return client
 
     def _invalidate_spot_client_cache(self) -> None:
         del self.__dict__["_spot_client"]

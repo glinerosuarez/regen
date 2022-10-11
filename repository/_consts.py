@@ -31,14 +31,6 @@ class Interval(enum.Enum):
 
 
 @attrs
-class Fill(DataClass):
-    price: float = attrib(converter=float)
-    qty: float = attrib(converter=float)
-    commission: float = attrib(converter=float)
-    commissionAsset: CryptoAsset = attrib(converter=CryptoAsset)
-
-
-@attrs
 class Balance(DataClass):
     asset: CryptoAsset = attrib(converter=CryptoAsset)
     free: float = attrib(converter=float)

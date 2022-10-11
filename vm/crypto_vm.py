@@ -27,6 +27,7 @@ class CryptoViewModel:
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
+        place_orders: bool = False
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -53,6 +54,7 @@ class CryptoViewModel:
         self.db_manager = db_manager
         self.client = api_client
         self.obs_producer = obs_producer
+        self.place_orders = place_orders
 
         self.episode_id = None
         self.position = Position.Short
@@ -196,6 +198,7 @@ class CryptoViewModel:
             self.history[key].append(value)
 
     def _place_order(self, side: Side) -> Tuple[float, float]:
+        if self.place_orders is True:
         # order = self.client.place_order(
         #    pair=self.trading_pair,
         #    side=side,
@@ -203,13 +206,14 @@ class CryptoViewModel:
         #    quantity=self.balance,
         #    new_client_order_id=self.execution_id
         # )
-        price = self._get_price()
-        # The price and quantity will be returned by client.place_order.
-        if side == Side.BUY:
-            quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
         else:
-            quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
-        return quantity, price
+            price = self._get_price()
+            # The price and quantity will be returned by client.place_order.
+            if side == Side.BUY:
+                quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
+            else:
+                quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
+            return quantity, price
 
     def _get_price(self):
         price = self.last_observation[-1][3]

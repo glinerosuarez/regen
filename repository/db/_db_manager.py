@@ -14,7 +14,7 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm
+from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm, CryptoAsset
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import Fill, AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
@@ -264,7 +264,7 @@ class _EncodedDataClass(types.UserDefinedType):
 
 
 @DataBaseManager._mapper_registry.mapped
-@attrs
+@define(slots=False)
 class Order(DataClass):
     """Data of a placed order."""
 
@@ -284,23 +284,51 @@ class Order(DataClass):
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
-        Column("fills", _EncodedDataClass(List[Fill])),
     )
 
-    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)
-    orderId: str = attrib(converter=str)
-    orderListId: str = attrib(converter=str)  # Unless OCO, value will be -1
-    clientOrderId: str = attrib(converter=str)
-    transactTime: int = attrib(converter=int)  # Timestamp in ms
-    price: float = attrib(converter=float)
-    origQty: float = attrib(converter=float)  # Quantity set in the order
-    executedQty: float = attrib(converter=float)
-    cummulativeQuoteQty: float = attrib(converter=float)
-    status: str = attrib(converter=str)
-    timeInForce: TimeInForce = attrib(converter=TimeInForce)
-    type: OrderType = attrib(converter=OrderType)
-    side: Side = attrib(converter=Side)
-    fills: List[Fill] = attrib(converter=Fill.structure)
+    __mapper_args__ = {  # type: ignore
+        "properties": {
+            "fills": relationship("Fill"),
+        }
+    }
+
+    symbol: TradingPair = field(validator=instance_of(TradingPair), converter=TradingPair.structure)
+    orderId: str = field(converter=str)
+    orderListId: str = field(converter=str)  # Unless OCO, value will be -1
+    clientOrderId: str = field(converter=str)
+    transactTime: int = field(converter=int)  # Timestamp in ms
+    price: float = field(converter=float)
+    origQty: float = field(converter=float)  # Quantity set in the order
+    executedQty: float = field(converter=float)
+    cummulativeQuoteQty: float = field(converter=float)
+    status: str = field(converter=str)
+    timeInForce: TimeInForce = field(converter=TimeInForce)
+    type: OrderType = field(converter=OrderType)
+    side: Side = field(converter=Side)
+    fills: List[Fill]
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class Fill(DataClass):
+    __table__ = Table(
+        "fills",
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("order_id", Integer, ForeignKey("orders.id")),
+        Column("price", Float),
+        Column("qty", Float),
+        Column("commission", Float),
+        Column("commissionAsset", _EncodedDataClass(CryptoAsset)),
+        Column("tradeId", Integer),
+    )
+
+    id: int = field(init=False)
+    order_id: int = field(init=False)
+    price: float = field(converter=float)
+    qty: float = field(converter=float)
+    commission: float = field(converter=float)
+    commissionAsset: CryptoAsset = field(converter=CryptoAsset, validator=instance_of(CryptoAsset))
+    tradeId: int
 
 
 @DataBaseManager._mapper_registry.mapped
