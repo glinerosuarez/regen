@@ -265,6 +265,29 @@ class _EncodedDataClass(types.UserDefinedType):
 
 @DataBaseManager._mapper_registry.mapped
 @define(slots=False)
+class Fill(DataClass):
+    __table__ = Table(
+        "fills",
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("order_id", Integer, ForeignKey("orders.id")),
+        Column("price", Float),
+        Column("qty", Float),
+        Column("commission", Float),
+        Column("commissionAsset", _EncodedDataClass(CryptoAsset)),
+        Column("tradeId", Integer),
+    )
+
+    id: int = field(init=False)
+    order_id: int = field(init=False)
+    price: float = field(converter=float)
+    qty: float = field(converter=float)
+    commission: float = field(converter=float)
+    commissionAsset: CryptoAsset = field(converter=CryptoAsset, validator=instance_of(CryptoAsset))
+    tradeId: int
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
 class Order(DataClass):
     """Data of a placed order."""
 
@@ -306,29 +329,6 @@ class Order(DataClass):
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)
     fills: List[Fill]
-
-
-@DataBaseManager._mapper_registry.mapped
-@define(slots=False)
-class Fill(DataClass):
-    __table__ = Table(
-        "fills",
-        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
-        Column("order_id", Integer, ForeignKey("orders.id")),
-        Column("price", Float),
-        Column("qty", Float),
-        Column("commission", Float),
-        Column("commissionAsset", _EncodedDataClass(CryptoAsset)),
-        Column("tradeId", Integer),
-    )
-
-    id: int = field(init=False)
-    order_id: int = field(init=False)
-    price: float = field(converter=float)
-    qty: float = field(converter=float)
-    commission: float = field(converter=float)
-    commissionAsset: CryptoAsset = field(converter=CryptoAsset, validator=instance_of(CryptoAsset))
-    tradeId: int
 
 
 @DataBaseManager._mapper_registry.mapped
