@@ -1,10 +1,12 @@
 import random
+from logging import Logger
 from typing import List, Optional
 
 import pytest
 from dynaconf import Dynaconf
 from stable_baselines3.common.vec_env import VecEnv
 
+import log
 from conf import load_settings
 from conf.consts import CryptoAsset
 from env import build_crypto_trading_env
@@ -362,6 +364,11 @@ def klines_data(trading_pair: TradingPair) -> List[Kline]:
 
 
 @pytest.fixture
+def logger() -> Logger:
+    return log.LoggerFactory.get_console_logger(__name__)
+
+
+@pytest.fixture
 def db_name() -> str:
     return "test_db"
 
@@ -372,17 +379,18 @@ def db_manager(db_name, tmp_path) -> DataBaseManager:
 
 
 @pytest.fixture
-def api_client(settings) -> BinanceClient:
+def api_client(settings, logger) -> BinanceClient:
     return BinanceClient(
         base_urls=["https://testnet.binance.vision"],
         client_key=settings.bnb_client_key,
         client_secret=settings.bnb_client_secret,
+        logger=logger,
     )
 
 
 @pytest.fixture
 def kline_producer(
-    db_manager, api_client, trading_pair, enable_live_mode, get_data_from_db, max_api_klines, klines_buffer_size
+    db_manager, api_client, trading_pair, enable_live_mode, get_data_from_db, max_api_klines, klines_buffer_size, logger
 ) -> KlineProducer:
     return KlineProducer(
         db_manager=db_manager,
@@ -392,12 +400,13 @@ def kline_producer(
         get_data_from_db=get_data_from_db,
         max_api_klines=max_api_klines,
         klines_buffer_size=klines_buffer_size,
+        logger=logger,
     )
 
 
 @pytest.fixture
-def obs_producer(kline_producer, window_size) -> ObsProducer:
-    return ObsProducer(kline_producer=kline_producer, window_size=window_size)
+def obs_producer(kline_producer, window_size, logger) -> ObsProducer:
+    return ObsProducer(kline_producer=kline_producer, window_size=window_size, logger=logger)
 
 
 @pytest.fixture
