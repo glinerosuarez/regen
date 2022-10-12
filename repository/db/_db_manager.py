@@ -268,6 +268,7 @@ class _EncodedDataClass(types.UserDefinedType):
 class Fill(DataClass):
     __table__ = Table(
         "fills",
+        DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("order_id", Integer, ForeignKey("orders.id")),
         Column("price", Float),
@@ -294,8 +295,9 @@ class Order(DataClass):
     __table__ = Table(
         "orders",
         DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
         Column("symbol", _EncodedDataClass(TradingPair)),
-        Column("orderId", String, primary_key=True),
+        Column("orderId", String),
         Column("orderListId", String),
         Column("clientOrderId", String, unique=True),
         Column("transactTime", Integer),
@@ -315,6 +317,7 @@ class Order(DataClass):
         }
     }
 
+    id: int = field(init=False)
     symbol: TradingPair = field(validator=instance_of(TradingPair), converter=TradingPair.structure)
     orderId: str = field(converter=str)
     orderListId: str = field(converter=str)  # Unless OCO, value will be -1

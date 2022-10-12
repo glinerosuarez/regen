@@ -3,9 +3,10 @@ from typing import List
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import Position, Action
+from conf.consts import Position, Action, CryptoAsset
 from repository import AccountType, Observation
 from repository.db import Order, AccountInfo, EnvState, Kline
+from repository.db._db_manager import Fill
 
 
 @pytest.fixture
@@ -24,7 +25,7 @@ def orders() -> List[Order]:
         timeInForce="GTC",
         type="LIMIT",
         side="BUY",
-        fills=[{"price": 400.0, "qty": 10.0, "commission": 0.001, "commissionAsset": "BUSD"}],
+        fills=[Fill(price=400.0, qty=10.0, commission=0.001, commissionAsset=CryptoAsset.BUSD, tradeId=1)],
     )
     data_2 = data.copy(with_={"symbol": "ETHBUSD"})
     data_3 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "67890"})
