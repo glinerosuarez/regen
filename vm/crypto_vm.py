@@ -6,7 +6,7 @@ from collections import defaultdict
 import numpy as np
 
 import log
-from conf.consts import Position, Side, Action
+from conf.consts import Position, Side, Action, OrderType, TimeInForce
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient
@@ -23,7 +23,7 @@ class CryptoViewModel:
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
-        base_balance: float = 100,
+        base_balance: float = 10,
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
@@ -52,7 +52,7 @@ class CryptoViewModel:
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
         self.db_manager = db_manager
-        self.client = api_client
+        self.api_client = api_client
         self.obs_producer = obs_producer
         self.place_orders = place_orders
 
@@ -88,7 +88,7 @@ class CryptoViewModel:
         self.done = False
         self.current_tick = self.window_size
 
-        # We always start longing
+        # We always start longing TODO: Not necessarily
         if self.base_balance < self.quote_balance:
             self._place_order(Side.SELL)
 
@@ -199,14 +199,11 @@ class CryptoViewModel:
 
     def _place_order(self, side: Side) -> Tuple[float, float]:
         if self.place_orders is True:
-            # order = self.client.place_order(
-            #    pair=self.trading_pair,
-            #    side=side,
-            #    type=OrderType.MARKET,
-            #    quantity=self.balance,
-            #    new_client_order_id=self.execution_id
-            # )
-            pass
+            if side == side.BUY:
+                order = self.api_client.buy_at_market(self.trading_pair, self.quote_balance)
+            else:
+                order = self.api_client.sell_at_market(self.trading_pair, self.base_balance)
+            return order.executedQty, order.price
         else:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.

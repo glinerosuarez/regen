@@ -115,8 +115,9 @@ class BinanceClient:
         pair: TradingPair,
         side: Side,
         type: OrderType,
-        time_in_force: TimeInForce = TimeInForce.GTC,
+        time_in_force: Optional[TimeInForce] = None,
         quantity: Optional[float] = None,
+        quoteOrderQty: Optional[float] = None,
         price: Optional[float] = None,
         new_client_order_id: Optional[str] = None,
         is_test: bool = True,
@@ -128,6 +129,7 @@ class BinanceClient:
         :param type: the type of order you want to submit.
         :param time_in_force: this parameter expresses how you want the order to execute.
         :param quantity: the quantity of the asset that you want to buy or sell.
+        :param quoteOrderQty:
         :param price: the price at which you want to sell.
         :param new_client_order_id: an identifier for the order.
         :return: true if the order can be created.
@@ -140,17 +142,51 @@ class BinanceClient:
                 "symbol": str(pair),
                 "side": side.value,
                 "type": type.value,
-                "timeInForce": time_in_force.value,
+                "timeInForce": None if time_in_force is None else time_in_force.value,
                 "quantity": quantity,
+                "quoteOrderQty": quoteOrderQty,
                 "price": price,
                 "newClientOrderId": new_client_order_id,
             }
         )
         try:
             if is_test:
-                self._spot_client.new_order_test(**args)
-                return None
+                return self._spot_client.new_order_test(**args)
             else:
-                return Order(**self._spot_client.new_order(**args))
+                result = self._spot_client.new_order(**args)
+                breakpoint()
+                return Order(**result)
         except ClientError as e:
             self.logger.error(e)
+
+    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Order:
+        """
+        Buy a base at market price. By default, asks the engine to complete the order immediately or kill it if it's not
+        possible.
+        :param pair: Base quote pair.
+        :param quantity: Quantity (in quote units) to buy the base.
+        :return: Order data.
+        """
+        return self.place_order(
+            pair=pair,
+            side=Side.BUY,
+            type=OrderType.MARKET,
+            quoteOrderQty=quantity,
+            is_test=False,
+        )
+
+    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Order:
+        """
+        Sell a base at market price. By default, asks the engine to complete the order immediately or kill it if it's
+        not possible.
+        :param pair: Base quote pair.
+        :param quantity: Quantity (in base units) to sell the base.
+        :return: Order data.
+        """
+        return self.place_order(
+            pair=pair,
+            side=Side.SELL,
+            type=OrderType.MARKET,
+            quantity=quantity,
+            is_test=False,
+        )

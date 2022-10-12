@@ -284,7 +284,7 @@ class Fill(DataClass):
     qty: float = field(converter=float)
     commission: float = field(converter=float)
     commissionAsset: CryptoAsset = field(converter=CryptoAsset, validator=instance_of(CryptoAsset))
-    tradeId: int
+    tradeId: int = field(converter=int)
 
 
 @DataBaseManager._mapper_registry.mapped
@@ -318,7 +318,7 @@ class Order(DataClass):
     }
 
     id: int = field(init=False)
-    symbol: TradingPair = field(validator=instance_of(TradingPair), converter=TradingPair.structure)
+    symbol: TradingPair = field(converter=TradingPair.structure)
     orderId: str = field(converter=str)
     orderListId: str = field(converter=str)  # Unless OCO, value will be -1
     clientOrderId: str = field(converter=str)
@@ -331,7 +331,7 @@ class Order(DataClass):
     timeInForce: TimeInForce = field(converter=TimeInForce)
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)
-    fills: List[Fill]
+    fills: List[Fill] = field(converter=Fill.structure)
 
 
 @DataBaseManager._mapper_registry.mapped

@@ -3,6 +3,7 @@ import copy
 import cattr
 import inspect
 
+import cattrs
 from attr import attrs, attrib
 from attr.validators import instance_of
 from typing import List, Union, Optional
@@ -14,12 +15,13 @@ from conf.consts import CryptoAsset
 class DataClass:
     @classmethod
     def structure(cls, value: Union[dict, list]) -> Union["DataClass", List["DataClass"]]:
+        converter = cattrs.Converter()
         if isinstance(value, list):
             if all(isinstance(e, cls) for e in value):
                 return value
-            return cattr.structure(value, List[cls])
+            return converter.structure(value, List[cls])
         elif isinstance(value, dict):
-            return cattr.structure(value, cls)
+            return converter.structure(value, cls)
         else:
             raise TypeError(f"type {type(value)} of object {value} is not supported.")
 

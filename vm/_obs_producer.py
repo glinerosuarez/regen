@@ -193,6 +193,7 @@ class ObsProducer:
         :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is
             a time gap between klines.
         """
+        # TODO: triggers StopIteration when there aren't any klines
         while self.next_chunk is None:  # request a new chunk until we get a valid one
             self.next_chunk = next(self.chunks_generator)
 
