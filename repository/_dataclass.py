@@ -3,19 +3,31 @@ import copy
 import cattr
 import inspect
 
-import cattrs
-from attr import attrs, attrib
+from attr import attrs, attrib, fields, has
 from attr.validators import instance_of
 from typing import List, Union, Optional
 
+from cached_property import cached_property
+from cattr.gen import make_dict_structure_fn, override
 from conf.consts import CryptoAsset
+
+
+# Register hook factory to ignore attributes with init=False.
+converter = cattr.GenConverter()
+
+
+def structure(cls):
+    overrides = {a.name: override(omit=True) for a in fields(cls) if not a.init}
+    return make_dict_structure_fn(cls, converter, **overrides)
+
+
+converter.register_structure_hook_factory(has, structure)
 
 
 @attrs
 class DataClass:
     @classmethod
     def structure(cls, value: Union[dict, list]) -> Union["DataClass", List["DataClass"]]:
-        converter = cattrs.Converter()
         if isinstance(value, list):
             if all(isinstance(e, cls) for e in value):
                 return value

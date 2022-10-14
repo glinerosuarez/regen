@@ -3,6 +3,7 @@ import json
 import logging
 from pathlib import Path
 
+import attr
 import cattr
 import numpy as np
 import pendulum
@@ -332,6 +333,11 @@ class Order(DataClass):
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)
     fills: List[Fill] = field(converter=Fill.structure)
+
+    @classmethod
+    def structure(cls, data: Union[dict, list]) -> "Order":
+        # Override this method because cattrs doesn't support structure this complex scenario.
+        return cls(**{a.name: data[a.name] for a in attr.fields(cls) if a.init})
 
 
 @DataBaseManager._mapper_registry.mapped
