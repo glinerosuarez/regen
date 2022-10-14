@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from conf.consts import TimeInForce, OrderType, Side, CryptoAsset
+from conf.consts import TimeInForce, OrderType, Side, CryptoAsset, OrderStatus
 from repository.db import Fill, Order
 
 
@@ -96,7 +96,7 @@ def struct_order(api_response, trading_pair) -> Order:
         origQty=10.00000000,
         executedQty=10.00000000,
         cummulativeQuoteQty=2714.61500000,
-        status="FILLED",
+        status=OrderStatus.FILLED,
         timeInForce=TimeInForce.GTC,
         type=OrderType.MARKET,
         side=Side.SELL,

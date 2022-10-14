@@ -1,4 +1,5 @@
 import random
+from collections import namedtuple
 from logging import Logger
 from typing import Optional, List, Union
 
@@ -10,12 +11,15 @@ from binance.spot import Spot
 from binance.error import ClientError
 from cached_property import cached_property
 
-from conf.consts import Side, OrderType, TimeInForce
+from conf.consts import Side, OrderType, TimeInForce, OrderStatus
 from repository import Interval
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
 from repository._dataclass import TradingPair
 from repository.db import AccountInfo, Order, Kline
+
+
+OrderData = namedtuple("OrderData", ["base_qty", "quote_qty", "price"])
 
 
 @define(slots=False)
@@ -151,15 +155,20 @@ class BinanceClient:
         )
         try:
             if is_test:
-                return self._spot_client.new_order_test(**args)
+                result = self._spot_client.new_order_test(**args)
             else:
-                result = self._spot_client.new_order(**args)
-                breakpoint()
-                return Order(**result)
+                result = Order(**self._spot_client.new_order(**args))
+
+            if result.status == OrderStatus.FILLED:
+                return result
+            else:
+                self.logger.error(f"Order request with args: {args} could not be filled.")
+                return None  # TODO: handle this scenario
         except ClientError as e:
             self.logger.error(e)
+            return None  # TODO: handle this scenario
 
-    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Order:
+    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> OrderData:
         """
         Buy a base at market price. By default, asks the engine to complete the order immediately or kill it if it's not
         possible.
@@ -167,26 +176,30 @@ class BinanceClient:
         :param quantity: Quantity (in quote units) to buy the base.
         :return: Order data.
         """
-        return self.place_order(
+        o = self.place_order(
             pair=pair,
             side=Side.BUY,
             type=OrderType.MARKET,
             quoteOrderQty=quantity,
             is_test=False,
         )
+        return OrderData(o.executedQty, quantity - o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
 
-    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Order:
+    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> OrderData:
         """
         Sell a base at market price. By default, asks the engine to complete the order immediately or kill it if it's
         not possible.
         :param pair: Base quote pair.
         :param quantity: Quantity (in base units) to sell the base.
-        :return: Order data.
+        :return: Remaining balance (in base units), total received quantity (in quote units) and avg price we sold at
+                 (in quote units).
         """
-        return self.place_order(
+        o = self.place_order(
             pair=pair,
             side=Side.SELL,
             type=OrderType.MARKET,
             quantity=quantity,
             is_test=False,
         )
+
+        return OrderData(quantity - o.executedQty, o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)

@@ -15,7 +15,7 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm, CryptoAsset
+from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm, CryptoAsset, OrderStatus
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
@@ -306,7 +306,7 @@ class Order(DataClass):
         Column("origQty", Float),
         Column("executedQty", Float),
         Column("cummulativeQuoteQty", Float),
-        Column("status", String),
+        Column("status", Enum(OrderStatus)),
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
@@ -328,7 +328,7 @@ class Order(DataClass):
     origQty: float = field(converter=float)  # Quantity set in the order
     executedQty: float = field(converter=float)
     cummulativeQuoteQty: float = field(converter=float)
-    status: str = field(converter=str)
+    status: OrderStatus = field(converter=OrderStatus)
     timeInForce: TimeInForce = field(converter=TimeInForce)
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)

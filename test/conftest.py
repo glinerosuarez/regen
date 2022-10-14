@@ -8,7 +8,7 @@ from stable_baselines3.common.vec_env import VecEnv
 
 import log
 from conf import load_settings
-from conf.consts import CryptoAsset
+from conf.consts import CryptoAsset, Action
 from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
@@ -75,6 +75,26 @@ def ticks_per_episode() -> int:
 @pytest.fixture
 def window_size() -> int:
     return 5
+
+
+@pytest.fixture
+def actions() -> List[Action]:
+    return [
+        Action.Sell,
+        Action.Sell,
+        Action.Sell,
+        Action.Sell,
+        Action.Buy,
+        Action.Buy,
+        Action.Sell,
+        Action.Buy,
+        Action.Buy,
+        Action.Buy,
+        Action.Buy,
+        Action.Sell,
+        Action.Sell,
+        Action.Buy,
+    ]
 
 
 @pytest.fixture

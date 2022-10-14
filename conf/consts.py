@@ -91,3 +91,7 @@ class Position(enum.Enum):
 
 class Algorithm(enum.Enum):
     PPO = "PPO"
+
+
+class OrderStatus(enum.Enum):
+    FILLED = "FILLED"  # The order has been completed.

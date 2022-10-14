@@ -9,7 +9,7 @@ import log
 from conf.consts import Position, Side, Action, OrderType, TimeInForce
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
-from repository.remote import BinanceClient
+from repository.remote import BinanceClient, OrderData
 from repository import EnvState, TradingPair
 
 
@@ -150,7 +150,9 @@ class CryptoViewModel:
     def _calculate_reward(self, action: Action):
         step_reward = 0.0
         if self._is_trade(action):
-            quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
+            o_data = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
+            self.last_price = o_data.price  # Update last price
+            self._update_balances(action, o_data)  # Update balances
 
             if self.position == Position.Short:  # Our objective is to accumulate the base.
                 # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
@@ -159,7 +161,6 @@ class CryptoViewModel:
             self.last_trade_price = self.last_price  # Update last trade price
 
             self._store_env_state_data(action, step_reward, is_trade=True)
-            self._update_balances(action, quantity, self.last_price)
 
             self.position = self.position.opposite()
         else:
@@ -184,26 +185,24 @@ class CryptoViewModel:
             )
         )
 
-    def _update_balances(self, action: Action, quantity: float, price: float) -> None:
-        if self._is_trade(action) or self.done:
-            if action == Action.Buy:
-                self.base_balance = quantity
-                self.quote_balance = 0.0
-            else:
-                self.base_balance = 0.0
-                self.quote_balance = quantity * price
+    def _update_balances(self, action: Action, o_data: OrderData) -> None:
+        if action == action.Sell:
+            self.base_balance = o_data.base_qty
+            self.quote_balance = o_data.quote_qty + self.quote_balance
+        else:
+            self.base_balance = o_data.base_qty + self.base_balance
+            self.quote_balance = o_data.quote_qty
 
     def _update_history(self, info):
         for key, value in info.items():
             self.history[key].append(value)
 
-    def _place_order(self, side: Side) -> Tuple[float, float]:
+    def _place_order(self, side: Side) -> OrderData:
         if self.place_orders is True:
             if side == side.BUY:
-                order = self.api_client.buy_at_market(self.trading_pair, self.quote_balance)
+                return self.api_client.buy_at_market(self.trading_pair, self.quote_balance)
             else:
-                order = self.api_client.sell_at_market(self.trading_pair, self.base_balance)
-            return order.executedQty, order.price
+                return self.api_client.sell_at_market(self.trading_pair, self.base_balance)
         else:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.
