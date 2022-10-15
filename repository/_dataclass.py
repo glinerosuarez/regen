@@ -7,7 +7,6 @@ from attr import attrs, attrib, fields, has
 from attr.validators import instance_of
 from typing import List, Union, Optional
 
-from cached_property import cached_property
 from cattr.gen import make_dict_structure_fn, override
 from conf.consts import CryptoAsset
 

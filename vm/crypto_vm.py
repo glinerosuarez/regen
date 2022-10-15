@@ -1,12 +1,12 @@
 import time
 import random
-from typing import Optional, Tuple
+from typing import Optional
 from collections import defaultdict
 
 import numpy as np
 
 import log
-from conf.consts import Position, Side, Action, OrderType, TimeInForce
+from conf.consts import Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
 from repository.remote import BinanceClient, OrderData
