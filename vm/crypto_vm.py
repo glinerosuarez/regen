@@ -72,6 +72,11 @@ class CryptoViewModel:
 
         self.logger = logger
 
+    @property
+    def get_next_env_state_id(self) -> int:
+        last_id = self.db_manager.get_last_id(EnvState)
+        return 0 if last_id is None else last_id + 1
+
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
         obs = obs.copy()  # it's ok to shallow copy because we only store doubles, and I don't think that will change
@@ -209,14 +214,10 @@ class CryptoViewModel:
         if self.place_orders is True:
             if side == side.BUY:
                 self.logger.debug(f"Placing buy order.")
-                return self.api_client.buy_at_market(
-                    self.db_manager.get_last_id(EnvState) + 1, self.trading_pair, self.quote_balance
-                )
+                return self.api_client.buy_at_market(self.get_next_env_state_id, self.trading_pair, self.quote_balance)
             else:
                 self.logger.debug(f"Placing sell order.")
-                return self.api_client.sell_at_market(
-                    self.db_manager.get_last_id(EnvState) + 1, self.trading_pair, self.base_balance
-                )
+                return self.api_client.sell_at_market(self.get_next_env_state_id, self.trading_pair, self.base_balance)
         else:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.

@@ -231,7 +231,7 @@ class DataBaseManager:
         """
         return self.session.query(col).count()
 
-    def get_last_id(self, table: Type[DataClass]) -> int:
+    def get_last_id(self, table: Type[DataClass]) -> Optional[int]:
         return self.session.query(table).order_by(table.id.desc()).first()
 
 
