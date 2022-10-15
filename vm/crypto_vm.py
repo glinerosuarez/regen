@@ -218,6 +218,9 @@ class CryptoViewModel:
                 return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
 
     def _get_price(self):
-        price = self.last_observation[-1][3]
-        self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
-        return price
+        if self.place_orders is True:
+            return self.api_client.get_price(self.trading_pair)
+        else:
+            price = self.last_observation[-1][3]
+            self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
+            return price

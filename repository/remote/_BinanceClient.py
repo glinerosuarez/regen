@@ -16,8 +16,7 @@ from repository import Interval
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
 from repository._dataclass import TradingPair
-from repository.db import AccountInfo, Order, Kline
-
+from repository.db import AccountInfo, Order, Kline, DataBaseManager
 
 OrderData = namedtuple("OrderData", ["base_qty", "quote_qty", "price"])
 
@@ -29,6 +28,7 @@ class BinanceClient:
     base_urls: List[str] = field(validator=validators.instance_of(list))
     client_key: str
     client_secret: str
+    db_manager: DataBaseManager
     logger: Logger
 
     @cached_property
@@ -159,6 +159,7 @@ class BinanceClient:
                 return None
             else:
                 result = Order(**self._spot_client.new_order(**args))
+                self.db_manager.insert(result)
 
                 if result.status == OrderStatus.FILLED:
                     return result

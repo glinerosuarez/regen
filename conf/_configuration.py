@@ -37,6 +37,7 @@ def load_settings(env: Optional[str] = None):
             Validator("path_to_env_stats", is_type_of=str, default="output/1/env/env.pkl"),
             Validator("load_from_execution_id", default=None),
             Validator("update_klines_db", is_type_of=bool, default=False),
+            Validator("place_orders", is_type_of=bool, default=False),
         ],
     )
 

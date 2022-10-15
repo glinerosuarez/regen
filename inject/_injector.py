@@ -124,6 +124,7 @@ class DependencyInjector:
             ticks_per_episode=self.settings.ticks_per_episode,
             execution_id=str(self.execution.id),
             window_size=self.settings.window_size,
+            place_orders=self.settings.place_orders,
         )
 
     @property
