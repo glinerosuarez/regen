@@ -8,6 +8,7 @@ enable_live_mode = true
 place_orders = true
 
 [development]
+quote_asset = "USDT"
 db_type = "sqlite"
 db_name = "test_regen"
 bnb_base_urls = ["https://testnet.binance.vision"] # The base endpoint this client will send requests to.

@@ -231,6 +231,9 @@ class DataBaseManager:
         """
         return self.session.query(col).count()
 
+    def get_last_id(self, table: Type[DataClass]) -> int:
+        return self.session.query(table).order_by(table.id.desc()).first()
+
 
 class _EncodedDataClass(types.UserDefinedType):
     """
@@ -297,6 +300,7 @@ class Order(DataClass):
         "orders",
         DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("env_state_id", Integer, nullable=False, unique=True),
         Column("symbol", _EncodedDataClass(TradingPair)),
         Column("orderId", String),
         Column("orderListId", String),
@@ -319,6 +323,7 @@ class Order(DataClass):
     }
 
     id: int = field(init=False)
+    env_state_id: int = field(converter=int)
     symbol: TradingPair = field(converter=TradingPair.structure)
     orderId: str = field(converter=str)
     orderListId: str = field(converter=str)  # Unless OCO, value will be -1
@@ -505,6 +510,7 @@ class TrainSettings:
         Column("is_live_mode", Boolean, nullable=False),
         Column("klines_buffer_size", Integer, nullable=False),
         Column("load_from_execution_id", Integer, nullable=True),
+        Column("place_orders", Boolean),
     )
 
     id: int = field(init=False)
@@ -515,6 +521,7 @@ class TrainSettings:
     is_live_mode: bool
     klines_buffer_size: int
     load_from_execution_id: int
+    place_orders: bool
 
 
 @DataBaseManager._mapper_registry.mapped

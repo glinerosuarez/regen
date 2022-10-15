@@ -116,6 +116,7 @@ class BinanceClient:
 
     def place_order(
         self,
+        env_state_id: int,
         pair: TradingPair,
         side: Side,
         type: OrderType,
@@ -155,31 +156,38 @@ class BinanceClient:
         )
         try:
             if is_test:
+                self.logger.debug(f"Executing test order with args: {args}.")
                 self._spot_client.new_order_test(**args)
                 return None
             else:
-                result = Order(**self._spot_client.new_order(**args))
+                self.logger.debug(f"Executing order with args: {args}.")
+                result = Order(**{**{"env_state_id": env_state_id}, **self._spot_client.new_order(**args)})
+                self.logger.debug(f"Inserting order record {result} to db.")
                 self.db_manager.insert(result)
 
                 if result.status == OrderStatus.FILLED:
                     return result
                 else:
                     # TODO: handle scenario when order is EXPIRED (no liquidity)
-                    self.logger.error(f"Order request with args: {args} could not be filled.")
+                    self.logger.error(f"Order request with args: {args} could not be filled, result: {result}.")
                     return None  # TODO: handle this scenario
         except ClientError as e:
             self.logger.error(e)
             return None  # TODO: handle this scenario
 
-    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Optional[OrderData]:
+    def buy_at_market(
+        self, env_state_id: int, pair: TradingPair, quantity: Optional[float] = None
+    ) -> Optional[OrderData]:
         """
         Buy a base at market price. By default, asks the engine to complete the order immediately or kill it if it's not
         possible.
+        :param env_state_id:
         :param pair: Base quote pair.
         :param quantity: Quantity (in quote units) to buy the base.
         :return: Order data.
         """
         o = self.place_order(
+            env_state_id=env_state_id,
             pair=pair,
             side=Side.BUY,
             type=OrderType.MARKET,
@@ -189,18 +197,23 @@ class BinanceClient:
         if o is None:
             return None
         else:
+            self.logger.debug(f"Buy order filled: {o}.")
             return OrderData(o.executedQty, quantity - o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
 
-    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Optional[OrderData]:
+    def sell_at_market(
+        self, env_state_id: int, pair: TradingPair, quantity: Optional[float] = None
+    ) -> Optional[OrderData]:
         """
         Sell a base at market price. By default, asks the engine to complete the order immediately or kill it if it's
         not possible.
+        :param env_state_id:
         :param pair: Base quote pair.
         :param quantity: Quantity (in base units) to sell the base.
         :return: Remaining balance (in base units), total received quantity (in quote units) and avg price we sold at
                  (in quote units).
         """
         o = self.place_order(
+            env_state_id=env_state_id,
             pair=pair,
             side=Side.SELL,
             type=OrderType.MARKET,
@@ -211,4 +224,5 @@ class BinanceClient:
         if o is None:
             return None
         else:
+            self.logger.debug(f"Sell order filled: {o}.")
             return OrderData(quantity - o.executedQty, o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)

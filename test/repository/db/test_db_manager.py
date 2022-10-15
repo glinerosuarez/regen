@@ -10,31 +10,6 @@ from repository.db._db_manager import Fill
 
 
 @pytest.fixture
-def orders() -> List[Order]:
-    data = Order(
-        symbol="BNBBUSD",
-        orderId="12345",
-        orderListId="-1",
-        clientOrderId="67890",
-        transactTime=10,
-        price=400.0,
-        origQty=10,
-        executedQty=10.0,
-        cummulativeQuoteQty=10.0,
-        status="FILLED",
-        timeInForce="GTC",
-        type="LIMIT",
-        side="BUY",
-        fills=[Fill(price=400.0, qty=10.0, commission=0.001, commissionAsset=CryptoAsset.BUSD, tradeId=1)],
-    )
-    data_2 = data.copy(with_={"symbol": "ETHBUSD"})
-    data_3 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "67890"})
-    data_4 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "11121", "clientOrderId": "anyid"})
-
-    return [data, data_2, data_3, data_4]
-
-
-@pytest.fixture
 def env_state() -> EnvState:
     return EnvState(
         execution_id=1,
@@ -133,3 +108,7 @@ def test_delete(insert_klines, db_manager):
 
 def test_count_rows(insert_klines, db_manager):
     assert db_manager.count_rows(Kline.id) == 20
+
+
+def test_get_last_id(insert_klines, db_manager):
+    assert db_manager.get_last_id(Kline) == 20

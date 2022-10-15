@@ -9,30 +9,27 @@ from stable_baselines3.common import logger
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecNormalize
 
-from log import LoggerFactory
 from repository.db import DataBaseManager, Execution
-from vm.crypto_vm import CryptoViewModel
 
 
 @define(slots=False)
 class ExecutionContext:
     execution: Execution
     db_manager: DataBaseManager
-    vm: CryptoViewModel
     env: VecNormalize
-    output_dir: Path
+    logger: Logger
 
     @property
     def exec_id(self) -> str:
         return str(self.execution.id)
 
+    @cached_property
+    def output_dir(self) -> Path:
+        return Path(self.execution.output_dir)
+
     @property
     def logs_path(self) -> str:
         return str(self.output_dir / self.exec_id / "logs/")
-
-    @cached_property
-    def logger(self) -> Logger:
-        return LoggerFactory.get_file_logger(__name__, Path(self.logs_path))
 
     @cached_property
     def model_path(self) -> Path:
@@ -50,6 +47,8 @@ class ExecutionContext:
             return PPO.load(self.execution.load_model_path, env=self.env)
 
     def train(self) -> None:
+        self.logger.info(f"Execution context: {self.execution}")
+
         try:
             # set up logger
             train_logger = logger.configure(self.logs_path, ["stdout", "csv", "tensorboard"])

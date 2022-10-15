@@ -1,11 +1,11 @@
 import time
 import random
+from logging import Logger
 from typing import Optional
 from collections import defaultdict
 
 import numpy as np
 
-import log
 from conf.consts import Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
@@ -23,6 +23,7 @@ class CryptoViewModel:
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
+        logger: Logger,
         base_balance: float = 10,
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
@@ -68,7 +69,8 @@ class CryptoViewModel:
         self.last_price = None
         self.last_trade_price = None
         self.init_price = None
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
+
+        self.logger = logger
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
@@ -160,16 +162,16 @@ class CryptoViewModel:
                     # We normalize the rewards as percentages, this way, changes in price won't affect the agent's
                     # behavior
                     step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
+                    self.logger.debug(f"Got reward: {step_reward}.")
 
                 self.last_trade_price = self.last_price  # Update last trade price
-
                 self._store_env_state_data(action, step_reward, is_trade=True)
-
                 self.position = self.position.opposite()
 
                 return step_reward
 
         # No trade was done or unsuccessful order.
+        self.logger.debug("Saving env state without reward.")
         self.last_price = self._get_price()
         self._store_env_state_data(action, step_reward, is_trade=False)
 
@@ -206,9 +208,15 @@ class CryptoViewModel:
     def _place_order(self, side: Side) -> Optional[OrderData]:
         if self.place_orders is True:
             if side == side.BUY:
-                return self.api_client.buy_at_market(self.trading_pair, self.quote_balance)
+                self.logger.debug(f"Placing buy order.")
+                return self.api_client.buy_at_market(
+                    self.db_manager.get_last_id(EnvState) + 1, self.trading_pair, self.quote_balance
+                )
             else:
-                return self.api_client.sell_at_market(self.trading_pair, self.base_balance)
+                self.logger.debug(f"Placing sell order.")
+                return self.api_client.sell_at_market(
+                    self.db_manager.get_last_id(EnvState) + 1, self.trading_pair, self.base_balance
+                )
         else:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.
@@ -219,7 +227,9 @@ class CryptoViewModel:
 
     def _get_price(self):
         if self.place_orders is True:
-            return self.api_client.get_price(self.trading_pair)
+            price = self.api_client.get_price(self.trading_pair)
+            self.logger.debug(f"Got current price from api: {price}.")
+            return price
         else:
             price = self.last_observation[-1][3]
             self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
