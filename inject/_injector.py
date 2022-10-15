@@ -70,6 +70,7 @@ class DependencyInjector:
             base_urls=self.settings.bnb_base_urls,
             client_key=self.settings.bnb_client_key,
             client_secret=self.settings.bnb_client_secret,
+            db_manager=self.db_manager,
             logger=self.get_logger("BinanceClient", security_level=logging.DEBUG),
         )
 

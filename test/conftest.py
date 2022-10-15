@@ -399,11 +399,12 @@ def db_manager(db_name, tmp_path) -> DataBaseManager:
 
 
 @pytest.fixture
-def api_client(settings, logger) -> BinanceClient:
+def api_client(settings, db_manager, logger) -> BinanceClient:
     return BinanceClient(
         base_urls=["https://testnet.binance.vision"],
         client_key=settings.bnb_client_key,
         client_secret=settings.bnb_client_secret,
+        db_manager=db_manager,
         logger=logger,
     )
 
