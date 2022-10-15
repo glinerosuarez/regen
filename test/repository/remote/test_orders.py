@@ -1,8 +1,10 @@
 from typing import List
 
+import pendulum
 import pytest
 
 from conf.consts import TimeInForce, OrderType, Side, CryptoAsset, OrderStatus
+from repository import TradingPair
 from repository.db import Fill, Order
 
 
@@ -107,6 +109,43 @@ def struct_order(api_response, trading_pair) -> Order:
             Fill(price=271.1, qty=0.77, commission=0.0, commissionAsset=CryptoAsset.BUSD, tradeId=11246),
         ],
     )
+
+
+@pytest.fixture
+def liquid_symbol() -> TradingPair:
+    return TradingPair.structure("BNBUSDT")
+
+
+def test_place_test_order(api_client, liquid_symbol):
+    assert (
+        api_client.place_order(
+            pair=liquid_symbol,
+            side=Side.SELL,
+            type=OrderType.MARKET,
+            quantity=0.1,
+        )
+        is None
+    )
+
+
+def test_place_order(api_client, struct_order, liquid_symbol):
+    # Test fixed values
+    now = pendulum.now()
+    order = api_client.place_order(
+        pair=liquid_symbol,
+        side=struct_order.side,
+        type=struct_order.type,
+        quantity=struct_order.origQty,
+        is_test=False,
+        new_client_order_id=struct_order.clientOrderId,
+    )
+    assert order.symbol == liquid_symbol
+    assert order.clientOrderId == struct_order.clientOrderId
+    assert order.transactTime > now.timestamp() * 1_000
+    assert order.origQty == struct_order.origQty
+    assert order.timeInForce == struct_order.timeInForce
+    assert order.type == struct_order.type
+    assert order.side == struct_order.side
 
 
 def test_structure_fill(uns_fill, struct_fill):

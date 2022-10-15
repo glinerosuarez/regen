@@ -1,9 +1,6 @@
-from datetime import datetime
-
 import pendulum
 
-from conf.consts import CryptoAsset, Side, OrderType, TimeInForce
-from functions.utils import datetime_to_ts_ms
+from conf.consts import CryptoAsset
 from repository._dataclass import TradingPair
 from repository._consts import AccountType, AccountPermission, Interval
 
@@ -53,45 +50,6 @@ def test_get_klines_data(api_client):
     assert len(response) == 6
     assert response[0].open_time == open_time.timestamp() * 1_000
     assert response[-1].close_time == int(close_time.timestamp() * 1_000)
-
-
-def test_place_test_order(api_client):
-    pair = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
-    price = int(api_client.get_current_avg_price(pair).price * 1.1)
-    print("price", price)
-    assert (
-        api_client.place_order(
-            pair=pair,
-            side=Side.SELL,
-            type=OrderType.LIMIT,
-            quantity=0.1,
-            price=price,
-        )
-        is None
-    )
-
-
-def test_place_order(api_client):
-    # Test fixed values
-    tp = TradingPair(CryptoAsset.BNB, CryptoAsset.USDT)
-    clientid = str(int(datetime.now().timestamp()))
-    tt = datetime_to_ts_ms(datetime.now())
-    price = 1000.0
-    qtty = 0.1
-    type = OrderType.LIMIT
-    side = Side.SELL
-    order_data = api_client.place_order(
-        pair=tp, side=side, type=type, quantity=qtty, price=price, is_test=False, new_client_order_id=clientid
-    )
-
-    assert order_data.symbol == tp
-    assert order_data.clientOrderId == clientid
-    assert order_data.transactTime > tt
-    assert order_data.price == price
-    assert order_data.origQty == qtty
-    assert order_data.timeInForce == TimeInForce.GTC
-    assert order_data.type == type
-    assert order_data.side == side
 
 
 def test_get_price(api_client):

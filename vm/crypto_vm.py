@@ -207,10 +207,9 @@ class CryptoViewModel:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.
             if side == Side.BUY:
-                quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
+                return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
             else:
-                quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
-            return quantity, price
+                return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
 
     def _get_price(self):
         price = self.last_observation[-1][3]

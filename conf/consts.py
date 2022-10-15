@@ -95,3 +95,4 @@ class Algorithm(enum.Enum):
 
 class OrderStatus(enum.Enum):
     FILLED = "FILLED"  # The order has been completed.
+    EXPIRED = "EXPIRED"  # No liquidity from the symbol to complete the order.

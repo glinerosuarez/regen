@@ -132,7 +132,7 @@ class BinanceClient:
         :param side: whether you want to BUY or SELL.
         :param type: the type of order you want to submit.
         :param time_in_force: this parameter expresses how you want the order to execute.
-        :param quantity: the quantity of the asset that you want to buy or sell.
+        :param quantity: the quantity of the base asset that you want to buy or sell.
         :param quoteOrderQty:
         :param price: the price at which you want to sell.
         :param new_client_order_id: an identifier for the order.
@@ -155,15 +155,17 @@ class BinanceClient:
         )
         try:
             if is_test:
-                result = self._spot_client.new_order_test(**args)
+                self._spot_client.new_order_test(**args)
+                return None
             else:
                 result = Order(**self._spot_client.new_order(**args))
 
-            if result.status == OrderStatus.FILLED:
-                return result
-            else:
-                self.logger.error(f"Order request with args: {args} could not be filled.")
-                return None  # TODO: handle this scenario
+                if result.status == OrderStatus.FILLED:
+                    return result
+                else:
+                    # TODO: handle scenario when order is EXPIRED (no liquidity)
+                    self.logger.error(f"Order request with args: {args} could not be filled.")
+                    return None  # TODO: handle this scenario
         except ClientError as e:
             self.logger.error(e)
             return None  # TODO: handle this scenario
