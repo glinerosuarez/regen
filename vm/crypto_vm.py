@@ -149,23 +149,29 @@ class CryptoViewModel:
 
     def _calculate_reward(self, action: Action):
         step_reward = 0.0
+
         if self._is_trade(action):
             o_data = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
-            self.last_price = o_data.price  # Update last price
-            self._update_balances(action, o_data)  # Update balances
+            if o_data is not None:  # Successful order placed.
+                self.last_price = o_data.price  # Update last price
+                self._update_balances(action, o_data)  # Update balances
 
-            if self.position == Position.Short:  # Our objective is to accumulate the base.
-                # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
+                if self.position == Position.Short:  # Our objective is to accumulate the base.
+                    # We normalize the rewards as percentages, this way, changes in price won't affect the agent's
+                    # behavior
+                    step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
 
-            self.last_trade_price = self.last_price  # Update last trade price
+                self.last_trade_price = self.last_price  # Update last trade price
 
-            self._store_env_state_data(action, step_reward, is_trade=True)
+                self._store_env_state_data(action, step_reward, is_trade=True)
 
-            self.position = self.position.opposite()
-        else:
-            self.last_price = self._get_price()
-            self._store_env_state_data(action, step_reward, is_trade=False)
+                self.position = self.position.opposite()
+
+                return step_reward
+
+        # No trade was done or unsuccessful order.
+        self.last_price = self._get_price()
+        self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
 
@@ -197,7 +203,7 @@ class CryptoViewModel:
         for key, value in info.items():
             self.history[key].append(value)
 
-    def _place_order(self, side: Side) -> OrderData:
+    def _place_order(self, side: Side) -> Optional[OrderData]:
         if self.place_orders is True:
             if side == side.BUY:
                 return self.api_client.buy_at_market(self.trading_pair, self.quote_balance)

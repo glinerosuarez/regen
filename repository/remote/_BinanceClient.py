@@ -170,7 +170,7 @@ class BinanceClient:
             self.logger.error(e)
             return None  # TODO: handle this scenario
 
-    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> OrderData:
+    def buy_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Optional[OrderData]:
         """
         Buy a base at market price. By default, asks the engine to complete the order immediately or kill it if it's not
         possible.
@@ -185,9 +185,12 @@ class BinanceClient:
             quoteOrderQty=quantity,
             is_test=False,
         )
-        return OrderData(o.executedQty, quantity - o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
+        if o is None:
+            return None
+        else:
+            return OrderData(o.executedQty, quantity - o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
 
-    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> OrderData:
+    def sell_at_market(self, pair: TradingPair, quantity: Optional[float] = None) -> Optional[OrderData]:
         """
         Sell a base at market price. By default, asks the engine to complete the order immediately or kill it if it's
         not possible.
@@ -204,4 +207,7 @@ class BinanceClient:
             is_test=False,
         )
 
-        return OrderData(quantity - o.executedQty, o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
+        if o is None:
+            return None
+        else:
+            return OrderData(quantity - o.executedQty, o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
