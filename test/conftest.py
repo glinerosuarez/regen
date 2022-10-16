@@ -432,7 +432,7 @@ def obs_producer(kline_producer, window_size, logger) -> ObsProducer:
 
 @pytest.fixture
 def vm(
-    trading_pair, db_manager, api_client, obs_producer, ticks_per_episode, execution_id, window_size
+    trading_pair, db_manager, api_client, obs_producer, ticks_per_episode, execution_id, window_size, logger
 ) -> CryptoViewModel:
     return CryptoViewModel(
         trading_pair=trading_pair,
@@ -442,6 +442,7 @@ def vm(
         ticks_per_episode=ticks_per_episode,
         execution_id=execution_id,
         window_size=window_size,
+        logger=logger,
     )
 
 
