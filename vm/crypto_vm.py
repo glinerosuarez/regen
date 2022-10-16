@@ -213,10 +213,10 @@ class CryptoViewModel:
     def _place_order(self, side: Side) -> Optional[OrderData]:
         if self.place_orders is True:
             if side == side.BUY:
-                self.logger.debug(f"Placing buy order.")
+                self.logger.debug("Placing buy order.")
                 return self.api_client.buy_at_market(self.get_next_env_state_id, self.trading_pair, self.quote_balance)
             else:
-                self.logger.debug(f"Placing sell order.")
+                self.logger.debug("Placing sell order.")
                 return self.api_client.sell_at_market(self.get_next_env_state_id, self.trading_pair, self.base_balance)
         else:
             price = self._get_price()
