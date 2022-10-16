@@ -232,7 +232,8 @@ class DataBaseManager:
         return self.session.query(col).count()
 
     def get_last_id(self, table: Type[DataClass]) -> Optional[int]:
-        return self.session.query(table).order_by(table.id.desc()).first().id
+        last_record = self.session.query(table).order_by(table.id.desc()).first()
+        return None if last_record is None else last_record.id
 
 
 class _EncodedDataClass(types.UserDefinedType):

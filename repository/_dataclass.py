@@ -3,7 +3,7 @@ import copy
 import cattr
 import inspect
 
-from attr import attrs, attrib, fields, has
+from attr import attrs, attrib, fields, has, frozen
 from attr.validators import instance_of
 from typing import List, Union, Optional
 
@@ -60,7 +60,7 @@ class DataClass:
         return self.__class__(**attribs)
 
 
-@attrs
+@frozen
 class TradingPair(DataClass):
     """A pair of :CryptoAsset:"""
 

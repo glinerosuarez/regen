@@ -1,7 +1,7 @@
 import random
 from collections import namedtuple
 from logging import Logger
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 
 import pendulum
 import requests
@@ -30,6 +30,8 @@ class BinanceClient:
     client_secret: str
     db_manager: DataBaseManager
     logger: Logger
+    base_precision: Optional[int] = field(init=False, default=None)
+    quote_precision: Optional[int] = field(init=False, default=None)
 
     @cached_property
     def _spot_client(self) -> Spot:
@@ -38,6 +40,15 @@ class BinanceClient:
         client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
         self.logger.debug(f"Getting new spot client {client} with base_url: {base_url}")
         return client
+
+    def get_pair_precision(self, pair: TradingPair) -> Tuple[int, int]:
+        if self.base_precision is None or self.quote_precision is None:
+            info = self._spot_client.exchange_info(str(pair))["symbols"][0]
+            self.base_precision, self.quote_precision = int(info["baseAssetPrecision"]), int(info["quoteAssetPrecision"])
+            self.logger.debug(
+                f"Setting base_precision = {self.base_precision} and quote_precision = {self.quote_precision}")
+
+        return self.base_precision, self.quote_precision
 
     def _invalidate_spot_client_cache(self) -> None:
         del self.__dict__["_spot_client"]
@@ -140,6 +151,12 @@ class BinanceClient:
         :return: true if the order can be created.
         :param is_test: whether this a test order or not.
         """
+        # Round quantities (API requires it).
+        base_p, quote_p = self.get_pair_precision(pair)
+        round_quantity = None if quantity is None else round(quantity, base_p)
+        self.logger.debug(f"Rounding quantity {quantity} to {round_quantity}")
+        round_quoteOrderQty = None if quoteOrderQty is None else round(quoteOrderQty, quote_p)
+        self.logger.debug(f"Rounding quoteOrderQty {quoteOrderQty} to {round_quoteOrderQty}")
 
         # Arguments to kwargs
         args = remove_none_args(
@@ -148,8 +165,8 @@ class BinanceClient:
                 "side": side.value,
                 "type": type.value,
                 "timeInForce": None if time_in_force is None else time_in_force.value,
-                "quantity": quantity,
-                "quoteOrderQty": quoteOrderQty,
+                "quantity": round_quantity,
+                "quoteOrderQty": round_quoteOrderQty,
                 "price": price,
                 "newClientOrderId": new_client_order_id,
             }
