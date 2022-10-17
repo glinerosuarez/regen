@@ -463,10 +463,13 @@ def insert_klines_2ep(db_manager, klines_data) -> None:
     for i, kl in enumerate(klines_data):
         if i > 9:
             klines.append(
-                kl.copy(with_={
-                    "open_time": pendulum.from_timestamp(kl.open_time/1_000).add(minutes=1).timestamp()*1_000,
-                    "close_time": pendulum.from_timestamp(kl.close_time/1_000).add(minutes=1).timestamp()*1_000,
-                }))
+                kl.copy(
+                    with_={
+                        "open_time": pendulum.from_timestamp(kl.open_time / 1_000).add(minutes=1).timestamp() * 1_000,
+                        "close_time": pendulum.from_timestamp(kl.close_time / 1_000).add(minutes=1).timestamp() * 1_000,
+                    }
+                )
+            )
         else:
             klines.append(kl)
     db_manager.insert(klines)
