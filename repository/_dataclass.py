@@ -3,11 +3,24 @@ import copy
 import cattr
 import inspect
 
-from attr import attrs, attrib
+from attr import attrs, attrib, fields, has, frozen
 from attr.validators import instance_of
 from typing import List, Union, Optional
 
+from cattr.gen import make_dict_structure_fn, override
 from conf.consts import CryptoAsset
+
+
+# Register hook factory to ignore attributes with init=False.
+converter = cattr.GenConverter()
+
+
+def structure(cls):
+    overrides = {a.name: override(omit=True) for a in fields(cls) if not a.init}
+    return make_dict_structure_fn(cls, converter, **overrides)
+
+
+converter.register_structure_hook_factory(has, structure)
 
 
 @attrs
@@ -17,9 +30,9 @@ class DataClass:
         if isinstance(value, list):
             if all(isinstance(e, cls) for e in value):
                 return value
-            return cattr.structure(value, List[cls])
+            return converter.structure(value, List[cls])
         elif isinstance(value, dict):
-            return cattr.structure(value, cls)
+            return converter.structure(value, cls)
         else:
             raise TypeError(f"type {type(value)} of object {value} is not supported.")
 
@@ -47,7 +60,7 @@ class DataClass:
         return self.__class__(**attribs)
 
 
-@attrs
+@frozen
 class TradingPair(DataClass):
     """A pair of :CryptoAsset:"""
 

@@ -1,72 +1,64 @@
+from logging import Logger
 from pathlib import Path
 
-from cached_property import cached_property
 import pendulum
+from attr import define
+from cached_property import cached_property
 from stable_baselines3 import PPO
 from stable_baselines3.common import logger
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.vec_env import VecNormalize
 
-import conf
-from env import build_crypto_trading_env
-from repository import TradingPair
-from repository.db import DataBaseManager, Execution, TrainSettings
-from vm.crypto_vm import CryptoViewModel
+from repository.db import DataBaseManager, Execution
 
 
+@define(slots=False)
 class ExecutionContext:
+    execution: Execution
+    db_manager: DataBaseManager
+    env: VecNormalize
+    logger: Logger
+
+    @property
+    def exec_id(self) -> str:
+        return str(self.execution.id)
+
     @cached_property
-    def db_manager(self) -> DataBaseManager:
-        return DataBaseManager(
-            conf.settings.db_name,
-            DataBaseManager.EngineType.PostgreSQL
-            if conf.settings.db_type == "postgres"
-            else DataBaseManager.EngineType.SQLite,
-            conf.settings.db_host,
-            conf.settings.db_user,
-            conf.settings.db_password,
-            Path(conf.settings.db_file_location),
-        )
+    def output_dir(self) -> Path:
+        return Path(self.execution.output_dir)
 
-    def __init__(self):
-        ts = pendulum.now()
-        pair = TradingPair(conf.settings.base_asset, conf.settings.quote_asset)
+    @property
+    def logs_path(self) -> str:
+        return str(self.output_dir / self.exec_id / "logs/")
 
-        self._execution = Execution(
-            pair=pair,
-            algorithm=conf.consts.Algorithm.PPO,
-            n_steps=conf.settings.time_steps,
-            start=ts.timestamp(),
-            settings=TrainSettings(
-                db_name=conf.settings.db_name,
-                window_size=conf.settings.window_size,
-                ticks_per_episode=conf.settings.ticks_per_episode,
-                is_live_mode=conf.settings.enable_live_mode,
-                klines_buffer_size=conf.settings.klines_buffer_size,
-            ),
-        )
-        self.db_manager.insert(self._execution)
-        self.exec_id = str(self._execution.id)
+    @cached_property
+    def model_path(self) -> Path:
+        value = self.output_dir / self.exec_id / "model/PPO"
+        value.parent.mkdir(parents=True, exist_ok=True)  # Create dir if it doesn't exist
+        return value
 
-        vm = CryptoViewModel(  # VM to get data from sources.
-            base_asset=conf.settings.base_asset,
-            quote_asset=conf.settings.quote_asset,
-            window_size=conf.settings.window_size,
-            db_manager=self.db_manager,
-            ticks_per_episode=conf.settings.ticks_per_episode,
-            execution_id=self.exec_id,
-        )
-        self.env = build_crypto_trading_env(vm=vm)
+    @cached_property
+    def model(self) -> BaseAlgorithm:
+        if self.execution.settings.load_from_execution_id is None:
+            self.logger.info("Training model from scratch.")
+            return PPO("MultiInputPolicy", self.env, verbose=1)
+        else:
+            self.logger.info(f"Loading model from path: {self.execution.load_model_path}.")
+            return PPO.load(self.execution.load_model_path, env=self.env)
 
-        # set up logger
-        logs_path = str(conf.settings.output_dir / self.exec_id / "logs/")
-        train_logger = logger.configure(logs_path, ["stdout", "csv", "tensorboard"])
+    def train(self) -> None:
+        self.logger.info(f"Execution context: {self.execution}")
 
-        self.model = PPO("MultiInputPolicy", self.env, verbose=1)
-        self.model.set_logger(train_logger)
-
-    def train(self):
         try:
-            self.model.learn(total_timesteps=conf.settings.time_steps)
+            # set up logger
+            train_logger = logger.configure(self.logs_path, ["stdout", "csv", "tensorboard"])
+            self.model.set_logger(train_logger)
+            self.model.learn(total_timesteps=self.execution.n_steps)
         finally:
-            self.model.save(conf.settings.output_dir / self.exec_id / "model/PPO")
-            self._execution.end = pendulum.now().timestamp()
+            self.model.save(self.model_path)
+            env_path = self.output_dir / self.exec_id / "env/env.pkl"
+            env_path.parent.mkdir(parents=True, exist_ok=True)  # Create dir if it doesn't exist
+            self.env.save(str(env_path))
+
+            self.execution.end = pendulum.now().timestamp()  # Register execution end time
             self.db_manager.session.commit()

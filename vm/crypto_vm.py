@@ -1,31 +1,34 @@
 import time
 import random
-from typing import Optional, Tuple
+from logging import Logger
+from typing import Optional
 from collections import defaultdict
 
 import numpy as np
 
-import log
-from conf.consts import CryptoAsset, Position, Side, Action
+from conf.consts import Position, Side, Action
 from vm._obs_producer import ObsProducer
 from repository.db import DataBaseManager
-from repository.remote import BinanceClient
+from repository.remote import BinanceClient, OrderData
 from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
     def __init__(
         self,
-        base_asset: CryptoAsset,
-        quote_asset: CryptoAsset,
+        trading_pair: TradingPair,
         db_manager: DataBaseManager,
+        api_client: BinanceClient,
+        obs_producer: ObsProducer,
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
-        base_balance: float = 100,
+        logger: Logger,
+        base_balance: float = 10,
         quote_balance: float = 0,
         trade_fee_ask_percent: float = 0.0,
         trade_fee_bid_percent: float = 0.0,
+        place_orders: bool = False,
     ):
         """
         :param base_asset: The crypto asset we want to accumulate.
@@ -37,9 +40,7 @@ class CryptoViewModel:
 
         self.execution_id = execution_id
         self.ticks_per_episode = ticks_per_episode
-        self.base_asset = base_asset
-        self.quote_asset = quote_asset
-        self.trading_pair = TradingPair(base_asset, quote_asset)
+        self.trading_pair = trading_pair
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
         self.base_balance = base_balance
@@ -52,21 +53,34 @@ class CryptoViewModel:
         self.trade_fee_bid_percent = trade_fee_bid_percent
 
         self.db_manager = db_manager
+        self.api_client = api_client
+        self.obs_producer = obs_producer
+        self.place_orders = place_orders
+
         self.episode_id = None
-        self.position = Position.Short
+        self.position = None
         self.start_tick = window_size
         self.current_tick = None
         self.total_reward = 0.0
         self.done = None
         self.position_history = (self.window_size * [None]) + [self.position]
         self.history = defaultdict(list)
-        self.client = BinanceClient()
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
         self.init_price = None
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
-        self.obs_producer = ObsProducer(db_manager, self.trading_pair, self.window_size)
+
+        self.logger = logger
+
+    @property
+    def next_env_state_id(self) -> int:
+        last_id = self.db_manager.get_last_id(EnvState)
+        return 0 if last_id is None else last_id + 1
+
+    @property
+    def last_episode_id(self) -> Optional[int]:
+        """Get the last episode id in this execution, return None if there's no last episode id."""
+        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
@@ -76,22 +90,8 @@ class CryptoViewModel:
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
         # TODO: does this break markov rules?
         # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
-        non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
+        non_null_last_trade_price = self.init_price if self.last_trade_price is None else self.last_trade_price
         prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
-        # std = prices.std()
-        # prices = (prices - prices.mean()) / std
-        # if np.isnan(prices).any() or std < 0.0000000001:  # Errors in the data source
-        #    self.logger.error(
-        #        f"all kline prices in the episode: {self.episode_id} tick: {self.current_tick} observation: {obs} are "
-        #        f"equal, this is an unlikely event probably due to an error in the source."
-        #    )
-        #    self.logger.warning("returning an array of zeros for this observation.")
-        #    return np.zeros(prices.shape)
-
-        # Normalize volumes
-        # vols = obs[:, -1].flatten()
-        # vols = preprocessing.normalize(vols.reshape(1, -1))
-        # return np.hstack((prices, vols))
         return prices
 
     def reset(self):
@@ -100,16 +100,17 @@ class CryptoViewModel:
         self.done = False
         self.current_tick = self.window_size
 
-        # We always start longing
-        if self.base_balance < self.quote_balance:
-            self._place_order(Side.SELL)
+        if self.position is None:
+            if self.base_balance > self.quote_balance:
+                self.position = Position.Long
+            else:
+                self.position = Position.Short
 
-        self.position = Position.Long
         self.position_history = (self.window_size * [None]) + [self.position]
         self.total_reward = 0.0
-        self.last_price = None
-        self.last_trade_price = None
-        self.episode_id = 1 if self._get_last_episode_id() is None else self._get_last_episode_id() + 1
+        self.last_price = None if self.last_price is None else self.last_price
+        self.last_trade_price = None if self.last_trade_price is None else self.last_trade_price
+        self.episode_id = 1 if self.last_episode_id is None else self.last_episode_id + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
@@ -147,10 +148,6 @@ class CryptoViewModel:
             info,
         )
 
-    def _get_last_episode_id(self) -> Optional[int]:
-        """Get the last episode id in this execution, return None if there's no last episode id."""
-        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
-
     def _is_trade(self, action: Action):
         return any(
             [
@@ -160,31 +157,30 @@ class CryptoViewModel:
         )
 
     def _calculate_reward(self, action: Action):
-        # TODO: During training, the reward is computed based on the close price of the observation that the agent
-        #  interacted with, in practice, this price will vary because of the succeeding market movements and the fact
-        #  that we always buy at market price (for simplicity, we could change that in the future), this makes things
-        #  easier for the agent, this difference will depend mainly on the time that elapses between the moment the
-        #  agent takes a trade action and the moment the order is processed (measure that time on average), to start
-        #  with, I think we could take a random value from (open, close) of the next observation (because we get a new
-        #  observation every minute, frequently)
-        # breakpoint()
         step_reward = 0.0
+
         if self._is_trade(action):
-            quantity, self.last_price = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
+            o_data = self._place_order(Side.BUY if action == Action.Buy else Side.SELL)
+            if o_data is not None:  # Successful order placed.
+                self.last_price = o_data.price  # Update last price
+                self._update_balances(action, o_data)  # Update balances
 
-            if self.position == Position.Short:  # Our objective is to accumulate the base.
-                # We normalize the rewards as percentages, this way, changes in price won't affect the agent's behavior
-                step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
+                if self.position == Position.Short:  # Our objective is to accumulate the base.
+                    # We normalize the rewards as percentages, this way, changes in price won't affect the agent's
+                    # behavior
+                    step_reward = ((self.last_trade_price - self.last_price) / self.last_trade_price) * 100  # pp
+                    self.logger.debug(f"Got reward: {step_reward}.")
 
-            self.last_trade_price = self.last_price  # Update last trade price
+                self.last_trade_price = self.last_price  # Update last trade price
+                self._store_env_state_data(action, step_reward, is_trade=True)
+                self.position = self.position.opposite()
 
-            self._store_env_state_data(action, step_reward, is_trade=True)
-            self._update_balances(action, quantity, self.last_price)
+                return step_reward
 
-            self.position = self.position.opposite()
-        else:
-            self.last_price = self._get_price()
-            self._store_env_state_data(action, step_reward, is_trade=False)
+        # No trade was done or unsuccessful order.
+        self.logger.debug("Saving env state without reward.")
+        self.last_price = self._get_price()
+        self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
 
@@ -199,42 +195,45 @@ class CryptoViewModel:
                 action=action,
                 is_trade=is_trade,
                 reward=reward,
-                cum_reward=reward + self.total_reward,
+                cum_reward=reward + self.total_reward,  # TODO: this metric doesn't make sense
                 ts=time.time(),
             )
         )
 
-    def _update_balances(self, action: Action, quantity: float, price: float) -> None:
-        if self._is_trade(action) or self.done:
-            if action == Action.Buy:
-                self.base_balance = quantity
-                self.quote_balance = 0.0
-            else:
-                self.base_balance = 0.0
-                self.quote_balance = quantity * price
+    def _update_balances(self, action: Action, o_data: OrderData) -> None:
+        if action == action.Sell:
+            self.base_balance = o_data.base_qty
+            self.quote_balance = o_data.quote_qty + self.quote_balance
+        else:
+            self.base_balance = o_data.base_qty + self.base_balance
+            self.quote_balance = o_data.quote_qty
 
     def _update_history(self, info):
         for key, value in info.items():
             self.history[key].append(value)
 
-    def _place_order(self, side: Side) -> Tuple[float, float]:
-        # order = self.client.place_order(
-        #    pair=self.trading_pair,
-        #    side=side,
-        #    type=OrderType.MARKET,
-        #    quantity=self.balance,
-        #    new_client_order_id=self.execution_id
-        # )
-        # TODO: Add a trade_fee_percent to make training harder for the agent
-        price = self._get_price()
-        # The price and quantity will be returned by client.place_order.
-        if side == Side.BUY:
-            quantity = self.quote_balance * (1 - self.trade_fee_bid_percent) / price
+    def _place_order(self, side: Side) -> Optional[OrderData]:
+        if self.place_orders is True:
+            if side == side.BUY:
+                self.logger.debug("Placing buy order.")
+                return self.api_client.buy_at_market(self.next_env_state_id, self.trading_pair, self.quote_balance)
+            else:
+                self.logger.debug("Placing sell order.")
+                return self.api_client.sell_at_market(self.next_env_state_id, self.trading_pair, self.base_balance)
         else:
-            quantity = self.base_balance * (1 - self.trade_fee_ask_percent)
-        return quantity, price
+            price = self._get_price()
+            # The price and quantity will be returned by client.place_order.
+            if side == Side.BUY:
+                return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
+            else:
+                return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
 
     def _get_price(self):
-        price = self.last_observation[-1][3]
-        self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
-        return price
+        if self.place_orders is True:
+            price = self.api_client.get_price(self.trading_pair)
+            self.logger.debug(f"Got current price from api: {price}.")
+            return price
+        else:
+            price = self.last_observation[-1][3]
+            self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
+            return price

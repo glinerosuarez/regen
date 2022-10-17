@@ -1,7 +1,9 @@
 import enum
 import json
+import logging
 from pathlib import Path
 
+import attr
 import cattr
 import numpy as np
 import pendulum
@@ -13,9 +15,9 @@ from typing import List, Optional, Type, Any, Union
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm
+from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorithm, CryptoAsset, OrderStatus
 from repository._dataclass import DataClass, TradingPair
-from repository._consts import Fill, AccountType, Balance, AccountPermission
+from repository._consts import AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
 from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
@@ -97,7 +99,9 @@ class DataBaseManager:
         files_dir: Optional[Path] = Path() / "output",
     ):
         self.db_name = db_name
-        self.logger = LoggerFactory.get_file_logger(name="sqlalchemy", file_dir=files_dir / "logs", preffix="db")
+        self.logger = LoggerFactory.get_file_logger(
+            name="sqlalchemy", file_dir=files_dir / "logs", preffix="db", security_level=logging.WARNING
+        )
 
         # Connect to a database or create a new database if it does not exist.
         if engine_type == DataBaseManager.EngineType.SQLite:
@@ -216,6 +220,21 @@ class DataBaseManager:
 
         return rowcount
 
+    def count_rows(
+        self,
+        col: InstrumentedAttribute,
+    ) -> int:
+        """
+        Count rows in a table
+        :param col: column whose rows we want to count
+        :return: row count
+        """
+        return self.session.query(col).count()
+
+    def get_last_id(self, table: Type[DataClass]) -> Optional[int]:
+        last_record = self.session.query(table).order_by(table.id.desc()).first()
+        return None if last_record is None else last_record.id
+
 
 class _EncodedDataClass(types.UserDefinedType):
     """
@@ -250,15 +269,41 @@ class _EncodedDataClass(types.UserDefinedType):
 
 
 @DataBaseManager._mapper_registry.mapped
-@attrs
+@define(slots=False)
+class Fill(DataClass):
+    __table__ = Table(
+        "fills",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("order_id", Integer, ForeignKey("orders.id")),
+        Column("price", Float),
+        Column("qty", Float),
+        Column("commission", Float),
+        Column("commissionAsset", _EncodedDataClass(CryptoAsset)),
+        Column("tradeId", Integer),
+    )
+
+    id: int = field(init=False)
+    order_id: int = field(init=False)
+    price: float = field(converter=float)
+    qty: float = field(converter=float)
+    commission: float = field(converter=float)
+    commissionAsset: CryptoAsset = field(converter=CryptoAsset, validator=instance_of(CryptoAsset))
+    tradeId: int = field(converter=int)
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
 class Order(DataClass):
     """Data of a placed order."""
 
     __table__ = Table(
         "orders",
         DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("env_state_id", Integer, nullable=False, unique=True),
         Column("symbol", _EncodedDataClass(TradingPair)),
-        Column("orderId", String, primary_key=True),
+        Column("orderId", String),
         Column("orderListId", String),
         Column("clientOrderId", String, unique=True),
         Column("transactTime", Integer),
@@ -266,27 +311,39 @@ class Order(DataClass):
         Column("origQty", Float),
         Column("executedQty", Float),
         Column("cummulativeQuoteQty", Float),
-        Column("status", String),
+        Column("status", Enum(OrderStatus)),
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
-        Column("fills", _EncodedDataClass(List[Fill])),
     )
 
-    symbol: TradingPair = attrib(validator=instance_of(TradingPair), converter=TradingPair.structure)
-    orderId: str = attrib(converter=str)
-    orderListId: str = attrib(converter=str)  # Unless OCO, value will be -1
-    clientOrderId: str = attrib(converter=str)
-    transactTime: int = attrib(converter=int)  # Timestamp in ms
-    price: float = attrib(converter=float)
-    origQty: float = attrib(converter=float)  # Quantity set in the order
-    executedQty: float = attrib(converter=float)
-    cummulativeQuoteQty: float = attrib(converter=float)
-    status: str = attrib(converter=str)
-    timeInForce: TimeInForce = attrib(converter=TimeInForce)
-    type: OrderType = attrib(converter=OrderType)
-    side: Side = attrib(converter=Side)
-    fills: List[Fill] = attrib(converter=Fill.structure)
+    __mapper_args__ = {  # type: ignore
+        "properties": {
+            "fills": relationship("Fill"),
+        }
+    }
+
+    id: int = field(init=False)
+    env_state_id: int = field(converter=int)
+    symbol: TradingPair = field(converter=TradingPair.structure)
+    orderId: str = field(converter=str)
+    orderListId: str = field(converter=str)  # Unless OCO, value will be -1
+    clientOrderId: str = field(converter=str)
+    transactTime: int = field(converter=int)  # Timestamp in ms
+    price: float = field(converter=float)
+    origQty: float = field(converter=float)  # Quantity set in the order
+    executedQty: float = field(converter=float)
+    cummulativeQuoteQty: float = field(converter=float)
+    status: OrderStatus = field(converter=OrderStatus)
+    timeInForce: TimeInForce = field(converter=TimeInForce)
+    type: OrderType = field(converter=OrderType)
+    side: Side = field(converter=Side)
+    fills: List[Fill] = field(converter=Fill.structure)
+
+    @classmethod
+    def structure(cls, data: Union[dict, list]) -> "Order":
+        # Override this method because cattrs doesn't support structure this complex scenario.
+        return cls(**{a.name: data[a.name] for a in attr.fields(cls) if a.init})
 
 
 @DataBaseManager._mapper_registry.mapped
@@ -453,6 +510,8 @@ class TrainSettings:
         Column("ticks_per_episode", Integer, nullable=False),
         Column("is_live_mode", Boolean, nullable=False),
         Column("klines_buffer_size", Integer, nullable=False),
+        Column("load_from_execution_id", Integer, nullable=True),
+        Column("place_orders", Boolean),
     )
 
     id: int = field(init=False)
@@ -462,6 +521,8 @@ class TrainSettings:
     ticks_per_episode: int
     is_live_mode: bool
     klines_buffer_size: int
+    load_from_execution_id: int
+    place_orders: bool
 
 
 @DataBaseManager._mapper_registry.mapped
@@ -475,6 +536,7 @@ class Execution(DataClass):
         Column("algorithm", Enum(Algorithm), nullable=False),
         Column("n_steps", BigInteger, nullable=False),
         Column("start", Float, nullable=False, unique=True),
+        Column("output_dir", String, nullable=True),
         Column("end", Float, nullable=True, unique=True),
     )
 
@@ -483,6 +545,7 @@ class Execution(DataClass):
     algorithm: Algorithm
     n_steps: int
     start: float
+    output_dir: str
     end: float = field(init=False)
     settings: TrainSettings
 
@@ -491,3 +554,11 @@ class Execution(DataClass):
             "settings": relationship("TrainSettings", uselist=False, backref="Execution"),
         }
     }
+
+    @property
+    def load_model_path(self) -> Path:
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / f"model/{self.algorithm.value}"
+
+    @property
+    def load_env_path(self) -> Path:
+        return Path(self.output_dir) / str(self.settings.load_from_execution_id) / "env/env.pkl"

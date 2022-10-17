@@ -1,53 +1,66 @@
 import random
+from collections import namedtuple
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Union, Tuple
 
 import pendulum
 import requests
+from attr import define, field
+from attrs import validators
 from binance.spot import Spot
 from binance.error import ClientError
+from cached_property import cached_property
 
-import conf
-from conf.consts import Side, OrderType, TimeInForce
-from log import LoggerFactory
+from conf.consts import Side, OrderType, TimeInForce, OrderStatus
 from repository import Interval
 from repository._consts import AvgPrice
 from functions.utils import remove_none_args
 from repository._dataclass import TradingPair
-from repository.db import AccountInfo, Order, Kline
+from repository.db import AccountInfo, Order, Kline, DataBaseManager
+
+OrderData = namedtuple("OrderData", ["base_qty", "quote_qty", "price"])
 
 
+@define(slots=False)
 class BinanceClient:
-    """
-    Binance api client.
-    """
+    """Binance api client."""
 
-    def get_client(self, use_default_url: bool = True) -> Spot:
-        """
-        Init a new spot client.
-        :param use_default_url: If True, then use the first url provided in settings.bnb_client_key, else choose a
-            random one.
-        """
-        if (self._client is None) or (not use_default_url):
-            base_url = (
-                conf.settings.bnb_base_url[0] if use_default_url is True else random.choice(conf.settings.bnb_base_url)
-            )
-            self._client = Spot(
-                base_url=base_url, key=conf.settings.bnb_client_key, secret=conf.settings.bnb_client_secret
-            )
-            return self._client
-        else:
-            return self._client
+    base_urls: List[str] = field(validator=validators.instance_of(list))
+    client_key: str
+    client_secret: str
+    db_manager: DataBaseManager
+    logger: Logger
+    base_precision: Optional[int] = field(init=False, default=None)
+    quote_precision: Optional[int] = field(init=False, default=None)
 
-    def __init__(self):
-        self._client = None
-        self.logger: Logger = LoggerFactory.get_console_logger(__name__)
+    @cached_property
+    def _spot_client(self) -> Spot:
+        """Init a new spot client."""
+        base_url = random.choice(self.base_urls)
+        client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
+        self.logger.debug(f"Getting new spot client {client} with base_url: {base_url}")
+        return client
+
+    def get_pair_precision(self, pair: TradingPair) -> Tuple[int, int]:
+        if self.base_precision is None or self.quote_precision is None:
+            info = self._spot_client.exchange_info(str(pair))["symbols"][0]
+            self.base_precision, self.quote_precision = int(info["baseAssetPrecision"]), int(
+                info["quoteAssetPrecision"]
+            )
+            self.logger.debug(
+                f"Setting base_precision = {self.base_precision} and quote_precision = {self.quote_precision}"
+            )
+
+        return self.base_precision, self.quote_precision
+
+    def _invalidate_spot_client_cache(self) -> None:
+        del self.__dict__["_spot_client"]
 
     def get_account_info(self) -> AccountInfo:
         """
         Get account information
         """
-        return AccountInfo(**self.get_client().account())
+        return AccountInfo(**self._spot_client.account())
 
     def get_price(self, pair: TradingPair) -> float:
         """
@@ -55,7 +68,7 @@ class BinanceClient:
         :param pair: trading pair.
         :return: Latest price for a symbol
         """
-        return float(self.get_client().ticker_price(str(pair))["price"])
+        return float(self._spot_client.ticker_price(str(pair))["price"])
 
     def get_current_avg_price(self, pair: TradingPair) -> AvgPrice:
         """
@@ -63,14 +76,14 @@ class BinanceClient:
         :param pair: trading pair.
         :return: AvgPrice record
         """
-        return AvgPrice(**self.get_client().avg_price(str(pair)))
+        return AvgPrice(**self._spot_client.avg_price(str(pair)))
 
     def get_klines_data(
         self,
         pair: TradingPair,
         interval: Interval,
-        start_time: Optional[pendulum.DateTime] = None,
-        end_time: Optional[pendulum.DateTime] = None,
+        start_time: Union[Optional[pendulum.DateTime], int] = None,
+        end_time: Union[Optional[pendulum.DateTime], int] = None,
         limit: Optional[int] = None,
     ) -> List[Kline]:
         """
@@ -80,19 +93,22 @@ class BinanceClient:
         :param interval: the interval of kline, e.g 1m, 5m, 1h, 1d, etc.
         :param start_time: datetime to get aggregate trades from INCLUSIVE.
         :param end_time: datetime to get aggregate trades until INCLUSIVE.
-        :param limit: limit the results. Default 500; max 1000.
+        :param limit: limit the results. Default 500; max 500.
         """
         # Convert datetimes to ts
-        start_time_ts = None if start_time is None else int(start_time.timestamp() * 1000)
-        end_time_ts = None if end_time is None else int(end_time.timestamp() * 1000)
+        if isinstance(start_time, pendulum.DateTime):
+            start_time = int(start_time.timestamp() * 1000)
+        if isinstance(end_time, pendulum.DateTime):
+            end_time = int(end_time.timestamp() * 1000)
 
         # Arguments to kwargs
-        args = remove_none_args({"startTime": start_time_ts, "endTime": end_time_ts, "limit": limit})
+        args = remove_none_args({"startTime": start_time, "endTime": end_time, "limit": limit})
         try:
-            response = self.get_client().klines(symbol=str(pair), interval=interval.value, **args)
+            response = self._spot_client.klines(symbol=str(pair), interval=interval.value, **args)
         except requests.exceptions.ConnectionError as connection_err:
             self.logger.error(f"Remote disconnected connection_err: {connection_err}")
-            return self.get_client(False).get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
+            self._invalidate_spot_client_cache()
+            return self.get_klines_data(pair, interval, start_time, end_time, limit)  # Retry request.
 
         return [
             Kline(
@@ -114,11 +130,13 @@ class BinanceClient:
 
     def place_order(
         self,
+        env_state_id: int,
         pair: TradingPair,
         side: Side,
         type: OrderType,
-        time_in_force: TimeInForce = TimeInForce.GTC,
+        time_in_force: Optional[TimeInForce] = None,
         quantity: Optional[float] = None,
+        quoteOrderQty: Optional[float] = None,
         price: Optional[float] = None,
         new_client_order_id: Optional[str] = None,
         is_test: bool = True,
@@ -129,12 +147,19 @@ class BinanceClient:
         :param side: whether you want to BUY or SELL.
         :param type: the type of order you want to submit.
         :param time_in_force: this parameter expresses how you want the order to execute.
-        :param quantity: the quantity of the asset that you want to buy or sell.
+        :param quantity: the quantity of the base asset that you want to buy or sell.
+        :param quoteOrderQty:
         :param price: the price at which you want to sell.
         :param new_client_order_id: an identifier for the order.
         :return: true if the order can be created.
         :param is_test: whether this a test order or not.
         """
+        # Round quantities (API requires it).
+        base_p, quote_p = self.get_pair_precision(pair)
+        round_quantity = None if quantity is None else round(quantity, base_p)
+        self.logger.debug(f"Rounding quantity {quantity} to {round_quantity}")
+        round_quoteOrderQty = None if quoteOrderQty is None else round(quoteOrderQty, quote_p)
+        self.logger.debug(f"Rounding quoteOrderQty {quoteOrderQty} to {round_quoteOrderQty}")
 
         # Arguments to kwargs
         args = remove_none_args(
@@ -142,17 +167,82 @@ class BinanceClient:
                 "symbol": str(pair),
                 "side": side.value,
                 "type": type.value,
-                "timeInForce": time_in_force.value,
-                "quantity": quantity,
+                "timeInForce": None if time_in_force is None else time_in_force.value,
+                "quantity": round_quantity,
+                "quoteOrderQty": round_quoteOrderQty,
                 "price": price,
                 "newClientOrderId": new_client_order_id,
             }
         )
         try:
             if is_test:
-                self.get_client().new_order_test(**args)
+                self.logger.debug(f"Executing test order with args: {args}.")
+                self._spot_client.new_order_test(**args)
                 return None
             else:
-                return Order(**self.get_client().new_order(**args))
+                self.logger.debug(f"Executing order with args: {args}.")
+                result = Order(**{**{"env_state_id": env_state_id}, **self._spot_client.new_order(**args)})
+                self.logger.debug(f"Inserting order record {result} to db.")
+                self.db_manager.insert(result)
+
+                if result.status == OrderStatus.FILLED:
+                    return result
+                else:
+                    # TODO: handle scenario when order is EXPIRED (no liquidity)
+                    self.logger.error(f"Order request with args: {args} could not be filled, result: {result}.")
+                    return None  # TODO: handle this scenario
         except ClientError as e:
-            LoggerFactory.get_console_logger(__name__).error(e)
+            self.logger.error(e)
+            return None  # TODO: handle this scenario
+
+    def buy_at_market(
+        self, env_state_id: int, pair: TradingPair, quantity: Optional[float] = None
+    ) -> Optional[OrderData]:
+        """
+        Buy a base at market price. By default, asks the engine to complete the order immediately or kill it if it's not
+        possible.
+        :param env_state_id:
+        :param pair: Base quote pair.
+        :param quantity: Quantity (in quote units) to buy the base.
+        :return: Order data.
+        """
+        o = self.place_order(
+            env_state_id=env_state_id,
+            pair=pair,
+            side=Side.BUY,
+            type=OrderType.MARKET,
+            quoteOrderQty=quantity,
+            is_test=False,
+        )
+        if o is None:
+            return None
+        else:
+            self.logger.debug(f"Buy order filled: {o}.")
+            return OrderData(o.executedQty, quantity - o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)
+
+    def sell_at_market(
+        self, env_state_id: int, pair: TradingPair, quantity: Optional[float] = None
+    ) -> Optional[OrderData]:
+        """
+        Sell a base at market price. By default, asks the engine to complete the order immediately or kill it if it's
+        not possible.
+        :param env_state_id:
+        :param pair: Base quote pair.
+        :param quantity: Quantity (in base units) to sell the base.
+        :return: Remaining balance (in base units), total received quantity (in quote units) and avg price we sold at
+                 (in quote units).
+        """
+        o = self.place_order(
+            env_state_id=env_state_id,
+            pair=pair,
+            side=Side.SELL,
+            type=OrderType.MARKET,
+            quantity=quantity,
+            is_test=False,
+        )
+
+        if o is None:
+            return None
+        else:
+            self.logger.debug(f"Sell order filled: {o}.")
+            return OrderData(quantity - o.executedQty, o.cummulativeQuoteQty, o.cummulativeQuoteQty / o.executedQty)

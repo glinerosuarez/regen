@@ -5,7 +5,7 @@ from typing import Optional
 import pendulum
 
 from conf.consts import CryptoAsset
-from execution import ExecutionContext
+from inject import injector
 from repository.remote import BinanceClient
 from vm import KlineProducer
 from repository.db import DataBaseManager
@@ -13,14 +13,8 @@ from repository import TradingPair, Interval
 
 
 def train():
-    # TODO: Normalize observations with stable_baselines3.common.vec_env.VecNormalize
-    # TODO: Train with more than 1 vectorized DummyVecEnv
-    # TODO: Customize actor/critic architecture, can I use Transformers? LSTM feature extractors?
-    # TODO: Use callbacks to get best models or to log values
-    # TODO: Implement tensorboard, weights and biases
-    # TODO: Useful scripts here: https://github.com/DLR-RM/rl-baselines3-zoo
 
-    context = ExecutionContext()
+    context = injector.execution_context
     context.train()
 
 

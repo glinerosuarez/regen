@@ -1,13 +1,45 @@
-from pathlib import Path
 import random
-from typing import List
+from logging import Logger
+from typing import List, Optional
 
 import pytest
+from dynaconf import Dynaconf
+from stable_baselines3.common.vec_env import VecEnv
 
-from conf.consts import CryptoAsset
+import log
+from conf import load_settings
+from conf.consts import CryptoAsset, Action
+from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
+from repository.remote import BinanceClient
+from vm._obs_producer import ObsProducer, KlineProducer
 from vm.crypto_vm import CryptoViewModel
+
+
+@pytest.fixture(autouse=True)
+def settings() -> Dynaconf:
+    return load_settings("development")
+
+
+@pytest.fixture
+def enable_live_mode() -> bool:
+    return False
+
+
+@pytest.fixture
+def get_data_from_db() -> bool:
+    return True
+
+
+@pytest.fixture
+def max_api_klines() -> Optional[bool]:
+    return None
+
+
+@pytest.fixture
+def klines_buffer_size() -> int:
+    return 10_000
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -43,6 +75,26 @@ def ticks_per_episode() -> int:
 @pytest.fixture
 def window_size() -> int:
     return 5
+
+
+@pytest.fixture
+def actions() -> List[Action]:
+    return [
+        Action.Sell,
+        Action.Sell,
+        Action.Sell,
+        Action.Sell,
+        Action.Buy,
+        Action.Buy,
+        Action.Sell,
+        Action.Buy,
+        Action.Buy,
+        Action.Buy,
+        Action.Buy,
+        Action.Sell,
+        Action.Sell,
+        Action.Buy,
+    ]
 
 
 @pytest.fixture
@@ -332,6 +384,11 @@ def klines_data(trading_pair: TradingPair) -> List[Kline]:
 
 
 @pytest.fixture
+def logger() -> Logger:
+    return log.LoggerFactory.get_console_logger(__name__)
+
+
+@pytest.fixture
 def db_name() -> str:
     return "test_db"
 
@@ -342,15 +399,56 @@ def db_manager(db_name, tmp_path) -> DataBaseManager:
 
 
 @pytest.fixture
-def vm(base, quote, db_manager, ticks_per_episode, execution_id, window_size) -> CryptoViewModel:
-    return CryptoViewModel(
-        base_asset=base,
-        quote_asset=quote,
+def api_client(settings, db_manager, logger) -> BinanceClient:
+    return BinanceClient(
+        base_urls=["https://testnet.binance.vision"],
+        client_key=settings.bnb_client_key,
+        client_secret=settings.bnb_client_secret,
         db_manager=db_manager,
+        logger=logger,
+    )
+
+
+@pytest.fixture
+def kline_producer(
+    db_manager, api_client, trading_pair, enable_live_mode, get_data_from_db, max_api_klines, klines_buffer_size, logger
+) -> KlineProducer:
+    return KlineProducer(
+        db_manager=db_manager,
+        api_manager=api_client,
+        trading_pair=trading_pair,
+        enable_live_mode=enable_live_mode,
+        get_data_from_db=get_data_from_db,
+        max_api_klines=max_api_klines,
+        klines_buffer_size=klines_buffer_size,
+        logger=logger,
+    )
+
+
+@pytest.fixture
+def obs_producer(kline_producer, window_size, logger) -> ObsProducer:
+    return ObsProducer(kline_producer=kline_producer, window_size=window_size, logger=logger)
+
+
+@pytest.fixture
+def vm(
+    trading_pair, db_manager, api_client, obs_producer, ticks_per_episode, execution_id, window_size, logger
+) -> CryptoViewModel:
+    return CryptoViewModel(
+        trading_pair=trading_pair,
+        db_manager=db_manager,
+        api_client=api_client,
+        obs_producer=obs_producer,
         ticks_per_episode=ticks_per_episode,
         execution_id=execution_id,
         window_size=window_size,
+        logger=logger,
     )
+
+
+@pytest.fixture
+def env(vm) -> VecEnv:
+    return build_crypto_trading_env(vm=vm)
 
 
 @pytest.fixture

@@ -3,34 +3,10 @@ from typing import List
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import Position, Action
+from conf.consts import Position, Action, CryptoAsset
 from repository import AccountType, Observation
 from repository.db import Order, AccountInfo, EnvState, Kline
-
-
-@pytest.fixture
-def orders() -> List[Order]:
-    data = Order(
-        symbol="BNBBUSD",
-        orderId="12345",
-        orderListId="-1",
-        clientOrderId="67890",
-        transactTime=10,
-        price=400.0,
-        origQty=10,
-        executedQty=10.0,
-        cummulativeQuoteQty=10.0,
-        status="FILLED",
-        timeInForce="GTC",
-        type="LIMIT",
-        side="BUY",
-        fills=[{"price": 400.0, "qty": 10.0, "commission": 0.001, "commissionAsset": "BUSD"}],
-    )
-    data_2 = data.copy(with_={"symbol": "ETHBUSD"})
-    data_3 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "67890"})
-    data_4 = data.copy(with_={"symbol": "BTCUSDT", "orderId": "11121", "clientOrderId": "anyid"})
-
-    return [data, data_2, data_3, data_4]
+from repository.db._db_manager import Fill
 
 
 @pytest.fixture
@@ -128,3 +104,11 @@ def test_delete(insert_klines, db_manager):
     assert db_manager.delete(Kline, [Kline.id > 5, Kline.id % 2 == 0]) == 8
     results = db_manager.select_all(Kline)
     assert [r.id for r in results] == [1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 17, 19]
+
+
+def test_count_rows(insert_klines, db_manager):
+    assert db_manager.count_rows(Kline.id) == 20
+
+
+def test_get_last_id(insert_klines, db_manager):
+    assert db_manager.get_last_id(Kline) == 20

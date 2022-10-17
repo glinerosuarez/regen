@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 
 import threading
@@ -7,9 +8,8 @@ from typing import Optional, Iterator, Tuple
 
 import pendulum
 import numpy as np
+from cached_property import cached_property
 
-import conf
-import log
 from repository.remote import BinanceClient
 from repository import Interval, TradingPair
 from repository.db import Kline, get_db_async_generator, DataBaseManager
@@ -18,22 +18,62 @@ from repository.db import Kline, get_db_async_generator, DataBaseManager
 class KlineProducer(threading.Thread):
     """Provide klines from the database (if there are any) and the api."""
 
-    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, daemon: bool = True):
+    def _get_kline_counter(self) -> Iterator[None]:
+        if self.enable_live_mode is True:
+            if self.max_api_klines is None:
+                self.logger.info("Returning an infinite number of klines.")
+                return itertools.repeat(None)
+            else:
+                if self.get_data_from_db is True:
+                    n_klines = self.db_manager.count_rows(Kline.id) + self.max_api_klines
+                    self.logger.info(f"Returning {n_klines} klines.")
+                    return itertools.repeat(None, n_klines)
+                else:
+                    self.logger.info(f"Returning {self.max_api_klines} klines.")
+                    return itertools.repeat(None, self.max_api_klines)
+        else:
+            if self.get_data_from_db is True:
+                n_klines = self.db_manager.count_rows(Kline.id)
+                self.logger.info(f"Returning {n_klines} klines.")
+                return itertools.repeat(None, n_klines)
+            else:
+                self.logger.info("Returning 0 klines.")
+                return itertools.repeat(None, 0)
+
+    def __init__(
+        self,
+        db_manager: DataBaseManager,
+        api_manager: BinanceClient,
+        trading_pair: TradingPair,
+        logger: logging.Logger,
+        enable_live_mode: bool = False,
+        get_data_from_db: bool = True,
+        max_api_klines: Optional[int] = None,
+        klines_buffer_size: int = 10_000,
+        daemon: bool = True,
+    ):
         super(KlineProducer, self).__init__(daemon=daemon)
 
         now = pendulum.now()
+
         self.trading_pair = trading_pair
         self.db_manager = db_manager
-        # True to continuously request new klines from the api
-        self.enable_live_mode = conf.settings.enable_live_mode
-        self.queue = Queue(conf.settings.klines_buffer_size)  # interface to expose klines to the main thread
-        # buffer for klines that come directly from the api
-        self._api_queue = asyncio.Queue(conf.settings.klines_buffer_size)
-        self.client = BinanceClient()
+        self.client = api_manager
+        self.logger = logger
+
+        self.get_data_from_db = get_data_from_db  # True to get klines from Kline sql table
+        self.enable_live_mode = enable_live_mode  # True to continuously request new klines from the api
+        self.max_api_klines = max_api_klines  # Total number of klines to request from the api
+        self.klines_buffer_size = klines_buffer_size
+        self.queue = Queue(klines_buffer_size)  # interface to expose klines to the main thread
+
         self.last_stime = now.subtract(minutes=1).start_of("minute")  # we will start getting klines from this minute
         self.last_etime = now.subtract(minutes=1).end_of("minute")
         self.background_tasks = set()
-        self.logger = log.LoggerFactory.get_console_logger(__name__, logging.DEBUG)
+
+    @cached_property
+    def _api_queue(self) -> asyncio.Queue:
+        return asyncio.Queue(self.klines_buffer_size)  # buffer for klines that come directly from the api
 
     async def get_pending(self):
         """
@@ -72,32 +112,39 @@ class KlineProducer(threading.Thread):
     async def main(self):
         """Main coroutine to coordinate klines production."""
         if self.enable_live_mode is True:
+            self.logger.info("Live mode is enabled, creating schedule task.")
             schedule_task = asyncio.create_task(self.schedule_job())  # Start getting klines from the api
             self.background_tasks.add(schedule_task)  # Create strong reference of the tasks
 
-        async for db_kline in get_db_async_generator(self.db_manager, Kline, conf.settings.klines_buffer_size):
-            self.queue.put(db_kline)
+        if self.get_data_from_db is True:
+            self.logger.info("Getting klines from database.")
+            async for db_kline in get_db_async_generator(self.db_manager, Kline, self.klines_buffer_size):
+                self.queue.put(db_kline)
 
-        while self.enable_live_mode:  # Get klines from api
-            self.queue.put(await self._api_queue.get())
+        if self.max_api_klines is None:
+            while self.enable_live_mode:  # Get klines from api
+                self.queue.put(await self._api_queue.get())
+        else:
+            for _ in range(self.max_api_klines):
+                self.queue.put(await self._api_queue.get())
 
     def run(self):
         asyncio.run(self.main())
 
     def get_klines(self) -> Iterator[Kline]:
         """Return a generator that produces klines as they are available."""
-        while True:
+        for _ in self._get_kline_counter():
             yield self.queue.get()
 
 
 class ObsProducer:
     _OBS_TYPE = "float32"
 
-    def __init__(self, db_manager: DataBaseManager, trading_pair: TradingPair, window_size: int):
+    def __init__(self, kline_producer: KlineProducer, window_size: int, logger: logging.Logger):
         self.window_size = window_size
-        self.logger = log.LoggerFactory.get_console_logger(__name__)
+        self.logger = logger
 
-        self.producer = KlineProducer(db_manager, trading_pair)
+        self.producer = kline_producer
         if not self.producer.is_alive():
             self.producer.start()
 
@@ -123,6 +170,7 @@ class ObsProducer:
         chunk_size = 1
 
         for kl in kl_generator:
+            self.logger.debug(f"Got kline {kl} from kline producer.")
             if chunk[chunk_size - 1][-1] == kl.open_time - 60_000:  # then we check that this is a subsequent kline
                 if chunk_size == self.window_size:  # if the chunk has already been delivered
                     chunk = np.roll(chunk, -1, axis=0)  # shift up to only keep the most recent window_size - 1 klines
@@ -145,6 +193,7 @@ class ObsProducer:
         :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is
             a time gap between klines.
         """
+        # TODO: triggers StopIteration when there aren't any klines
         while self.next_chunk is None:  # request a new chunk until we get a valid one
             self.next_chunk = next(self.chunks_generator)
 
