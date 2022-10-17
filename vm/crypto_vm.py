@@ -234,6 +234,10 @@ class CryptoViewModel:
             self.logger.debug(f"Got current price from api: {price}.")
             return price
         else:
+            # Model asset price by adding random noise to the close price of the last kline.
             price = self.last_observation[-1][3]
+            mu, sigma = 0, 0.002  # mean and standard deviation
+            s = np.random.normal(mu, sigma)
+            price = price * (1 + s)
             self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
             return price

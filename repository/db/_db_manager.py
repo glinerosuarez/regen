@@ -396,26 +396,30 @@ class EnvState(DataClass):
         Column("execution_id", Integer, nullable=False),
         Column("episode_id", Integer, nullable=False),
         Column("tick", BigInteger, nullable=False),
+        Column("base_balance", Float, nullable=False),
+        Column("quote_balance", Float, nullable=False),
         Column("price", Float, nullable=False),
         Column("position", Enum(Position, name="tradingposition"), nullable=False),
         Column("action", Enum(Action), nullable=False),
         Column("is_trade", Boolean, nullable=False),
         Column("reward", Float, nullable=True),
         Column("cum_reward", Float, nullable=True),
-        Column("ts", Float, nullable=False),
+        Column("ts", DateTime, nullable=False, server_default=func.now()),
     )
 
     id: int = attrib(init=False)
     execution_id: int = attrib(converter=int)
     episode_id: int = attrib(converter=int)
     tick: int = attrib(converter=int)
+    base_balance: float = attrib(converter=float)
+    quote_balance: float = attrib(converter=float)
     price: float = attrib(converter=float)
     position: Position = attrib()
     action: Action = attrib()
     is_trade: bool = attrib()
     reward: float = attrib()
     cum_reward: float = attrib()
-    ts: float = attrib()
+    ts: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
 
 
 # TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique

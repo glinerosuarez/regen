@@ -1,15 +1,19 @@
+import os
+
 import pendulum
 
-from exec import DependencyInjector
+from inject import injector
 from repository import Interval
 from repository.db import Kline
 
 
 if __name__ == "__main__":
 
-    injector = DependencyInjector()
+    if os.environ["REGEN_ENV"] != "production":
+        raise ValueError("REGEN_ENV must be production.")
+
     db_manager = injector.db_manager
-    api_clinet = injector.api_client
+    api_clinet = injector.env_injector.api_client
     pair = injector.trading_pair
 
     last_close_ts = db_manager.select_max(Kline.close_time)
@@ -21,7 +25,7 @@ if __name__ == "__main__":
     end = now.end_of("minute")
 
     counter = 0
-    batch_size = 1
+    batch_size = 200
     for minute in pendulum.period(start, end).range("minutes", batch_size):
         open_time = minute
         close_time = minute.add(minutes=batch_size).end_of("minute")
