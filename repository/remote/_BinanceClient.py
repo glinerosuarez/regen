@@ -44,9 +44,12 @@ class BinanceClient:
     def get_pair_precision(self, pair: TradingPair) -> Tuple[int, int]:
         if self.base_precision is None or self.quote_precision is None:
             info = self._spot_client.exchange_info(str(pair))["symbols"][0]
-            self.base_precision, self.quote_precision = int(info["baseAssetPrecision"]), int(info["quoteAssetPrecision"])
+            self.base_precision, self.quote_precision = int(info["baseAssetPrecision"]), int(
+                info["quoteAssetPrecision"]
+            )
             self.logger.debug(
-                f"Setting base_precision = {self.base_precision} and quote_precision = {self.quote_precision}")
+                f"Setting base_precision = {self.base_precision} and quote_precision = {self.quote_precision}"
+            )
 
         return self.base_precision, self.quote_precision
 
