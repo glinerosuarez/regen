@@ -213,7 +213,6 @@ class CryptoViewModel:
             self.history[key].append(value)
 
     def _place_order(self, side: Side) -> Optional[OrderData]:
-        # TODO: since we always start longing if the last episode's position is short, we won't have assets to sell and this will try to sell 0 and get an error from the api
         if self.place_orders is True:
             if side == side.BUY:
                 self.logger.debug("Placing buy order.")
