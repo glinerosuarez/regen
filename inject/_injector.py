@@ -148,7 +148,7 @@ class EnvInjector:
             execution_id=str(self.injector.execution.id),
             window_size=self.injector.settings.window_size,
             place_orders=self.injector.settings.place_orders,
-            logger=self.injector.get_logger("vm"),
+            logger=self.injector.get_logger("vm", logging.DEBUG),
         )
 
     @cached_property

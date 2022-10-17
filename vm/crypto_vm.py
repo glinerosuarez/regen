@@ -58,7 +58,7 @@ class CryptoViewModel:
         self.place_orders = place_orders
 
         self.episode_id = None
-        self.position = Position.Short
+        self.position = None
         self.start_tick = window_size
         self.current_tick = None
         self.total_reward = 0.0
@@ -73,9 +73,14 @@ class CryptoViewModel:
         self.logger = logger
 
     @property
-    def get_next_env_state_id(self) -> int:
+    def next_env_state_id(self) -> int:
         last_id = self.db_manager.get_last_id(EnvState)
         return 0 if last_id is None else last_id + 1
+
+    @property
+    def last_episode_id(self) -> Optional[int]:
+        """Get the last episode id in this execution, return None if there's no last episode id."""
+        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Flatten and normalize an observation"""
@@ -85,7 +90,7 @@ class CryptoViewModel:
             self.init_price = random.uniform(obs[-2][0], obs[-2][3])  # random value between open and close values
         # TODO: does this break markov rules?
         # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
-        non_null_last_trade_price = self.last_trade_price if self.last_trade_price is not None else self.init_price
+        non_null_last_trade_price = self.init_price if self.last_trade_price is None else self.last_trade_price
         prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
         return prices
 
@@ -95,16 +100,17 @@ class CryptoViewModel:
         self.done = False
         self.current_tick = self.window_size
 
-        # We always start longing TODO: Not necessarily
-        if self.base_balance < self.quote_balance:
-            self._place_order(Side.SELL)
+        if self.position is None:
+            if self.base_balance > self.quote_balance:
+                self.position = Position.Long
+            else:
+                self.position = Position.Short
 
-        self.position = Position.Long
         self.position_history = (self.window_size * [None]) + [self.position]
         self.total_reward = 0.0
-        self.last_price = None
-        self.last_trade_price = None
-        self.episode_id = 1 if self._get_last_episode_id() is None else self._get_last_episode_id() + 1
+        self.last_price = None if self.last_price is None else self.last_price
+        self.last_trade_price = None if self.last_trade_price is None else self.last_trade_price
+        self.episode_id = 1 if self.last_episode_id is None else self.last_episode_id + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
@@ -141,10 +147,6 @@ class CryptoViewModel:
             self.done,
             info,
         )
-
-    def _get_last_episode_id(self) -> Optional[int]:
-        """Get the last episode id in this execution, return None if there's no last episode id."""
-        return self.db_manager.select_max(col=EnvState.episode_id, condition=EnvState.execution_id == self.execution_id)
 
     def _is_trade(self, action: Action):
         return any(
@@ -193,7 +195,7 @@ class CryptoViewModel:
                 action=action,
                 is_trade=is_trade,
                 reward=reward,
-                cum_reward=reward + self.total_reward,
+                cum_reward=reward + self.total_reward,  # TODO: this metric doesn't make sense
                 ts=time.time(),
             )
         )
@@ -211,13 +213,14 @@ class CryptoViewModel:
             self.history[key].append(value)
 
     def _place_order(self, side: Side) -> Optional[OrderData]:
+        # TODO: since we always start longing if the last episode's position is short, we won't have assets to sell and this will try to sell 0 and get an error from the api
         if self.place_orders is True:
             if side == side.BUY:
                 self.logger.debug("Placing buy order.")
-                return self.api_client.buy_at_market(self.get_next_env_state_id, self.trading_pair, self.quote_balance)
+                return self.api_client.buy_at_market(self.next_env_state_id, self.trading_pair, self.quote_balance)
             else:
                 self.logger.debug("Placing sell order.")
-                return self.api_client.sell_at_market(self.get_next_env_state_id, self.trading_pair, self.base_balance)
+                return self.api_client.sell_at_market(self.next_env_state_id, self.trading_pair, self.base_balance)
         else:
             price = self._get_price()
             # The price and quantity will be returned by client.place_order.
