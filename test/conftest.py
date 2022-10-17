@@ -2,6 +2,7 @@ import random
 from logging import Logger
 from typing import List, Optional
 
+import pendulum
 import pytest
 from dynaconf import Dynaconf
 from stable_baselines3.common.vec_env import VecEnv
@@ -452,5 +453,23 @@ def env(vm) -> VecEnv:
 
 
 @pytest.fixture
-def insert_klines(db_name, db_manager, klines_data) -> None:
+def insert_klines(db_manager, klines_data) -> None:
     db_manager.insert(klines_data)
+
+
+@pytest.fixture
+def insert_klines_2ep(db_manager, klines_data) -> None:
+    klines = []
+    for i, kl in enumerate(klines_data):
+        if i > 9:
+            klines.append(
+                kl.copy(
+                    with_={
+                        "open_time": pendulum.from_timestamp(kl.open_time / 1_000).add(minutes=1).timestamp() * 1_000,
+                        "close_time": pendulum.from_timestamp(kl.close_time / 1_000).add(minutes=1).timestamp() * 1_000,
+                    }
+                )
+            )
+        else:
+            klines.append(kl)
+    db_manager.insert(klines)
