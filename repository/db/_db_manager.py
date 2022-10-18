@@ -199,6 +199,20 @@ class DataBaseManager:
             sql_statement = sql_statement.where(condition)
         return self.session.execute(sql_statement).fetchone()[0]
 
+    def select_min(
+        self, col: InstrumentedAttribute, condition: Optional[Union[BinaryExpression, bool]] = None
+    ) -> Optional[Any]:
+        """
+        Return the smallest value in a column.
+        :param col: Column to get the value from.
+        :param condition: Binary condition that is used to filter out rows.
+        :return: Maximum value in the column.
+        """
+        sql_statement = select(func.min(col))
+        if condition is not None:
+            sql_statement = sql_statement.where(condition)
+        return self.session.execute(sql_statement).fetchone()[0]
+
     def delete(
         self,
         table: Type[DataClass],
@@ -474,6 +488,34 @@ class Kline(DataClass):
     def to_numpy(self) -> np.ndarray:
         values = vars(self)
         return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class MovingAvgs(DataClass):
+    __table__ = Table(
+        "moving_avgs",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("kline_id", Integer, nullable=False, unique=True),
+        Column("s7", Float, nullable=False),
+        Column("s25", Float, nullable=False),
+        Column("s100", Float, nullable=False),
+        Column("s300", Float, nullable=False),
+        Column("s1440", Float, nullable=False),
+        Column("s14400", Float, nullable=False),
+        Column("s144000", Float, nullable=False),
+    )
+
+    id: int = field(init=False)
+    kline_id: int
+    s7: float
+    s25: float
+    s100: float
+    s300: float
+    s1440: float
+    s14400: float
+    s144000: float
 
 
 @DataBaseManager._mapper_registry.mapped
