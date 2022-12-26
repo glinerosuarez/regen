@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     api_cv_l = list(api_close_val)
     mv_window_sizes = [144000, 14400, 1440, 300, 100, 25, 7]
-    queues = [deque(api_cv_l[-ws + 1:]) for ws in mv_window_sizes]
+    queues = [deque(api_cv_l[-ws + 1 :]) for ws in mv_window_sizes]
     del api_cv_l
     init_sums = [sum(q) for q in queues]
     for kl in db_klines:
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         for i, q in enumerate(queues):
             init_sums[i] = init_sums[i] + kl.close_value
             s = mv_window_sizes[i]
-            record[f"s{s}"] = round(init_sums[i]/s, 6)
+            record[f"s{s}"] = round(init_sums[i] / s, 6)
 
             init_sums[i] = init_sums[i] - q.popleft()
             q.append(kl.close_value)

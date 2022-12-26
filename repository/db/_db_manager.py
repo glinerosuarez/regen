@@ -497,7 +497,7 @@ class MovingAvgs(DataClass):
         "moving_avgs",
         DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
-        Column("kline_id", Integer, nullable=False, unique=True),
+        Column("kline_id", Integer, ForeignKey("kline.id")),
         Column("s7", Float, nullable=False),
         Column("s25", Float, nullable=False),
         Column("s100", Float, nullable=False),
