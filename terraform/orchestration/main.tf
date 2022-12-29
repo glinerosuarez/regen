@@ -124,6 +124,7 @@ resource "docker_container" "airflow-init" {
   networks_advanced {
     name = docker_network.airflow_network.name
   }
+  must_run = false
 }
 
 resource "docker_container" "airflow-webserver" {
@@ -138,9 +139,23 @@ resource "docker_container" "airflow-webserver" {
       container_path = v.value.container_path
     }
   }
+  user       = var.airflow_uid
+  depends_on = [docker_container.postgres, docker_container.redis, docker_container.airflow-init]
+  command = ["webserver"]
+  restart = "always"
+  ports {
+    internal = 8080
+    external = 8080
+  }
+  healthcheck {
+    test = ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+    interval = "10s"
+    timeout = "10s"
+    retries = 5
+  }
   networks_advanced {
     name = docker_network.airflow_network.name
   }
-  user       = var.airflow_uid
-  depends_on = [docker_container.postgres, docker_container.redis, docker_container.airflow-init]
+  #must_run = false
+  #attach = true
 }
