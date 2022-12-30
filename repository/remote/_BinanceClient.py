@@ -93,7 +93,7 @@ class BinanceClient:
         :param interval: the interval of kline, e.g 1m, 5m, 1h, 1d, etc.
         :param start_time: datetime to get aggregate trades from INCLUSIVE.
         :param end_time: datetime to get aggregate trades until INCLUSIVE.
-        :param limit: limit the results. Default 500; max 500.
+        :param limit: limit the results. Default 500; max 1_000.
         """
         # Convert datetimes to ts
         if isinstance(start_time, pendulum.DateTime):

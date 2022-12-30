@@ -199,6 +199,20 @@ class DataBaseManager:
             sql_statement = sql_statement.where(condition)
         return self.session.execute(sql_statement).fetchone()[0]
 
+    def select_min(
+        self, col: InstrumentedAttribute, condition: Optional[Union[BinaryExpression, bool]] = None
+    ) -> Optional[Any]:
+        """
+        Return the smallest value in a column.
+        :param col: Column to get the value from.
+        :param condition: Binary condition that is used to filter out rows.
+        :return: Maximum value in the column.
+        """
+        sql_statement = select(func.min(col))
+        if condition is not None:
+            sql_statement = sql_statement.where(condition)
+        return self.session.execute(sql_statement).fetchone()[0]
+
     def delete(
         self,
         table: Type[DataClass],
@@ -396,26 +410,30 @@ class EnvState(DataClass):
         Column("execution_id", Integer, nullable=False),
         Column("episode_id", Integer, nullable=False),
         Column("tick", BigInteger, nullable=False),
+        Column("base_balance", Float, nullable=False),
+        Column("quote_balance", Float, nullable=False),
         Column("price", Float, nullable=False),
         Column("position", Enum(Position, name="tradingposition"), nullable=False),
         Column("action", Enum(Action), nullable=False),
         Column("is_trade", Boolean, nullable=False),
         Column("reward", Float, nullable=True),
         Column("cum_reward", Float, nullable=True),
-        Column("ts", Float, nullable=False),
+        Column("ts", DateTime, nullable=False, server_default=func.now()),
     )
 
     id: int = attrib(init=False)
     execution_id: int = attrib(converter=int)
     episode_id: int = attrib(converter=int)
     tick: int = attrib(converter=int)
+    base_balance: float = attrib(converter=float)
+    quote_balance: float = attrib(converter=float)
     price: float = attrib(converter=float)
     position: Position = attrib()
     action: Action = attrib()
     is_trade: bool = attrib()
     reward: float = attrib()
     cum_reward: float = attrib()
-    ts: float = attrib()
+    ts: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
 
 
 # TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique
@@ -470,6 +488,34 @@ class Kline(DataClass):
     def to_numpy(self) -> np.ndarray:
         values = vars(self)
         return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class MovingAvgs(DataClass):
+    __table__ = Table(
+        "moving_avgs",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("kline_id", Integer, ForeignKey("kline.id")),
+        Column("s7", Float, nullable=False),
+        Column("s25", Float, nullable=False),
+        Column("s100", Float, nullable=False),
+        Column("s300", Float, nullable=False),
+        Column("s1440", Float, nullable=False),
+        Column("s14400", Float, nullable=False),
+        Column("s144000", Float, nullable=False),
+    )
+
+    id: int = field(init=False)
+    kline_id: int
+    s7: float
+    s25: float
+    s100: float
+    s300: float
+    s1440: float
+    s14400: float
+    s144000: float
 
 
 @DataBaseManager._mapper_registry.mapped

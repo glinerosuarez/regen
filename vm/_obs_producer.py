@@ -99,7 +99,7 @@ class KlineProducer(threading.Thread):
     async def schedule_job(self):
         """Trigger kline acquisition coroutine every minute at the 59th second."""
         now = pendulum.now()
-        next_job = now.at(now.hour, now.minute, 59)
+        next_job = now.at(now.hour, now.minute, 59)  # TODO: Add 500 aprox. more
         wait_time = pendulum.now().diff(next_job).total_seconds()  # Approx time from now to the next execution
         while True:
             if wait_time > 0:
