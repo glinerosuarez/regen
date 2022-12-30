@@ -156,6 +156,96 @@ resource "docker_container" "airflow-webserver" {
   networks_advanced {
     name = docker_network.airflow_network.name
   }
-  #must_run = false
-  #attach = true
+}
+
+resource "docker_container" "airflow-scheduler" {
+  image = docker_image.airflow.image_id
+  name  = "airflow-scheduler"
+  env = local.common_env
+  user = var.airflow_uid
+  depends_on = [docker_container.postgres, docker_container.redis, docker_container.airflow-init]
+  command = ["scheduler"]
+  restart = "always"
+  healthcheck {
+    test = ["CMD-SHELL", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "\"$${HOSTNAME}\""]
+    interval = "10s"
+    timeout = "10s"
+    retries = 5
+  }
+  dynamic "volumes" {
+    for_each = local.volumes
+    iterator = v
+    content {
+      host_path      = v.value.host_path
+      container_path = v.value.container_path
+    }
+  }
+}
+
+resource "docker_container" "airflow-worker" {
+  image = docker_image.airflow.image_id
+  name  = "airflow-worker"
+  user = var.airflow_uid
+  env = concat(local.common_env, ["DUMB_INIT_SETSID=0"])
+  depends_on = [docker_container.postgres, docker_container.redis, docker_container.airflow-init]
+  command = ["celery", "worker"]
+  restart = "always"
+  healthcheck {
+    test = [
+      "CMD-SHELL", "celery", "--app", "airflow.executors.celery_executor.app", "inspect", "ping", "-d", "\"celery@$${HOSTNAME}\""
+    ]
+    interval = "10s"
+    timeout = "10s"
+    retries = 5
+  }
+  dynamic "volumes" {
+    for_each = local.volumes
+    iterator = v
+    content {
+      host_path      = v.value.host_path
+      container_path = v.value.container_path
+    }
+  }
+}
+
+resource "docker_container" "airflow-triggerer" {
+  image = docker_image.airflow.image_id
+  name  = "airflow-triggerer"
+  env = local.common_env
+  user = var.airflow_uid
+  depends_on = [docker_container.postgres, docker_container.redis, docker_container.airflow-init]
+  command = ["triggerer"]
+  restart = "always"
+  healthcheck {
+    test = ["CMD-SHELL", "airflow", "jobs", "check", "--job-type", "TriggererJob", "--hostname", "\"$${HOSTNAME}\""]
+    interval = "10s"
+    timeout = "10s"
+    retries = 5
+  }
+  dynamic "volumes" {
+    for_each = local.volumes
+    iterator = v
+    content {
+      host_path      = v.value.host_path
+      container_path = v.value.container_path
+    }
+  }
+}
+
+resource "docker_container" "airflow-cli" {
+  count = var.debug_mode ? 1 : 0
+  image = docker_image.airflow.image_id
+  name  = var.airflow_uid
+  user = var.airflow_uid
+  env = concat(local.common_env, ["CONNECTION_CHECK_MAX_COUNT=0"])
+  depends_on = [docker_container.postgres, docker_container.redis]
+  command = ["bash", "-c", "airflow"]
+  dynamic "volumes" {
+    for_each = local.volumes
+    iterator = v
+    content {
+      host_path      = v.value.host_path
+      container_path = v.value.container_path
+    }
+  }
 }
