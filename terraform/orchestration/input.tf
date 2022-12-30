@@ -27,7 +27,7 @@ variable "_airflow_www_user_password" {
 }
 
 variable "debug_mode" {
-  type    = bool
-  default = false
+  type        = bool
+  default     = false
   description = "Whether to create resources whose only purpose is to help debug errors or not."
 }
