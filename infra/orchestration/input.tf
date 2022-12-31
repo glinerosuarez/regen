@@ -4,6 +4,11 @@ variable "airflow_image_name" {
   description = "Docker image name used to run Airflow."
 }
 
+variable "network_name" {
+  type        = string
+  description = "Network in which to register containers."
+}
+
 variable "_pip_additional_requirements" {
   type        = string
   default     = ""

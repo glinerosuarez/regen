@@ -6,9 +6,8 @@ terraform {
   }
 }
 
-provider "docker" {}
-
 locals {
+  mod_path = abspath("${path.root}/orchestration")
   common_env = [
     "AIRFLOW__CORE__EXECUTOR=CeleryExecutor",
     "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow",
@@ -24,22 +23,18 @@ locals {
   ]
   volumes = [
     {
-      host_path      = abspath("./dags")
+      host_path      = abspath("${local.mod_path}/dags")
       container_path = "/opt/airflow/dags"
     },
     {
-      host_path      = abspath("./logs")
+      host_path      = abspath("${local.mod_path}/logs")
       container_path = "/opt/airflow/logs"
     },
     {
-      host_path      = abspath("./plugins")
+      host_path      = abspath("${local.mod_path}/plugins")
       container_path = "/opt/airflow/plugins"
     }
   ]
-}
-
-resource "docker_network" "airflow_network" {
-  name = "airflow"
 }
 
 resource "docker_image" "postgres" {
@@ -54,6 +49,15 @@ resource "docker_image" "redis" {
 
 resource "docker_image" "airflow" {
   name         = var.airflow_image_name
+  keep_locally = false
+}
+
+resource "docker_image" "airflow_worker" {
+  name = "airflow_worker"
+  build {
+    path = abspath("${path.root}/../.")
+    dockerfile = "/infra/orchestration/worker_dockerfile"
+  }
   keep_locally = false
 }
 
@@ -72,11 +76,11 @@ resource "docker_container" "postgres" {
   }
   restart = "always"
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 
   provisioner "local-exec" {
-    command = "bash ./scripts/healthy_check.sh ${self.name}"
+    command = "bash ${path.root}/scripts/healthy_check.sh ${self.name}"
   }
 }
 
@@ -91,11 +95,11 @@ resource "docker_container" "redis" {
   }
   restart = "always"
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 
   provisioner "local-exec" {
-    command = "bash ./scripts/healthy_check.sh ${self.name}"
+    command = "bash ${path.root}/scripts/healthy_check.sh ${self.name}"
   }
 }
 
@@ -114,15 +118,15 @@ resource "docker_container" "airflow-init" {
     ]
   )
   volumes {
-    host_path      = abspath(".")
+    host_path      = local.mod_path
     container_path = "/sources"
   }
   user       = "0:0"
   depends_on = [docker_container.redis, docker_container.postgres]
   entrypoint = ["/bin/bash"]
-  command    = ["/sources/scripts/airflow_init.sh"]
+  command    = ["${local.mod_path}/scripts/airflow_init.sh"]
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
   must_run = false
 }
@@ -154,7 +158,7 @@ resource "docker_container" "airflow-webserver" {
     retries  = 5
   }
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 }
 
@@ -181,12 +185,12 @@ resource "docker_container" "airflow-scheduler" {
     }
   }
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 }
 
 resource "docker_container" "airflow-worker" {
-  image      = docker_image.airflow.image_id
+  image      = docker_image.airflow_worker.image_id
   name       = "airflow-worker"
   user       = var.airflow_uid
   env        = concat(local.common_env, ["DUMB_INIT_SETSID=0"])
@@ -208,7 +212,7 @@ resource "docker_container" "airflow-worker" {
     }
   }
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 }
 
@@ -235,7 +239,7 @@ resource "docker_container" "airflow-triggerer" {
     }
   }
   networks_advanced {
-    name = docker_network.airflow_network.name
+    name = var.network_name
   }
 }
 
@@ -254,5 +258,8 @@ resource "docker_container" "airflow-cli" {
       host_path      = v.value.host_path
       container_path = v.value.container_path
     }
+  }
+  networks_advanced {
+    name = var.network_name
   }
 }
