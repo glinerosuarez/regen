@@ -9,6 +9,7 @@ __pycache__
 
 # dynaconf secret files
 .secrets.*
+etl/.etl_secrets.toml
 
 # db
 regen
@@ -21,6 +22,9 @@ tmp/**
 **/.terraform
 **/terraform.tfstate
 **/terraform.tfstate.backup
+
+# Airflow
+infra/orchestration/logs
 
 # Output
 output/**

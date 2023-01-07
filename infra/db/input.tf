@@ -5,18 +5,18 @@ variable "network_name" {
 
 variable "username" {
   type        = string
-  default = "regen"
+  default     = "regen"
   description = "Admin username for the db."
 }
 
 variable "password" {
   type        = string
-  default = "regen"
+  default     = "regen"
   description = "Admin user password."
 }
 
 variable "db_name" {
   type        = string
-  default = "regen"
+  default     = "regen"
   description = "Name of the database."
 }

@@ -17,7 +17,7 @@ resource "docker_container" "regen_db" {
   env   = ["POSTGRES_USER=${var.username}", "POSTGRES_PASSWORD=${var.password}", "POSTGRES_DB=${var.db_name}"]
   volumes {
     volume_name    = "regen-db-volume"
-    host_path = abspath("${path.root}/db/data")
+    host_path      = abspath("${path.root}/db/data")
     container_path = "/var/lib/postgresql/data"
   }
   healthcheck {

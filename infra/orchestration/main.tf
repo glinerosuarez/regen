@@ -53,12 +53,15 @@ resource "docker_image" "airflow" {
 }
 
 resource "docker_image" "airflow_worker" {
-  name = "airflow_worker"
+  name         = "airflow_worker"
+  keep_locally = false
   build {
-    path = abspath("${path.root}/../.")
+    path       = abspath("${path.root}/../.")
     dockerfile = "/infra/orchestration/worker_dockerfile"
   }
-  keep_locally = false
+  triggers = {
+    docker_file_sha1 = filesha1("${local.mod_path}/worker_dockerfile")
+  }
 }
 
 resource "docker_container" "postgres" {
@@ -104,7 +107,7 @@ resource "docker_container" "redis" {
 }
 
 resource "docker_container" "airflow-init" {
-  image  = docker_image.airflow_worker.image_id
+  image  = docker_image.airflow.image_id
   name   = "airflow-init"
   attach = true
   env = concat(
@@ -132,7 +135,7 @@ resource "docker_container" "airflow-init" {
 }
 
 resource "docker_container" "airflow-webserver" {
-  image = docker_image.airflow_worker.image_id
+  image = docker_image.airflow.image_id
   name  = "airflow-webserver"
   env   = local.common_env
   dynamic "volumes" {
@@ -217,7 +220,7 @@ resource "docker_container" "airflow-worker" {
 }
 
 resource "docker_container" "airflow-triggerer" {
-  image      = docker_image.airflow_worker.image_id
+  image      = docker_image.airflow.image_id
   name       = "airflow-triggerer"
   env        = local.common_env
   user       = var.airflow_uid
