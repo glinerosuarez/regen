@@ -104,7 +104,7 @@ resource "docker_container" "redis" {
 }
 
 resource "docker_container" "airflow-init" {
-  image  = docker_image.airflow.image_id
+  image  = docker_image.airflow_worker.image_id
   name   = "airflow-init"
   attach = true
   env = concat(
@@ -132,7 +132,7 @@ resource "docker_container" "airflow-init" {
 }
 
 resource "docker_container" "airflow-webserver" {
-  image = docker_image.airflow.image_id
+  image = docker_image.airflow_worker.image_id
   name  = "airflow-webserver"
   env   = local.common_env
   dynamic "volumes" {
@@ -163,7 +163,7 @@ resource "docker_container" "airflow-webserver" {
 }
 
 resource "docker_container" "airflow-scheduler" {
-  image      = docker_image.airflow.image_id
+  image      = docker_image.airflow_worker.image_id
   name       = "airflow-scheduler"
   env        = local.common_env
   user       = var.airflow_uid
@@ -217,7 +217,7 @@ resource "docker_container" "airflow-worker" {
 }
 
 resource "docker_container" "airflow-triggerer" {
-  image      = docker_image.airflow.image_id
+  image      = docker_image.airflow_worker.image_id
   name       = "airflow-triggerer"
   env        = local.common_env
   user       = var.airflow_uid
