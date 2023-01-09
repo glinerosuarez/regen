@@ -37,6 +37,10 @@ locals {
   ]
 }
 
+resource "docker_volume" "airflow_db_volume" {
+  name = "postgres-db-volume"
+}
+
 resource "docker_image" "postgres" {
   name         = "postgres:13"
   keep_locally = false
@@ -69,7 +73,7 @@ resource "docker_container" "postgres" {
   name  = "postgres"
   env   = ["POSTGRES_USER=airflow", "POSTGRES_PASSWORD=airflow", "POSTGRES_DB=airflow"]
   volumes {
-    volume_name    = "postgres-db-volume"
+    volume_name    = docker_volume.airflow_db_volume.name
     container_path = "/var/lib/postgresql/data"
   }
   healthcheck {
@@ -127,7 +131,7 @@ resource "docker_container" "airflow-init" {
   user       = "0:0"
   depends_on = [docker_container.redis, docker_container.postgres]
   entrypoint = ["/bin/bash"]
-  command    = ["${local.mod_path}/scripts/airflow_init.sh"]
+  command    = ["/sources/scripts/airflow_init.sh"]
   networks_advanced {
     name = var.network_name
   }

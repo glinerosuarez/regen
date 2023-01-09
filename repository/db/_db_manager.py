@@ -120,7 +120,7 @@ class DataBaseManager:
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
-    def insert(self, records: Union[DataClass, List[DataClass]]) -> int:
+    def insert(self, records: Union[DataClass, List[DataClass]]) -> None:
         """Insert a new row into a SQL table."""
 
         exception = None
