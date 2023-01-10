@@ -270,3 +270,9 @@ resource "docker_container" "airflow-cli" {
     name = var.network_name
   }
 }
+
+# Tasks
+resource "local_file" "kline_task" {
+  source   = abspath("${path.root}/../etl/extraction/klines.py")
+  filename = "${local.mod_path}/dags/extraction/klines.py"
+}

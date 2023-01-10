@@ -9,7 +9,7 @@ __pycache__
 
 # dynaconf secret files
 .secrets.*
-etl/.etl_secrets.toml
+etl/config/.etl_secrets.toml
 
 # db
 regen

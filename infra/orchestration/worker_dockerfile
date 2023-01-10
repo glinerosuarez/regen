@@ -1,6 +1,7 @@
 FROM apache/airflow:2.5.0
 
-COPY etl /opt/airflow/regen_config_files
+# Settings files
+COPY etl/config /opt/airflow/regen_config_files
 
 COPY conf /home/airflow/.local/bin/conf
 COPY log /home/airflow/.local/bin/log
