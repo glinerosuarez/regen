@@ -271,6 +271,12 @@ resource "docker_container" "airflow-cli" {
   }
 }
 
+# Dags
+resource "local_file" "extraction_dag" {
+  source   = abspath("${path.root}/../etl/extraction_dag.py")
+  filename = "${local.mod_path}/dags/extraction_dag.py"
+}
+
 # Tasks
 resource "local_file" "kline_task" {
   source   = abspath("${path.root}/../etl/extraction/klines.py")
