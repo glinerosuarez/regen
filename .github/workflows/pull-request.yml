@@ -20,7 +20,7 @@ jobs:
         run: pwd && ls
 
       - name: Terraform infrastructure
-        run: bash terraform/ci/apply.sh
+        run: bash infra/ci/apply.sh
 
       - name: Tests
         run: docker exec regen_container bash test/bin/ci.sh
