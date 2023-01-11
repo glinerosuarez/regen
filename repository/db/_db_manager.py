@@ -366,7 +366,7 @@ class AccountInfo(DataClass):
         Column("accountType", Enum(AccountType)),
         Column("balances", _EncodedDataClass(List[Balance])),
         Column("permissions", _EncodedDataClass(List[AccountPermission])),
-        Column("commissionRates", _EncodedDataClass(dict),
+        Column("commissionRates", _EncodedDataClass(dict)),
         Column("ts", BigInteger, primary_key=True),
     )
 
