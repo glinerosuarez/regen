@@ -28,6 +28,8 @@ def api_response() -> dict:
         "timeInForce": "GTC",
         "type": "MARKET",
         "side": "SELL",
+        "workingTime": 1507725176595,
+        "selfTradePreventionMode": "NONE",
         "fills": [
             {
                 "price": "271.70000000",
@@ -78,6 +80,8 @@ def struct_order(api_response, trading_pair, env_state_id) -> Order:
         timeInForce=TimeInForce.GTC,
         type=OrderType.MARKET,
         side=Side.SELL,
+        workingTime=1507725176595,
+        selfTradePreventionMode="NONE",
         fills=[
             Fill(price=271.7, qty=3.5, commission=0.0, commissionAsset=CryptoAsset.BUSD, tradeId=11243),
             Fill(price=271.5, qty=3.14, commission=0.0, commissionAsset=CryptoAsset.BUSD, tradeId=11244),

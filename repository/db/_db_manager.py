@@ -317,6 +317,8 @@ class Order(DataClass):
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
+        Column("workingTime", BigInteger),
+        Column("selfTradePreventionMode", String),
     )
 
     __mapper_args__ = {  # type: ignore
@@ -340,6 +342,8 @@ class Order(DataClass):
     timeInForce: TimeInForce = field(converter=TimeInForce)
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)
+    workingTime: int = field(converter=int)
+    selfTradePreventionMode: str = field(converter=str)
     fills: List[Fill] = field(converter=Fill.structure)
 
     @classmethod
