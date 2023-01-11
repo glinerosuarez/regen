@@ -75,11 +75,7 @@ class DataBaseManager:
     ):
         return create_engine(
             DataBaseManager._build_engine_string(
-                e_type=DataBaseManager.EngineType.PostgreSQL,
-                db_name=db_name,
-                host=host,
-                user=user,
-                password=password
+                e_type=DataBaseManager.EngineType.PostgreSQL, db_name=db_name, host=host, user=user, password=password
             ),
             echo=False,
             future=True,

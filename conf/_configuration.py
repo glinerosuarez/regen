@@ -6,9 +6,9 @@ from conf.consts import CryptoAsset
 
 
 def load_settings(
-        env: Optional[str] = None,
-        settings_path: Union[str, Path] = "settings.toml",
-        secrets_path: Union[str, Path] = ".secrets.toml",
+    env: Optional[str] = None,
+    settings_path: Union[str, Path] = "settings.toml",
+    secrets_path: Union[str, Path] = ".secrets.toml",
 ):
     settings = Dynaconf(
         envvar_prefix="REGEN",

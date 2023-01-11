@@ -5,7 +5,9 @@ from airflow.decorators import dag
 
 from extraction.klines import extract_klines
 
-default_args = dict(max_active_runs=1, execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2))
+default_args = dict(
+    max_active_runs=1, execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2)
+)
 
 
 @dag(
