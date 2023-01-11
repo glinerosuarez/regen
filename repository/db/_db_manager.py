@@ -366,6 +366,7 @@ class AccountInfo(DataClass):
         Column("accountType", Enum(AccountType)),
         Column("balances", _EncodedDataClass(List[Balance])),
         Column("permissions", _EncodedDataClass(List[AccountPermission])),
+        Column("commissionRates", _EncodedDataClass(dict),
         Column("ts", BigInteger, primary_key=True),
     )
 
@@ -385,6 +386,7 @@ class AccountInfo(DataClass):
     accountType: AccountType = attrib(converter=AccountType)
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
+    commissionRates: dict = attrib()
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 
