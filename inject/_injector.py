@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import pendulum
-from attr import define
+from attr import define, field
 from cached_property import cached_property
 from dynaconf import Dynaconf
 from stable_baselines3.common.vec_env import VecEnv
@@ -66,6 +66,16 @@ class DependencyInjector:
         )
 
     @cached_property
+    def api_client(self) -> BinanceClient:
+        return BinanceClient(
+            base_urls=self.settings.bnb_base_urls,
+            client_key=self.settings.bnb_client_key,
+            client_secret=self.settings.bnb_client_secret,
+            db_manager=self.db_manager,
+            logger=self.get_logger("BinanceClient", security_level=self.logger_level),
+        )
+
+    @cached_property
     def execution(self):
         value = Execution(
             pair=self.trading_pair,
@@ -96,8 +106,12 @@ class DependencyInjector:
         )
 
     @property
+    def env_injector(self):
+        return EnvInjector(self, self.settings.env_logging_lvl)
+
+    @property
     def env(self) -> VecEnv:
-        return EnvInjector(self).env
+        return self.env_injector.env
 
 
 @define(slots=False)
@@ -105,16 +119,7 @@ class EnvInjector:
     """Dependencies scoped to vm."""
 
     injector: DependencyInjector
-
-    @cached_property
-    def api_client(self) -> BinanceClient:
-        return BinanceClient(
-            base_urls=self.injector.settings.bnb_base_urls,
-            client_key=self.injector.settings.bnb_client_key,
-            client_secret=self.injector.settings.bnb_client_secret,
-            db_manager=self.injector.db_manager,
-            logger=self.injector.get_logger("BinanceClient", security_level=logging.DEBUG),
-        )
+    logger_level: int = field(converter=lambda x: logging.INFO if x == "INFO" else logging.DEBUG)
 
     @cached_property
     def kline_producer(self) -> KlineProducer:
@@ -122,11 +127,11 @@ class EnvInjector:
             db_manager=self.injector.db_manager,
             api_manager=self.api_client,
             trading_pair=self.injector.trading_pair,
-            logger=self.injector.get_logger("KlineProducer"),
             enable_live_mode=self.injector.settings.enable_live_mode,
             get_data_from_db=self.injector.settings.get_data_from_db,
             max_api_klines=self.injector.settings.max_api_klines,
             klines_buffer_size=self.injector.settings.klines_buffer_size,
+            logger=self.injector.get_logger("KlineProducer", security_level=self.logger_level),
         )
 
     @cached_property
@@ -134,7 +139,7 @@ class EnvInjector:
         return ObsProducer(
             kline_producer=self.kline_producer,
             window_size=self.injector.settings.window_size,
-            logger=self.injector.get_logger("ObsProducer", logging.DEBUG),
+            logger=self.injector.get_logger("ObsProducer", self.logger_level),
         )
 
     @cached_property
@@ -148,7 +153,7 @@ class EnvInjector:
             execution_id=str(self.injector.execution.id),
             window_size=self.injector.settings.window_size,
             place_orders=self.injector.settings.place_orders,
-            logger=self.injector.get_logger("vm", logging.DEBUG),
+            logger=self.injector.get_logger("vm", self.logger_level),
         )
 
     @cached_property

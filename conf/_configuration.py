@@ -1,14 +1,18 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from dynaconf import Dynaconf, Validator
 from conf.consts import CryptoAsset
 
 
-def load_settings(env: Optional[str] = None):
+def load_settings(
+    env: Optional[str] = None,
+    settings_path: Union[str, Path] = "settings.toml",
+    secrets_path: Union[str, Path] = ".secrets.toml",
+):
     settings = Dynaconf(
         envvar_prefix="REGEN",
-        settings_files=["settings.toml", ".secrets.toml"],
+        settings_files=[settings_path, secrets_path],
         environments=True,
         force_env=env,
         load_dotenv=True,

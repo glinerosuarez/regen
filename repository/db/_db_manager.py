@@ -74,7 +74,9 @@ class DataBaseManager:
         password: Optional[str] = None,
     ):
         return create_engine(
-            DataBaseManager._build_engine_string(DataBaseManager.EngineType.PostgreSQL, db_name, host, user, password),
+            DataBaseManager._build_engine_string(
+                e_type=DataBaseManager.EngineType.PostgreSQL, db_name=db_name, host=host, user=user, password=password
+            ),
             echo=False,
             future=True,
         )
@@ -114,7 +116,7 @@ class DataBaseManager:
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
-    def insert(self, records: Union[DataClass, List[DataClass]]) -> int:
+    def insert(self, records: Union[DataClass, List[DataClass]]) -> None:
         """Insert a new row into a SQL table."""
 
         exception = None
@@ -315,6 +317,8 @@ class Order(DataClass):
         Column("timeInForce", Enum(TimeInForce)),
         Column("type", Enum(OrderType)),
         Column("side", Enum(Side)),
+        Column("workingTime", BigInteger),
+        Column("selfTradePreventionMode", String),
     )
 
     __mapper_args__ = {  # type: ignore
@@ -338,6 +342,8 @@ class Order(DataClass):
     timeInForce: TimeInForce = field(converter=TimeInForce)
     type: OrderType = field(converter=OrderType)
     side: Side = field(converter=Side)
+    workingTime: int = field(converter=int)
+    selfTradePreventionMode: str = field(converter=str)
     fills: List[Fill] = field(converter=Fill.structure)
 
     @classmethod
@@ -364,6 +370,8 @@ class AccountInfo(DataClass):
         Column("accountType", Enum(AccountType)),
         Column("balances", _EncodedDataClass(List[Balance])),
         Column("permissions", _EncodedDataClass(List[AccountPermission])),
+        Column("commissionRates", _EncodedDataClass(dict)),
+        Column("requireSelfTradePrevention", Boolean),
         Column("ts", BigInteger, primary_key=True),
     )
 
@@ -383,6 +391,8 @@ class AccountInfo(DataClass):
     accountType: AccountType = attrib(converter=AccountType)
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
+    commissionRates: dict = attrib()
+    requireSelfTradePrevention: bool = attrib(converter=bool)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 

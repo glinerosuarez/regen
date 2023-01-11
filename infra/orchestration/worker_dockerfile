@@ -1,0 +1,11 @@
+FROM apache/airflow:2.5.0
+
+# Settings files
+COPY etl/config /opt/airflow/regen_config_files
+
+COPY conf /home/airflow/.local/bin/conf
+COPY log /home/airflow/.local/bin/log
+COPY repository /home/airflow/.local/bin/repository
+COPY functions /home/airflow/.local/bin/functions
+
+RUN pip install --no-input dynaconf binance-connector
