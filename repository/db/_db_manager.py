@@ -388,7 +388,7 @@ class AccountInfo(DataClass):
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
     commissionRates: dict = attrib()
-    requireSelfTradePrevention: bool = attrib(converter=json.loads)
+    requireSelfTradePrevention: bool = attrib(converter=bool)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 
