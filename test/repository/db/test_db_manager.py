@@ -37,12 +37,7 @@ def acc_info() -> AccountInfo:
         accountType=AccountType.SPOT,
         balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
         permissions=["SPOT"],
-        commissionRates={
-            "maker": "0.00150000",
-            "taker": "0.00150000",
-            "buyer": "0.00000000",
-            "seller": "0.00000000"
-        },
+        commissionRates={"maker": "0.00150000", "taker": "0.00150000", "buyer": "0.00000000", "seller": "0.00000000"},
         requireSelfTradePrevention=False,
     )
 
