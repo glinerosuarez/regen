@@ -367,6 +367,7 @@ class AccountInfo(DataClass):
         Column("balances", _EncodedDataClass(List[Balance])),
         Column("permissions", _EncodedDataClass(List[AccountPermission])),
         Column("commissionRates", _EncodedDataClass(dict)),
+        Column("requireSelfTradePrevention", Boolean),
         Column("ts", BigInteger, primary_key=True),
     )
 
@@ -387,6 +388,7 @@ class AccountInfo(DataClass):
     balances: List[Balance] = attrib(converter=Balance.structure)
     permissions: List[AccountPermission] = attrib(converter=AccountPermission._converter)
     commissionRates: dict = attrib()
+    requireSelfTradePrevention: bool = attrib(converter=json.loads)
     ts: int = attrib(converter=int, default=pendulum.now().int_timestamp)
 
 
