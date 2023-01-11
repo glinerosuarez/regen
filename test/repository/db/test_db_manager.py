@@ -1,12 +1,9 @@
-from typing import List
-
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from conf.consts import Position, Action, CryptoAsset
+from conf.consts import Position, Action
 from repository import AccountType, Observation
 from repository.db import Order, AccountInfo, EnvState, Kline
-from repository.db._db_manager import Fill
 
 
 @pytest.fixture
@@ -40,6 +37,13 @@ def acc_info() -> AccountInfo:
         accountType=AccountType.SPOT,
         balances=[{"asset": "BNB", "free": 1.0, "locked": 0.0}],
         permissions=["SPOT"],
+        commissionRates={
+            "maker": "0.00150000",
+            "taker": "0.00150000",
+            "buyer": "0.00000000",
+            "seller": "0.00000000"
+        },
+        requireSelfTradePrevention=False,
     )
 
 
