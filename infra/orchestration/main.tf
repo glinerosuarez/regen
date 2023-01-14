@@ -258,6 +258,7 @@ resource "docker_container" "airflow-cli" {
   env        = concat(local.common_env, ["CONNECTION_CHECK_MAX_COUNT=0"])
   depends_on = [docker_container.postgres, docker_container.redis]
   command    = ["bash", "-c", "airflow"]
+  tty        = true
   dynamic "volumes" {
     for_each = local.volumes
     iterator = v

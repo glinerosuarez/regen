@@ -1,4 +1,4 @@
-FROM python:3.8.1-slim-buster
+FROM python:3.8.16-slim-bullseye
 
 # Set working directory
 WORKDIR /app
@@ -15,13 +15,10 @@ RUN pip install --upgrade pip
 RUN mkdir -p /root/.dbt
 
 # Copy requirements.txt
-COPY requirements.txt requirements.txt
+COPY infra/dbt/requirements.txt requirements.txt
 
 # Install dependencies
 RUN pip install -r requirements.txt
 
 # Copy dbt profile
-COPY profiles.yml /root/.dbt/profiles.yml
-
-# Copy source code
-COPY . /app
+COPY infra/dbt/profiles.yml /root/.dbt/profiles.yml
