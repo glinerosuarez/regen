@@ -15,7 +15,7 @@ default_args = dict(
     default_args=default_args,
     description="Run tasks to extract data from external sources.",
     schedule=timedelta(hours=16),
-    start_date=pendulum.datetime(2023, 1, 5, tz="UTC"),
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     catchup=True,
     tags=["extraction"],
 )

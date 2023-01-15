@@ -11,14 +11,14 @@ provider "docker" {}
 resource "docker_image" "regen" {
   name = local.app_name
   build {
-    path = local.workdir
-    tag  = ["regen:dev"]
+    context = local.workdir
+    tag     = ["regen:dev"]
   }
   keep_locally = false
 }
 
 resource "docker_container" "regen" {
-  image = docker_image.regen.latest
+  image = docker_image.regen.image_id
   name  = "regen_container"
   volumes {
     host_path      = "${local.workdir}/test"
