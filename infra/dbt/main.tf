@@ -14,7 +14,7 @@ resource "docker_image" "dbt" {
   name         = "dbt"
   keep_locally = false
   build {
-    path       = abspath("${path.root}/../.")
+    context    = abspath("${path.root}/../.")
     dockerfile = "/infra/dbt/Dockerfile"
   }
   triggers = {

@@ -26,5 +26,8 @@ tmp/**
 # Airflow
 infra/orchestration/logs
 
+# dbt
+etl/transform/logs/**
+etl/transform/target/**
 # Output
 output/**

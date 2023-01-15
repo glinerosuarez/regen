@@ -1,7 +1,7 @@
 FROM python:3.8.16-slim-bullseye
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app/regen
 
 # Install OS dependencies
 RUN apt-get update && apt-get install -qq -y \

@@ -60,7 +60,7 @@ resource "docker_image" "airflow_worker" {
   name         = "airflow_worker"
   keep_locally = false
   build {
-    path       = abspath("${path.root}/../.")
+    context    = abspath("${path.root}/../.")
     dockerfile = "/infra/orchestration/worker_dockerfile"
   }
   triggers = {
