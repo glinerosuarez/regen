@@ -18,7 +18,7 @@ resource "docker_image" "regen" {
 }
 
 resource "docker_container" "regen" {
-  image = docker_image.regen.latest
+  image = docker_image.regen.image_id
   name  = "regen_container"
   volumes {
     host_path      = "${local.workdir}/test"
