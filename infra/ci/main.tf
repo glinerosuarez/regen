@@ -11,7 +11,7 @@ provider "docker" {}
 resource "docker_image" "regen" {
   name = local.app_name
   build {
-    path = local.workdir
+    context = local.workdir
     tag  = ["regen:dev"]
   }
   keep_locally = false
