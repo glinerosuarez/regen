@@ -12,7 +12,7 @@ resource "docker_image" "regen" {
   name = local.app_name
   build {
     context = local.workdir
-    tag  = ["regen:dev"]
+    tag     = ["regen:dev"]
   }
   keep_locally = false
 }
