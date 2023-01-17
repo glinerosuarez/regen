@@ -201,6 +201,20 @@ class DataBaseManager:
             sql_statement = sql_statement.where(condition)
         return self.session.execute(sql_statement).fetchone()[0]
 
+    def select_min(
+        self, col: InstrumentedAttribute, condition: Optional[Union[BinaryExpression, bool]] = None
+    ) -> Optional[Any]:
+        """
+        Return the smallest value in a column.
+        :param col: Column to get the value from.
+        :param condition: Binary condition that is used to filter out rows.
+        :return: Maximum value in the column.
+        """
+        sql_statement = select(func.min(col))
+        if condition is not None:
+            sql_statement = sql_statement.where(condition)
+        return self.session.execute(sql_statement).fetchone()[0]
+
     def delete(
         self,
         table: Type[DataClass],

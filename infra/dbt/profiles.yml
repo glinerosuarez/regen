@@ -13,7 +13,7 @@ regen:
       user: "{{ env_var('DB_USER') }}"
       pass: "{{ env_var('DB_PASSWORD') }}"
       dbname: "{{ env_var('DB_NAME') }}"
-      schema: public
+      schema: dev
 
     prod:
       type: postgres
@@ -23,6 +23,6 @@ regen:
       user: "{{ env_var('DB_USER') }}"
       pass: "{{ env_var('DB_PASSWORD') }}"
       dbname: "{{ env_var('DB_NAME') }}"
-      schema: public
+      schema: prod
 
   target: dev
