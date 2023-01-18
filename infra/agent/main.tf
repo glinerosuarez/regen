@@ -18,6 +18,9 @@ resource "docker_image" "agent" {
     tag        = ["agent:dev"]
     dockerfile = "Dockerfile"
   }
+  triggers = {
+    requirements_sha1 = filesha1("${local.workdir}/requirements.txt")
+  }
   keep_locally = false
 }
 
