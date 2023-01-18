@@ -32,5 +32,10 @@ module "dbt" {
   db_user      = module.db.db_user
 }
 
+module "agent" {
+  source       = "./agent"
+  network_name = docker_network.regen_network.name
+}
+
 
 
