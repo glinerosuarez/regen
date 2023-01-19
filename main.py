@@ -1,7 +1,5 @@
 import argparse
 
-import pendulum
-
 from inject import injector
 
 
