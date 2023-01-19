@@ -4,14 +4,13 @@
 test
 .gitignore
 Dockerfile
-Makefile
 README.md
-terraform
+infra
+etl
 TODO
 __pycache__
 .idea
 .pytest_cache
-__pycache__
 tmp
 
 # database
