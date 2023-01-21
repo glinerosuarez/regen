@@ -18,4 +18,8 @@ RUN pip install -r requirements.txt
 # Enable python print statements to be dumped to the I/O stream
 ENV PYTHONUNBUFFERED 1
 
+# Copy source files
 COPY src .
+
+# Make main.py executable
+RUN chmod +x main.py

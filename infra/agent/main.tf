@@ -25,20 +25,15 @@ resource "docker_image" "agent" {
   keep_locally = false
 }
 
-resource "docker_volume" "agent" {
-  name = "agent"
-}
-
 resource "docker_container" "agent" {
   image = docker_image.agent.image_id
   name  = "agent"
-  env   = ["PYTHONPATH=/app"]
+  env     = ["PYTHONPATH=/app", "REGEN_DB_HOST=${var.db_host}", "REGEN_DB_USER=${var.db_user}", "REGEN_DB_PASSWORD=${var.db_password}"]
   tty   = true
   networks_advanced {
     name = var.network_name
   }
   volumes {
-    volume_name    = docker_volume.agent.name
     host_path      = abspath("${path.module}/output")
     container_path = "/app/output"
   }

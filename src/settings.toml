@@ -6,14 +6,13 @@ load_from_execution_id = "_33"
 get_data_from_db = false
 enable_live_mode = true
 place_orders = true
+db_name = "regen"
 
 [development]
 quote_asset = "USDT"
-db_type = "sqlite"
-db_name = "test_regen"
+db_type = "postgres"
 bnb_base_urls = ["https://testnet.binance.vision"] # The base endpoint this client will send requests to.
 
 [production]
-db_type = "sqlite"
-db_name = "regen"
+db_type = "postgres"
 bnb_base_urls = ["https://api.binance.com", "https://api1.binance.com", "https://api2.binance.com", "https://api3.binance.com"]

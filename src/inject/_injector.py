@@ -59,9 +59,9 @@ class DependencyInjector:
             DataBaseManager.EngineType.PostgreSQL
             if self.settings.db_type == "postgres"
             else DataBaseManager.EngineType.SQLite,
-            self.settings.db_host,
-            self.settings.db_user,
-            self.settings.db_password,
+            self.settings.DB_HOST,
+            self.settings.DB_USER,
+            self.settings.DB_PASSWORD,
             Path(self.settings.db_file_location),
         )
 
