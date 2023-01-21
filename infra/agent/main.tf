@@ -8,18 +8,17 @@ terraform {
 
 locals {
   app_name = "agent"
-  workdir  = abspath("${path.root}/../.")
 }
 
 resource "docker_image" "agent" {
   name = "agent"
   build {
-    context    = local.workdir
-    tag        = ["agent:dev"]
-    dockerfile = "Dockerfile"
+    context    = "${path.root}/../."
+    dockerfile = "/infra/agent/Dockerfile"
   }
   triggers = {
-    requirements_sha1 = filesha1("${local.workdir}/requirements.txt")
+    requirements_sha1 = filesha1("${path.module}/requirements.txt")
+    dockerfile_sha1 = filesha1("${path.module}/Dockerfile")
   }
   keep_locally = false
 }
