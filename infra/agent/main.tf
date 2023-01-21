@@ -13,7 +13,7 @@ locals {
 resource "docker_image" "agent" {
   name = "agent"
   build {
-    context    = "${path.root}/../."
+    context    = "${path.module}/../../."
     dockerfile = "/infra/agent/Dockerfile"
   }
   triggers = {
