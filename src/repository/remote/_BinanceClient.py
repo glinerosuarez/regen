@@ -37,7 +37,7 @@ class BinanceClient:
     def _spot_client(self) -> Spot:
         """Init a new spot client."""
         base_url = random.choice(self.base_urls)
-        client = Spot(base_url=base_url, key=self.client_key, secret=self.client_secret)
+        client = Spot(base_url=base_url, api_key=self.client_key, api_secret=self.client_secret)
         self.logger.debug(f"Getting new spot client {client} with base_url: {base_url}")
         return client
 
