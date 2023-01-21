@@ -6,20 +6,18 @@ terraform {
   }
 }
 
-provider "docker" {}
-
-resource "docker_image" "regen" {
-  name = local.app_name
-  build {
-    context = local.workdir
-    tag     = ["regen:dev"]
-  }
-  keep_locally = false
+resource "docker_network" "regen_network" {
+  name = "regen"
 }
 
-resource "docker_container" "regen" {
-  image = docker_image.regen.image_id
-  name  = "regen_container"
+module "agent" {
+  source       = "./../agent"
+  network_name = docker_network.regen_network.name
+}
+
+resource "docker_container" "ci" {
+  image = module.agent.image_id
+  name  = "ci"
   volumes {
     host_path      = "${local.workdir}/test"
     container_path = "/app/test"
