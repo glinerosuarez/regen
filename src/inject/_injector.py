@@ -66,16 +66,6 @@ class DependencyInjector:
         )
 
     @cached_property
-    def api_client(self) -> BinanceClient:
-        return BinanceClient(
-            base_urls=self.settings.bnb_base_urls,
-            client_key=self.settings.bnb_client_key,
-            client_secret=self.settings.bnb_client_secret,
-            db_manager=self.db_manager,
-            logger=self.get_logger("BinanceClient", security_level=self.logger_level),
-        )
-
-    @cached_property
     def execution(self):
         value = Execution(
             pair=self.trading_pair,
@@ -120,6 +110,16 @@ class EnvInjector:
 
     injector: DependencyInjector
     logger_level: int = field(converter=lambda x: logging.INFO if x == "INFO" else logging.DEBUG)
+
+    @cached_property
+    def api_client(self) -> BinanceClient:
+        return BinanceClient(
+            base_urls=self.injector.settings.bnb_base_urls,
+            client_key=self.injector.settings.bnb_client_key,
+            client_secret=self.injector.settings.bnb_client_secret,
+            db_manager=self.injector.db_manager,
+            logger=self.injector.get_logger("BinanceClient", security_level=self.logger_level),
+        )
 
     @cached_property
     def kline_producer(self) -> KlineProducer:

@@ -29,5 +29,6 @@ infra/orchestration/logs
 # dbt
 etl/transform/logs/**
 etl/transform/target/**
-# Output
-output/**
+
+# Agent
+infra/agent/output/**
