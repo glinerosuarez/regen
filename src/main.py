@@ -1,3 +1,5 @@
+#!/usr/local/bin/python
+
 import argparse
 
 from inject import injector

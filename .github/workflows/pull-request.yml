@@ -23,4 +23,4 @@ jobs:
         run: bash infra/ci/apply.sh
 
       - name: Tests
-        run: docker exec regen_container bash test/bin/ci.sh
+        run: docker exec ci bash test/bin/ci.sh

@@ -59,20 +59,10 @@ class DependencyInjector:
             DataBaseManager.EngineType.PostgreSQL
             if self.settings.db_type == "postgres"
             else DataBaseManager.EngineType.SQLite,
-            self.settings.db_host,
-            self.settings.db_user,
-            self.settings.db_password,
+            self.settings.DB_HOST,
+            self.settings.DB_USER,
+            self.settings.DB_PASSWORD,
             Path(self.settings.db_file_location),
-        )
-
-    @cached_property
-    def api_client(self) -> BinanceClient:
-        return BinanceClient(
-            base_urls=self.settings.bnb_base_urls,
-            client_key=self.settings.bnb_client_key,
-            client_secret=self.settings.bnb_client_secret,
-            db_manager=self.db_manager,
-            logger=self.get_logger("BinanceClient", security_level=self.logger_level),
         )
 
     @cached_property
@@ -120,6 +110,16 @@ class EnvInjector:
 
     injector: DependencyInjector
     logger_level: int = field(converter=lambda x: logging.INFO if x == "INFO" else logging.DEBUG)
+
+    @cached_property
+    def api_client(self) -> BinanceClient:
+        return BinanceClient(
+            base_urls=self.injector.settings.bnb_base_urls,
+            client_key=self.injector.settings.bnb_client_key,
+            client_secret=self.injector.settings.bnb_client_secret,
+            db_manager=self.injector.db_manager,
+            logger=self.injector.get_logger("BinanceClient", security_level=self.logger_level),
+        )
 
     @cached_property
     def kline_producer(self) -> KlineProducer:

@@ -30,9 +30,9 @@ def load_settings(
             Validator("ticks_per_episode", is_type_of=int),
             Validator("time_steps", is_type_of=int),
             Validator("output_dir", is_type_of=str, default=str((Path() / "output").absolute())),
-            Validator("db_user", default=None),
-            Validator("db_password", default=None),
-            Validator("db_host", default=None),
+            Validator("DB_USER", default=None),
+            Validator("DB_PASSWORD", default=None),
+            Validator("DB_HOST", default=None),
             Validator("db_type", is_in=["sqlite", "postgres"]),
             Validator("enable_live_mode", is_type_of=bool, default=False),
             Validator("get_data_from_db", is_type_of=bool, default=True),
@@ -42,6 +42,7 @@ def load_settings(
             Validator("load_from_execution_id", default=None),
             Validator("update_klines_db", is_type_of=bool, default=False),
             Validator("place_orders", is_type_of=bool, default=False),
+            Validator("env_logging_lvl", is_type_of=str, default="INFO"),
         ],
     )
 
