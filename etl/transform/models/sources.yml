@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: regen
+    schema: public
+    tables:
+      - name: klines
+        identifier: kline
+        loaded_at_field: created_at
+        freshness:
+          warn_after: {count: 2, period: minute}
+          error_after: {count: 30, period: day}
