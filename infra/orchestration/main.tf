@@ -278,8 +278,18 @@ resource "local_file" "extraction_dag" {
   filename = "${local.mod_path}/dags/extraction_dag.py"
 }
 
+resource "local_file" "extraction_backfill_dag" {
+  source   = abspath("${path.root}/../etl/extraction_backfill_dag.py")
+  filename = "${local.mod_path}/dags/extraction_backfill_dag.py"
+}
+
 # Tasks
 resource "local_file" "kline_task" {
   source   = abspath("${path.root}/../etl/extraction/klines.py")
   filename = "${local.mod_path}/dags/extraction/klines.py"
+}
+
+resource "local_file" "kline_minutes_task" {
+  source   = abspath("${path.root}/../etl/extraction/kline_minutes.py")
+  filename = "${local.mod_path}/dags/extraction/kline_minutes.py"
 }
