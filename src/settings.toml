@@ -2,7 +2,7 @@
 app_name = "regen"
 time_steps = 10_000  # Number of time steps to train the model
 ticks_per_episode = 1_440  # at 1 tick per second, this means that an episode last 1 hour - window_size minutes aprox.
-load_from_execution_id = "_33"
+load_from_execution_id = "33"
 get_data_from_db = false
 enable_live_mode = true
 place_orders = true

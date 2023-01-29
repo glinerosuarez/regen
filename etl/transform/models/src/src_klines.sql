@@ -1,4 +1,4 @@
-WITH raw_klines AS (SELECT * FROM kline)
+WITH raw_klines AS (SELECT * FROM {{ source('regen', 'klines') }})
 SELECT
     id AS kline_id,
     pair,
