@@ -116,10 +116,18 @@ class DataBaseManager:
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
-    def insert(self, records: Union[DataClass, List[DataClass]]) -> None:
+    def insert(
+            self,
+            records: Union[DataClass, List[DataClass], List[List[Any]]],
+            table: Optional[str] = None,
+            columns: Optional[List[str]] = None
+    ) -> None:
         """Insert a new row into a SQL table."""
 
         exception = None
+
+        if table is not None:
+            query = f"INSERT INTO {table} ({','.join(columns)}) VALUES ('John Doe', 'johndoe@example.com')"
 
         try:
             if isinstance(records, list):
@@ -250,6 +258,9 @@ class DataBaseManager:
     def get_last_id(self, table: Type[DataClass]) -> Optional[int]:
         last_record = self.session.query(table).order_by(table.id.desc()).first()
         return None if last_record is None else last_record.id
+
+    def select_avg(self, table: str, schema: str, column: str) -> int:
+        return self.session.execute(f"SELECT AVG({schema}.{column}) FROM {table}")
 
 
 class _EncodedDataClass(types.UserDefinedType):

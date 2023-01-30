@@ -12,10 +12,10 @@ resource "docker_network" "regen_network" {
   name = "regen"
 }
 
-module "orchestration" {
-  source       = "./orchestration"
-  network_name = docker_network.regen_network.name
-}
+#module "orchestration" {
+#  source       = "./orchestration"
+#  network_name = docker_network.regen_network.name
+#}
 
 module "db" {
   source       = "./db"

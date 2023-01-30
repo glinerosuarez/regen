@@ -16,11 +16,13 @@ default_args = dict(
     description="Run tasks to extract data from external sources.",
     schedule=timedelta(minutes=1),
     start_date=pendulum.datetime(2023, 1, 28, 8, tz="UTC"),
+    max_active_runs=1,
     catchup=True,
     tags=["extraction"],
 )
 def extraction():
-    extract_kline_minutes()
+    kline_id = extract_kline_minutes()
+
 
 
 extraction()

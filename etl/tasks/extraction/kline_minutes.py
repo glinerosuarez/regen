@@ -9,7 +9,7 @@ from repository import Interval, TradingPair
 
 
 @task
-def extract_kline_minutes(dag_run=None):
+def extract_kline_minutes(dag_run=None) -> int:
     """
     #### Extract specific kline task
     Get specific kline data from Binance api.
@@ -40,3 +40,4 @@ def extract_kline_minutes(dag_run=None):
     kline = api_client.get_klines_data(pair, Interval.M_1, start, end, batch_size)
     db_manager.insert(kline)
     print(f"{kline} has been inserted into the database.")
+    return kline[0].id

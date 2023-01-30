@@ -16,6 +16,7 @@ default_args = dict(
     description="Run tasks to backfill data from external sources.",
     schedule=timedelta(hours=16),
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
+    end_date=pendulum.datetime(2023, 1, 28, 8, tz="UTC"),
     catchup=True,
     tags=["extraction"],
 )
