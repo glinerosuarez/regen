@@ -1,11 +1,7 @@
-import pendulum
 from airflow.decorators import task
 
 import conf
-from log import LoggerFactory
 from repository.db import DataBaseManager
-from repository.remote import BinanceClient
-from repository import Interval, TradingPair
 
 
 @task
@@ -47,6 +43,9 @@ def insert_ma(kline_id: int) -> int:
         f"ma100days: {ma100days}"
     )
 
-    db_manager.insert(records=[[ma7min, ma25min, ma100min, ma300min, ma1day, ma10days, ma100days]], table="")
-    #print(f"{kline} has been inserted into the database.")
-    #return kline[0].id
+    db_manager.insert(
+        records=[kline_id, ma7min, ma25min, ma100min, ma300min, ma1day, ma10days, ma100days],
+        table="stg_ma",
+        columns=["kline_id", "ma_7", "ma_25", "ma_100", "ma_300", "ma_1440", "ma_14400", "ma_144000"]
+    )
+    print(f"MA's have been inserted into the database.")

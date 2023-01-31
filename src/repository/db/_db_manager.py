@@ -118,18 +118,18 @@ class DataBaseManager:
 
     def insert(
             self,
-            records: Union[DataClass, List[DataClass], List[List[Any]]],
+            records: Union[DataClass, List[DataClass], List[Any]],
             table: Optional[str] = None,
             columns: Optional[List[str]] = None
     ) -> None:
         """Insert a new row into a SQL table."""
 
-        exception = None
+        def insert_query():
+            query = f"INSERT INTO {table} ({','.join(columns)}) VALUES ({','.join(records)})"
+            self.session.execute(query)
+            self.session.commit()
 
-        if table is not None:
-            query = f"INSERT INTO {table} ({','.join(columns)}) VALUES ('John Doe', 'johndoe@example.com')"
-
-        try:
+        def insert_orm():
             if isinstance(records, list):
                 self.session.bulk_save_objects(records)
             elif isinstance(records, DataClass):
@@ -137,6 +137,14 @@ class DataBaseManager:
             else:
                 raise ValueError(f"Unsupported type {type(records)} for records")
             self.session.commit()
+
+        exception = None
+
+        try:
+            if table is not None:
+                insert_query()
+            else:
+                insert_orm()
         except IntegrityError as ie:
             exception = ie
         finally:

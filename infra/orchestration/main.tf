@@ -293,3 +293,8 @@ resource "local_file" "kline_minutes_task" {
   source   = abspath("${path.root}/../etl/extraction/kline_minutes.py")
   filename = "${local.mod_path}/dags/extraction/kline_minutes.py"
 }
+
+resource "local_file" "insert_new_ma" {
+  source   = abspath("${path.root}/../etl/transform/insert_new_ma.py")
+  filename = "${local.mod_path}/dags/transform/insert_new_ma.py"
+}
