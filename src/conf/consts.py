@@ -2,7 +2,6 @@ import enum
 
 
 class EnvConsts:
-
     MAX_ACCOUNT_BALANCE = 1000.0
 
     INITIAL_ACCOUNT_BALANCE = 1.0
