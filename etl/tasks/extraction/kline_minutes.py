@@ -37,7 +37,7 @@ def extract_kline_minutes(dag_run=None) -> int:
     print(f"Getting klines from {start} to {end}.")
 
     batch_size = 1
-    kline = api_client.get_klines_data(pair, Interval.M_1, start, end, batch_size)
+    kline = api_client.get_klines_data(pair, Interval.M_1, start, end, batch_size)[0]
     db_manager.insert(kline)
     print(f"{kline} has been inserted into the database.")
-    return kline[0].id
+    return kline.id

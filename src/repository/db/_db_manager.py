@@ -117,10 +117,10 @@ class DataBaseManager:
         DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
     def insert(
-            self,
-            records: Union[DataClass, List[DataClass], List[Any]],
-            table: Optional[str] = None,
-            columns: Optional[List[str]] = None
+        self,
+        records: Union[DataClass, List[DataClass], List[Any]],
+        table: Optional[str] = None,
+        columns: Optional[List[str]] = None,
     ) -> None:
         """Insert a new row into a SQL table."""
 
@@ -268,7 +268,7 @@ class DataBaseManager:
         return None if last_record is None else last_record.id
 
     def select_avg(self, table: str, schema: str, column: str) -> int:
-        return self.session.execute(f"SELECT AVG({schema}.{column}) FROM {table}")
+        return self.session.execute(f"SELECT AVG({column}) FROM {schema}.{table}").fetchall()[0][0]
 
 
 class _EncodedDataClass(types.UserDefinedType):

@@ -25,6 +25,7 @@ tmp/**
 
 # Airflow
 infra/orchestration/logs
+infra/orchestration/dags
 
 # dbt
 etl/transform/logs/**

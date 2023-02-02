@@ -5,7 +5,7 @@ from repository.db import DataBaseManager
 
 
 @task
-def insert_ma(kline_id: int) -> int:
+def insert_ma(kline_id: int) -> None:
     """
     #### Task, for inserting a new moving average record to the database.
     Insert a new moving average record to the database.
@@ -44,8 +44,8 @@ def insert_ma(kline_id: int) -> int:
     )
 
     db_manager.insert(
-        records=[kline_id, ma7min, ma25min, ma100min, ma300min, ma1day, ma10days, ma100days],
-        table="stg_ma",
-        columns=["kline_id", "ma_7", "ma_25", "ma_100", "ma_300", "ma_1440", "ma_14400", "ma_144000"]
+        records=[str(v) for v in [kline_id, ma7min, ma25min, ma100min, ma300min, ma1day, ma10days, ma100days]],
+        table="dev.stg_ma",
+        columns=["kline_id", "ma_7", "ma_25", "ma_100", "ma_300", "ma_1440", "ma_14400", "ma_144000"],
     )
     print(f"MA's have been inserted into the database.")

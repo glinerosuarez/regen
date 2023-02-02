@@ -6,9 +6,7 @@ from airflow.decorators import dag
 from extraction.kline_minutes import extract_kline_minutes
 from transform.insert_new_ma import insert_ma
 
-default_args = dict(
-    max_active_runs=1, execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2)
-)
+default_args = dict(execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2))
 
 
 @dag(
