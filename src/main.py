@@ -6,7 +6,6 @@ from inject import injector
 
 
 def train():
-
     context = injector.execution_context
     context.train()
 

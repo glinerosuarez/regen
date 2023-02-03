@@ -116,12 +116,20 @@ class DataBaseManager:
         # Create tables.
         DataBaseManager._mapper_registry.metadata.create_all(self.engine)
 
-    def insert(self, records: Union[DataClass, List[DataClass]]) -> None:
+    def insert(
+        self,
+        records: Union[DataClass, List[DataClass], List[Any]],
+        table: Optional[str] = None,
+        columns: Optional[List[str]] = None,
+    ) -> None:
         """Insert a new row into a SQL table."""
 
-        exception = None
+        def insert_query():
+            query = f"INSERT INTO {table} ({','.join(columns)}) VALUES ({','.join(records)})"
+            self.session.execute(query)
+            self.session.commit()
 
-        try:
+        def insert_orm():
             if isinstance(records, list):
                 self.session.bulk_save_objects(records)
             elif isinstance(records, DataClass):
@@ -129,6 +137,14 @@ class DataBaseManager:
             else:
                 raise ValueError(f"Unsupported type {type(records)} for records")
             self.session.commit()
+
+        exception = None
+
+        try:
+            if table is not None:
+                insert_query()
+            else:
+                insert_orm()
         except IntegrityError as ie:
             exception = ie
         finally:
@@ -250,6 +266,9 @@ class DataBaseManager:
     def get_last_id(self, table: Type[DataClass]) -> Optional[int]:
         last_record = self.session.query(table).order_by(table.id.desc()).first()
         return None if last_record is None else last_record.id
+
+    def select_first_row(self, table: str, schema: str) -> int:
+        return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
 
 class _EncodedDataClass(types.UserDefinedType):

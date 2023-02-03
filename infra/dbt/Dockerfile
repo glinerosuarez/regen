@@ -22,3 +22,9 @@ RUN pip install -r requirements.txt
 
 # Copy dbt profile
 COPY infra/dbt/profiles.yml /root/.dbt/profiles.yml
+
+# Copy server code
+COPY infra/dbt/server.py /app/server/server.py
+
+# Expose port 5000 for the Flask application
+EXPOSE 5000

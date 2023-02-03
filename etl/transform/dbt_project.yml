@@ -36,4 +36,4 @@ models:
     fact:
       +materialized: table
     staging:
-      +materialized: table
+      +materialized: view

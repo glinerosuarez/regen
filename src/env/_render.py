@@ -12,7 +12,6 @@ style.use("fivethirtyeight")
 
 
 if __name__ == "__main__":
-
     DataBaseManager.init_connection(config.settings.db_name)
 
     def animate(i):

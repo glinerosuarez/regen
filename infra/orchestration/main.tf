@@ -8,6 +8,7 @@ terraform {
 
 locals {
   mod_path = abspath("${path.root}/orchestration")
+  image_context = abspath("${path.root}/../.")
   common_env = [
     "AIRFLOW__CORE__EXECUTOR=CeleryExecutor",
     "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow",
@@ -60,11 +61,12 @@ resource "docker_image" "airflow_worker" {
   name         = "airflow_worker"
   keep_locally = false
   build {
-    context    = abspath("${path.root}/../.")
+    context    = local.image_context
     dockerfile = "/infra/orchestration/worker_dockerfile"
   }
   triggers = {
     docker_file_sha1 = filesha1("${local.mod_path}/worker_dockerfile")
+    repository_sha1          = sha1(join("", [for f in fileset(local.image_context, "src/repository/**") : filesha1("${local.image_context}/${f}")]))
   }
 }
 
@@ -279,17 +281,27 @@ resource "local_file" "extraction_dag" {
 }
 
 resource "local_file" "extraction_backfill_dag" {
-  source   = abspath("${path.root}/../etl/extraction_backfill_dag.py")
-  filename = "${local.mod_path}/dags/extraction_backfill_dag.py"
+  source   = abspath("${path.root}/../etl/backfill_dag.py")
+  filename = "${local.mod_path}/dags/backfill_dag.py"
 }
 
 # Tasks
 resource "local_file" "kline_task" {
-  source   = abspath("${path.root}/../etl/extraction/klines.py")
+  source   = abspath("${path.root}/../etl/tasks/extraction/klines.py")
   filename = "${local.mod_path}/dags/extraction/klines.py"
 }
 
 resource "local_file" "kline_minutes_task" {
-  source   = abspath("${path.root}/../etl/extraction/kline_minutes.py")
+  source   = abspath("${path.root}/../etl/tasks/extraction/kline_minutes.py")
   filename = "${local.mod_path}/dags/extraction/kline_minutes.py"
+}
+
+resource "local_file" "insert_new_ma" {
+  source   = abspath("${path.root}/../etl/tasks/transform/insert_new_ma.py")
+  filename = "${local.mod_path}/dags/transform/insert_new_ma.py"
+}
+
+resource "local_file" "dbt_run" {
+  source   = abspath("${path.root}/../etl/tasks/transform/dbt_run.py")
+  filename = "${local.mod_path}/dags/transform/dbt_run.py"
 }

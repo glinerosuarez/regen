@@ -2,7 +2,6 @@ from repository.remote import BinanceClient
 
 
 class Repository:
-
     _bnb_client: BinanceClient = BinanceClient()
 
     @staticmethod
