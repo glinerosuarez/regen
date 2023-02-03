@@ -24,27 +24,12 @@ def insert_ma(kline_id: int) -> None:
     print(f"Inserting new ma record for kline id: {kline_id}.")
 
     # Get moving averages
-    ma7min = db_manager.select_avg(table="stg_last7min_klines", schema="dev", column="close_value")
-    ma25min = db_manager.select_avg(table="stg_last25min_klines", schema="dev", column="close_value")
-    ma100min = db_manager.select_avg(table="stg_last100min_klines", schema="dev", column="close_value")
-    ma300min = db_manager.select_avg(table="stg_last300min_klines", schema="dev", column="close_value")
-    ma1day = db_manager.select_avg(table="stg_lastday_klines", schema="dev", column="close_value")
-    ma10days = db_manager.select_avg(table="stg_last10days_klines", schema="dev", column="close_value")
-    ma100days = db_manager.select_avg(table="stg_last100days_klines", schema="dev", column="close_value")
+    last_ma = db_manager.select_first_row(table="stg_last_ma", schema="dev")
 
-    print(
-        f"Inserting "
-        f"ma7min: {ma7min}, "
-        f"ma25min: {ma25min}, "
-        f"ma100min: {ma100min}, "
-        f"ma300min: {ma300min}, "
-        f"ma1day: {ma1day}"
-        f"ma10days: {ma10days}"
-        f"ma100days: {ma100days}"
-    )
+    print(f"Inserting last MA's {last_ma}")
 
     db_manager.insert(
-        records=[str(v) for v in [kline_id, ma7min, ma25min, ma100min, ma300min, ma1day, ma10days, ma100days]],
+        records=[str(v) for v in [kline_id, *last_ma]],
         table="dev.stg_ma",
         columns=["kline_id", "ma_7", "ma_25", "ma_100", "ma_300", "ma_1440", "ma_14400", "ma_144000"],
     )

@@ -267,8 +267,8 @@ class DataBaseManager:
         last_record = self.session.query(table).order_by(table.id.desc()).first()
         return None if last_record is None else last_record.id
 
-    def select_avg(self, table: str, schema: str, column: str) -> int:
-        return self.session.execute(f"SELECT AVG({column}) FROM {schema}.{table}").fetchall()[0][0]
+    def select_first_row(self, table: str, schema: str) -> int:
+        return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
 
 class _EncodedDataClass(types.UserDefinedType):
