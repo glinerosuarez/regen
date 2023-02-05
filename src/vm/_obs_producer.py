@@ -6,9 +6,7 @@ from dataclasses import dataclass
 from queue import Queue
 from typing import Optional, Iterator, Tuple
 
-import pendulum
 import numpy as np
-from attr import define, field
 
 from repository.db import DataBaseManager
 from repository.db.utils import get_table_generator
