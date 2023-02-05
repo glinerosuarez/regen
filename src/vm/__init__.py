@@ -1,3 +1,3 @@
-from vm._obs_producer import KlineProducer
+from vm._obs_producer import ObsProducer
 
-__all__ = ["KlineProducer"]
+__all__ = ["ObsProducer"]
