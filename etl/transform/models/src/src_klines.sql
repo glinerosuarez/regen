@@ -1,7 +1,10 @@
 {{
     config(
         materialized = 'incremental',
-        on_schema_change = 'fail'
+        on_schema_change = 'fail',
+        indexes = [
+            {'columns': ['open_ts']}
+        ]
     )
 }}
 WITH raw_klines AS (SELECT * FROM {{ source('regen', 'klines') }})
