@@ -29,24 +29,27 @@ class ObsData:
     open_ts: int
 
     def to_array(self) -> np.ndarray:
-        return np.array((
-            self.open_value,
-            self.high,
-            self.low,
-            self.close_value,
-            self.ma_7,
-            self.ma_25,
-            self.ma_100,
-            self.ma_300,
-            self.ma_1440,
-            self.ma_14400,
-            self.ma_144000,
-            self.open_ts,
-        ))
+        return np.array(
+            (
+                self.open_value,
+                self.high,
+                self.low,
+                self.close_value,
+                self.ma_7,
+                self.ma_25,
+                self.ma_100,
+                self.ma_300,
+                self.ma_1440,
+                self.ma_14400,
+                self.ma_144000,
+                self.open_ts,
+            )
+        )
 
 
 class ObsDataProducer(threading.Thread):
     """Provide klines from the database."""
+
     def __init__(
         self,
         db_manager: DataBaseManager,
@@ -74,9 +77,8 @@ class ObsDataProducer(threading.Thread):
             raise NotImplementedError
 
         for obs_data in get_table_generator(
-                self.db_manager, table=self.table, schema=self.schema, page_size=self.klines_buffer_size
+            self.db_manager, table=self.table, schema=self.schema, page_size=self.buffer_size
         ):
-
             self.queue.put(ObsData(*obs_data))
 
     def get_obs_data(self) -> Iterator[ObsData]:
