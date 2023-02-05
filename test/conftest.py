@@ -14,7 +14,7 @@ from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager
 from repository.remote import BinanceClient
-from vm._obs_producer import ObsProducer, KlineProducer
+from vm._obs_producer import ObsProducer, ObsDataProducer
 from vm.crypto_vm import CryptoViewModel
 
 
@@ -29,17 +29,17 @@ def enable_live_mode() -> bool:
 
 
 @pytest.fixture
-def get_data_from_db() -> bool:
-    return True
+def obs_table() -> str:
+    return 'observations'
 
 
 @pytest.fixture
-def max_api_klines() -> Optional[bool]:
-    return None
+def obs_table_schema() -> str:
+    return 'dev'
 
 
 @pytest.fixture
-def klines_buffer_size() -> int:
+def obs_buffer_size() -> int:
     return 10_000
 
 
@@ -411,24 +411,22 @@ def api_client(settings, db_manager, logger) -> BinanceClient:
 
 
 @pytest.fixture
-def kline_producer(
-    db_manager, api_client, trading_pair, enable_live_mode, get_data_from_db, max_api_klines, klines_buffer_size, logger
-) -> KlineProducer:
-    return KlineProducer(
+def obs_data_producer(
+    db_manager, obs_table, obs_table_schema, enable_live_mode, obs_buffer_size, logger
+) -> ObsDataProducer:
+    return ObsDataProducer(
         db_manager=db_manager,
-        api_manager=api_client,
-        trading_pair=trading_pair,
+        table=obs_table,
+        schema=obs_table_schema,
         enable_live_mode=enable_live_mode,
-        get_data_from_db=get_data_from_db,
-        max_api_klines=max_api_klines,
-        klines_buffer_size=klines_buffer_size,
+        buffer_size=obs_buffer_size,
         logger=logger,
     )
 
 
 @pytest.fixture
-def obs_producer(kline_producer, window_size, logger) -> ObsProducer:
-    return ObsProducer(kline_producer=kline_producer, window_size=window_size, logger=logger)
+def obs_producer(obs_data_producer, window_size, n_features, logger) -> ObsProducer:
+    return ObsProducer(obs_data_prod=obs_data_producer, window_size=window_size, n_features=n_features, logger=logger)
 
 
 @pytest.fixture
