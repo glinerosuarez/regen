@@ -1,5 +1,5 @@
 import asyncio
-from typing import AsyncIterator, Iterator, List, Type
+from typing import AsyncIterator, Iterator, List, Type, Tuple
 
 import contextvars
 
@@ -38,6 +38,27 @@ def get_db_generator(db_manager: DataBaseManager, table: Type[DataClass], page_s
             yield _page
             offset += page_size
             _page = db_manager.select(table, offset=offset, limit=page_size)
+
+    for page in _get_page_generator():
+        yield from page
+
+
+def get_table_generator(db_manager: DataBaseManager, table: str, schema: str, page_size: int) -> Iterator[Tuple]:
+    """
+    Get a generator that returns all the rows in a table
+    :param db_manager:
+    :param table: Table from which we'll get the rows.
+    :param schema: Name of the schema where the table is.
+    :param page_size: Max number of rows to store in memory.
+    """
+
+    def _get_page_generator() -> Iterator[List[Tuple]]:
+        offset = 0
+        _page = db_manager.execute_select(table, schema=schema, offset=offset, limit=page_size)
+        while len(_page) > 0:
+            yield _page
+            offset += page_size
+            _page = db_manager.execute_select(table, schema=schema, offset=offset, limit=page_size)
 
     for page in _get_page_generator():
         yield from page
