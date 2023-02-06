@@ -30,12 +30,12 @@ def enable_live_mode() -> bool:
 
 @pytest.fixture
 def obs_table() -> str:
-    return 'observations'
+    return "observations"
 
 
 @pytest.fixture
 def obs_table_schema() -> str:
-    return 'dev'
+    return "dev"
 
 
 @pytest.fixture
