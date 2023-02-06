@@ -39,6 +39,11 @@ def obs_table_schema() -> str:
 
 
 @pytest.fixture
+def n_features() -> int:
+    return 5
+
+
+@pytest.fixture
 def obs_buffer_size() -> int:
     return 10_000
 
