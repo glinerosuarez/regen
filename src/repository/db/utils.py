@@ -43,7 +43,9 @@ def get_db_generator(db_manager: DataBaseManager, table: Type[DataClass], page_s
         yield from page
 
 
-def get_table_generator(db_manager: DataBaseManager, table: str, page_size: int, schema: Optional[str] = None) -> Iterator[Tuple]:
+def get_table_generator(
+    db_manager: DataBaseManager, table: str, page_size: int, schema: Optional[str] = None
+) -> Iterator[Tuple]:
     """
     Get a generator that returns all the rows in a table
     :param db_manager:
