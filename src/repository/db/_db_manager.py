@@ -282,6 +282,9 @@ class DataBaseManager:
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
         return self.session.execute(f"SELECT COUNT(*) FROM {self.build_table_name(table, schema)}").fetchone()[0]
 
+    def execute_select_min(self, column: str, table: str, schema: Optional[str] = None) -> int:
+        return self.session.execute(f"SELECT MIN({column}) FROM {self.build_table_name(table, schema)}").fetchone()[0]
+
 
 class _EncodedDataClass(types.UserDefinedType):
     """
