@@ -280,7 +280,7 @@ class DataBaseManager:
         ).fetchall()
 
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
-        return self.session.execute(f"SELECT COUNT(*) FROM {self.build_table_name(table, schema)}")
+        return self.session.execute(f"SELECT COUNT(*) FROM {self.build_table_name(table, schema)}").fetchone()[0]
 
 
 class _EncodedDataClass(types.UserDefinedType):
