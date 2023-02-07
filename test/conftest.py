@@ -35,7 +35,7 @@ def obs_table() -> str:
 
 @pytest.fixture
 def obs_table_schema() -> str:
-    return "public"
+    return None
 
 
 @pytest.fixture
