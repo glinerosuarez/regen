@@ -267,15 +267,20 @@ class DataBaseManager:
         last_record = self.session.query(table).order_by(table.id.desc()).first()
         return None if last_record is None else last_record.id
 
+    @staticmethod
+    def build_table_name(table: str, schema: str):
+        return table if schema is None else f"{schema}.{table}"
+
     def select_first_row(self, table: str, schema: str) -> int:
         return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
     def execute_select(self, table: str, offset: int, limit: int, schema: Optional[str] = None) -> List[Tuple]:
-        qualified_name = table if schema is None else f"{schema}.{table}"
-        return self.session.execute(f"SELECT * FROM {qualified_name} LIMIT {limit} OFFSET {offset}").fetchall()
+        return self.session.execute(
+            f"SELECT * FROM {self.build_table_name(table, schema)} LIMIT {limit} OFFSET {offset}"
+        ).fetchall()
 
-    def execute_count_rows(self, table: str, schema: str) -> int:
-        return self.session.execute(f"SELECT COUNT(*) FROM {schema}.{table}")
+    def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
+        return self.session.execute(f"SELECT COUNT(*) FROM {self.build_table_name(table, schema)}")
 
 
 class _EncodedDataClass(types.UserDefinedType):
