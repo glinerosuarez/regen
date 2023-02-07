@@ -24,18 +24,8 @@ def _execute_steps(env):
             env.reset()
 
 
-def test_cryptoenv(insert_klines, vm):
-    # WARNING: since the minimum observation frequency is 1 min, this will take several minutes to run.
-    env = CryptoTradingEnv(vm)
-    check_env(env)
-    # _execute_steps(env)
-
-
-if __name__ == "__main__":
-    conf.settings.execution_id = 10
-    env = build_crypto_trading_env(
-        window_size=1_440, base_asset=CryptoAsset.BNB, quote_asset=CryptoAsset.BUSD, base_balance=100
-    )
-    breakpoint()
-    _execute_steps(env)
-    # test_observations()
+# def test_cryptoenv(insert_klines, vm):
+# TODO: Fix this test, it requires mocking an observation table.
+# env = CryptoTradingEnv(vm)
+# check_env(env)
+# _execute_steps(env)

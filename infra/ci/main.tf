@@ -7,7 +7,7 @@ terraform {
 }
 
 resource "docker_network" "regen_network" {
-  name = "regen"
+  name = "test_regen"
 }
 
 module "agent" {

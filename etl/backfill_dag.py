@@ -7,7 +7,7 @@ from extraction.klines import extract_klines
 from transform.dbt_run import dbt_run
 
 default_args = dict(execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2))
-backfill_end_date = pendulum.datetime(2023, 2, 2, 3, tz="UTC").end_of("hour")
+backfill_end_date = pendulum.datetime(2023, 2, 2, 16, tz="UTC").end_of("hour")
 
 
 @dag(
@@ -15,7 +15,7 @@ backfill_end_date = pendulum.datetime(2023, 2, 2, 3, tz="UTC").end_of("hour")
     default_args=default_args,
     description="Run tasks to backfill data from external sources.",
     schedule=timedelta(hours=16),
-    start_date=pendulum.datetime(2022, 10, 24, tz="UTC"),
+    start_date=pendulum.datetime(2018, 1, 1, tz="UTC"),
     end_date=backfill_end_date,
     catchup=True,
     tags=["backfill"],
