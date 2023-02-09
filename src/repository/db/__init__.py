@@ -9,6 +9,7 @@ from repository.db._db_manager import (
     Kline,
     Execution,
     TrainSettings,
+    MovingAvgs,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "Execution",
     "TrainSettings",
     "ObsData",
+    "MovingAvgs",
 ]

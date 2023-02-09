@@ -305,3 +305,8 @@ resource "local_file" "dbt_run" {
   source   = abspath("${path.root}/../etl/tasks/transform/dbt_run.py")
   filename = "${local.mod_path}/dags/transform/dbt_run.py"
 }
+
+resource "local_file" "ma_backfill" {
+  source   = abspath("${path.root}/../etl/tasks/transform/populate_mas.py")
+  filename = "${local.mod_path}/dags/transform/populate_mas.py"
+}
