@@ -559,6 +559,7 @@ class MovingAvgs(DataClass):
     ma_144000: float
     created_at: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
 
+
 @DataBaseManager._mapper_registry.mapped
 @define(slots=False)
 class Observation(DataClass):
