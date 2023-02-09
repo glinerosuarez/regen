@@ -282,6 +282,9 @@ class DataBaseManager:
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
         return self.session.execute(f"SELECT COUNT(*) FROM {self.build_table_name(table, schema)}").fetchone()[0]
 
+    def execute_select_min(self, column: str, table: str, schema: Optional[str] = None) -> int:
+        return self.session.execute(f"SELECT MIN({column}) FROM {self.build_table_name(table, schema)}").fetchone()[0]
+
 
 class _EncodedDataClass(types.UserDefinedType):
     """
@@ -525,6 +528,36 @@ class Kline(DataClass):
     def to_numpy(self) -> np.ndarray:
         values = vars(self)
         return np.array([values[at.name] for at in list(self.__class__.__attrs_attrs__)])
+
+
+@DataBaseManager._mapper_registry.mapped
+@define(slots=False)
+class MovingAvgs(DataClass):
+    __table__ = Table(
+        "moving_avgs",
+        DataBaseManager._mapper_registry.metadata,
+        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
+        Column("kline_id", Integer, ForeignKey("kline.id")),
+        Column("ma_7", Float, nullable=False),
+        Column("ma_25", Float, nullable=False),
+        Column("ma_100", Float, nullable=False),
+        Column("ma_300", Float, nullable=False),
+        Column("ma_1440", Float, nullable=False),
+        Column("ma_14400", Float, nullable=False),
+        Column("ma_144000", Float, nullable=False),
+        Column("created_at", DateTime, server_default=func.now()),
+    )
+
+    id: int = field(init=False)
+    kline_id: int
+    ma_7: float
+    ma_25: float
+    ma_100: float
+    ma_300: float
+    ma_1440: float
+    ma_14400: float
+    ma_144000: float
+    created_at: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
 
 
 @DataBaseManager._mapper_registry.mapped

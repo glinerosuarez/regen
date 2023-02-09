@@ -1,3 +1,4 @@
+from repository.db._dataclass import ObsData
 from repository.db.utils import get_db_generator, get_db_async_generator
 from repository.db._db_manager import (
     DataBaseManager,
@@ -8,6 +9,7 @@ from repository.db._db_manager import (
     Kline,
     Execution,
     TrainSettings,
+    MovingAvgs,
 )
 
 __all__ = [
@@ -21,4 +23,6 @@ __all__ = [
     "get_db_async_generator",
     "Execution",
     "TrainSettings",
+    "ObsData",
+    "MovingAvgs",
 ]
