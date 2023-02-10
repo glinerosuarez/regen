@@ -18,6 +18,27 @@ def pairwise(iterable):
     return zip(a, b)
 
 
+class MABuffer:
+    """Buffer to insert MA records in batches."""
+
+    def __init__(self, db_manager: DataBaseManager):
+        self.buffer = []
+        self.db_manager = db_manager
+        self.size = 20_000
+
+    def flush(self) -> None:
+        if len(self.buffer) > 0:
+            self.db_manager.insert(self.buffer)
+            print(f"{len(self.buffer)} records have been successfully inserted into the database.")
+            self.buffer = []
+
+    def append(self, record: MovingAvgs) -> None:
+        self.buffer.append(record)
+
+        if len(self.buffer) >= self.size:
+            self.flush()
+
+
 @task
 def populate_mas():
     settings = conf.load_settings(
@@ -37,6 +58,7 @@ def populate_mas():
         db_manager=db_manager,
         logger=LoggerFactory.get_console_logger("BinanceClient"),
     )
+    buffer = MABuffer(db_manager)
 
     # Compute averages for the first kline
     first_close_time = pendulum.from_timestamp(db_manager.select_min(Kline.close_time) / 1_000)
@@ -51,7 +73,7 @@ def populate_mas():
             interval=Interval.M_1,
             start_time=s,
             end_time=e,
-            limit=1_000
+            limit=1_000,
         )
         return klines
 
@@ -75,7 +97,7 @@ def populate_mas():
 
     window_sizes = [144_000, 14_400, 1_440, 300, 100, 25, 7]
     print(f"len(cv_before_first_kline): {len(cv_before_first_kline)}")
-    queues = [deque(cv_before_first_kline[-ws + 1:]) for ws in window_sizes]
+    queues = [deque(cv_before_first_kline[-ws + 1 :]) for ws in window_sizes]
     init_sums = [sum(q) for q in queues]
 
     for kl in db_klines:
@@ -89,5 +111,6 @@ def populate_mas():
             q.append(kl.close_value)
 
         moving_avgs = MovingAvgs(kline_id=kl.id, **record)
-        db_manager.insert(moving_avgs)
-        print(f"Record {moving_avgs} successfully inserted.")
+        buffer.append(moving_avgs)
+
+    buffer.flush()
