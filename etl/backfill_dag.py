@@ -9,7 +9,7 @@ from transform.populate_mas import populate_mas
 
 default_args = dict(execution_timeout=timedelta(hours=1), retries=3, retry_delay=timedelta(minutes=2))
 backfill_end_date = pendulum.datetime(2023, 2, 2, 16, tz="UTC").end_of("hour")
-klines_start_date = pendulum.datetime(2019, 9, 19, 12, tz="UTC").add(days=100)
+klines_start_date = pendulum.datetime(2019, 9, 20, tz="UTC").add(days=100)
 
 
 @dag(
