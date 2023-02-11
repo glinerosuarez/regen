@@ -10,3 +10,6 @@ sources:
         freshness:
           warn_after: {count: 2, period: minute}
           error_after: {count: 30, period: day}
+      - name: moving_avgs
+        identifier: moving_avgs
+        loaded_at_field: created_at
