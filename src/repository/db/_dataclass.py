@@ -19,7 +19,7 @@ class ObsData:
     ma_144000: float
     open_ts: int
 
-    def to_array(self) -> np.ndarray:
+    def to_array(self, type: str = "float32") -> np.ndarray:
         return np.array(
             (
                 self.open_value,
@@ -35,4 +35,4 @@ class ObsData:
                 self.ma_144000,
                 self.open_ts,
             )
-        )
+        ).astype(type)

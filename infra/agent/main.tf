@@ -26,6 +26,7 @@ resource "docker_image" "agent" {
 }
 
 resource "docker_container" "agent" {
+  count = var.create_container ? 1 : 0
   image = docker_image.agent.image_id
   name  = "agent"
   env   = ["PYTHONPATH=/app", "REGEN_DB_HOST=${var.db_host}", "REGEN_DB_USER=${var.db_user}", "REGEN_DB_PASSWORD=${var.db_password}"]

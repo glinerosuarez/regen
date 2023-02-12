@@ -11,11 +11,12 @@ resource "docker_network" "regen_network" {
 }
 
 module "agent" {
-  source       = "./../agent"
-  network_name = docker_network.regen_network.name
-  db_host      = ""
-  db_password  = ""
-  db_user      = ""
+  source           = "./../agent"
+  network_name     = docker_network.regen_network.name
+  db_host          = ""
+  db_password      = ""
+  db_user          = ""
+  create_container = false
 }
 
 resource "docker_container" "ci" {

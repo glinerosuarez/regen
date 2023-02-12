@@ -20,7 +20,7 @@ resource "docker_image" "dbt" {
   triggers = {
     docker_file_sha1 = filesha1("${local.mod_path}/Dockerfile")
     profiles_conf    = filesha1("${local.mod_path}/profiles.yml")
-    server    = filesha1("${local.mod_path}/server.py")
+    server           = filesha1("${local.mod_path}/server.py")
   }
 }
 

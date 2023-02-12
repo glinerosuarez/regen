@@ -1,10 +1,7 @@
 {{
     config(
-        materialized = 'incremental',
+        materialized = 'view',
         on_schema_change = 'fail',
-        indexes = [
-            {'columns': ['open_ts']}
-        ]
     )
 }}
 WITH raw_klines AS (SELECT * FROM {{ source('regen', 'klines') }})
@@ -24,6 +21,3 @@ SELECT
     taker_buy_quote_vol,
     created_at AS created_at_date
 FROM raw_klines
-{% if is_incremental() %}
-    WHERE open_time > (SELECT MAX(open_ts) FROM {{ this }})
-{% endif %}
