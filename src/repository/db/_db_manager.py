@@ -11,7 +11,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
-from typing import List, Optional, Type, Any, Union, Tuple
+from typing import List, Optional, Type, Any, Union, Tuple, Dict
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
@@ -19,6 +19,7 @@ from conf.consts import TimeInForce, OrderType, Side, Position, Action, Algorith
 from repository._dataclass import DataClass, TradingPair
 from repository._consts import AccountType, Balance, AccountPermission
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
+from sqlalchemy.sql import text
 from sqlalchemy.orm import registry, InstrumentedAttribute, relationship, scoped_session, sessionmaker
 from sqlalchemy import (
     create_engine,
@@ -100,6 +101,7 @@ class DataBaseManager:
         password: Optional[str] = None,
         files_dir: Optional[Path] = Path() / "output",
     ):
+        self.engine_type = engine_type
         self.db_name = db_name
         self.logger = LoggerFactory.get_file_logger(
             name="sqlalchemy", file_dir=files_dir / "logs", preffix="db", security_level=logging.WARNING
@@ -145,6 +147,41 @@ class DataBaseManager:
                 insert_query()
             else:
                 insert_orm()
+        except IntegrityError as ie:
+            exception = ie
+        finally:
+            if exception is not None:
+                # If there is an exception rollback the transaction and propagate the error.
+                self.session.rollback()
+                raise exception
+
+    def insert_rows(self, table_name: str, rows: List[Dict]):
+        # Build the SQL query
+        columns = ", ".join(rows[0].keys())
+        placeholders = ", ".join([":" + col for col in rows[0].keys()])
+        query = text("INSERT INTO {} ({}) VALUES ({})".format(table_name, columns, placeholders))
+
+        exception = None
+        try:
+            for row in rows:  # Execute the query
+                self.session.execute(query, row)
+            self.session.commit()
+        except IntegrityError as ie:
+            exception = ie
+        finally:
+            if exception is not None:
+                # If there is an exception rollback the transaction and propagate the error.
+                self.session.rollback()
+                raise exception
+
+    def create_table(self, table_name: str, columns: Dict):
+        cols = ",".join([f"{c} {t}" for c, t in columns.items()])
+        query = f"CREATE TABLE {table_name} ({cols})"
+
+        exception = None
+        try:
+            self.session.execute(query)
+            self.session.commit()
         except IntegrityError as ie:
             exception = ie
         finally:
@@ -476,17 +513,6 @@ class EnvState(DataClass):
     ts: float = attrib()
 
 
-# TODO: Create a new column which is a concatenation of obs_id and kline_id, this column must be unique
-ObservationKline = Table(
-    "ObservationKline",
-    DataBaseManager._mapper_registry.metadata,
-    Column("id", Integer, primary_key=True, autoincrement="auto"),
-    Column("obs_id", Integer, ForeignKey("observation.id")),
-    Column("kline_id", Integer, ForeignKey("kline.id")),
-    Column("created_at", DateTime, server_default=func.now()),
-)
-
-
 @DataBaseManager._mapper_registry.mapped
 @attrs
 class Kline(DataClass):
@@ -558,31 +584,6 @@ class MovingAvgs(DataClass):
     ma_14400: float
     ma_144000: float
     created_at: pendulum.DateTime = attrib(init=False, converter=pendulum.DateTime)
-
-
-@DataBaseManager._mapper_registry.mapped
-@define(slots=False)
-class Observation(DataClass):
-    __table__ = Table(
-        "observation",
-        DataBaseManager._mapper_registry.metadata,
-        Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
-        Column("execution_id", String, nullable=False),
-        Column("episode_id", Integer, nullable=False),
-        Column("created_at", DateTime, server_default=func.now()),
-    )
-
-    __mapper_args__ = {  # type: ignore
-        "properties": {
-            "klines": relationship("Kline", secondary=ObservationKline),
-        }
-    }
-
-    id: int = field(init=False)
-    execution_id: str
-    episode_id: int
-    klines: List[Kline]
-    created_at: pendulum.DateTime = field(init=False, converter=pendulum.DateTime)
 
 
 @DataBaseManager._mapper_registry.mapped

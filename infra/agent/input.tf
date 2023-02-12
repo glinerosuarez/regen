@@ -19,6 +19,6 @@ variable "db_password" {
 }
 
 variable "create_container" {
-  type        = bool
+  type    = bool
   default = true
 }

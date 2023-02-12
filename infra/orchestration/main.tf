@@ -7,7 +7,7 @@ terraform {
 }
 
 locals {
-  mod_path = abspath("${path.root}/orchestration")
+  mod_path      = abspath("${path.root}/orchestration")
   image_context = abspath("${path.root}/../.")
   common_env = [
     "AIRFLOW__CORE__EXECUTOR=CeleryExecutor",
@@ -66,7 +66,7 @@ resource "docker_image" "airflow_worker" {
   }
   triggers = {
     docker_file_sha1 = filesha1("${local.mod_path}/worker_dockerfile")
-    repository_sha1          = sha1(join("", [for f in fileset(local.image_context, "src/repository/**") : filesha1("${local.image_context}/${f}")]))
+    repository_sha1  = sha1(join("", [for f in fileset(local.image_context, "src/repository/**") : filesha1("${local.image_context}/${f}")]))
   }
 }
 

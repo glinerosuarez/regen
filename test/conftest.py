@@ -12,7 +12,7 @@ from conf import load_settings
 from conf.consts import CryptoAsset, Action
 from env import build_crypto_trading_env
 from repository import TradingPair
-from repository.db import Kline, DataBaseManager
+from repository.db import Kline, DataBaseManager, ObsData
 from repository.remote import BinanceClient
 from vm._obs_producer import ObsProducer, ObsDataProducer
 from vm.crypto_vm import CryptoViewModel
@@ -30,7 +30,7 @@ def enable_live_mode() -> bool:
 
 @pytest.fixture
 def obs_table() -> str:
-    return "kline"
+    return "observations"
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def obs_table_schema() -> str:
 
 @pytest.fixture
 def n_features() -> int:
-    return 5
+    return 11
 
 
 @pytest.fixture
@@ -390,6 +390,315 @@ def klines_data(trading_pair: TradingPair) -> List[Kline]:
 
 
 @pytest.fixture
+def obs_data(klines_data) -> List[ObsData]:
+    return [
+        ObsData(**data)
+        for data in [
+            {
+                "kline_id": 1561,
+                "open_value": 13.6036,
+                "high": 13.6036,
+                "low": 13.6036,
+                "close_value": 13.6036,
+                "ma_7": 13.96,
+                "ma_25": 13.985972,
+                "ma_100": 14.007432,
+                "ma_300": 14.018822,
+                "ma_1440": 13.769572,
+                "ma_14400": 13.380736,
+                "ma_144000": 16.958823,
+                "open_ts": 1577577600000,
+            },
+            {
+                "kline_id": 1562,
+                "open_value": 13.6036,
+                "high": 13.6036,
+                "low": 13.6036,
+                "close_value": 13.6036,
+                "ma_7": 13.899286,
+                "ma_25": 13.971072,
+                "ma_100": 14.002193,
+                "ma_300": 14.017527,
+                "ma_1440": 13.769666,
+                "ma_14400": 13.380762,
+                "ma_144000": 16.958768,
+                "open_ts": 1577577660000,
+            },
+            {
+                "kline_id": 1563,
+                "open_value": 13.6036,
+                "high": 13.6036,
+                "low": 13.6036,
+                "close_value": 13.6036,
+                "ma_7": 13.838571,
+                "ma_25": 13.956172,
+                "ma_100": 13.996954,
+                "ma_300": 14.016232,
+                "ma_1440": 13.769799,
+                "ma_14400": 13.38079,
+                "ma_144000": 16.958713,
+                "open_ts": 1577577720000,
+            },
+            {
+                "kline_id": 1564,
+                "open_value": 13.6538,
+                "high": 13.6538,
+                "low": 13.6538,
+                "close_value": 13.6538,
+                "ma_7": 13.785029,
+                "ma_25": 13.94328,
+                "ma_100": 13.991932,
+                "ma_300": 14.015104,
+                "ma_1440": 13.769967,
+                "ma_14400": 13.380821,
+                "ma_144000": 16.958658,
+                "open_ts": 1577577780000,
+            },
+            {
+                "kline_id": 1565,
+                "open_value": 13.6538,
+                "high": 13.6538,
+                "low": 13.6538,
+                "close_value": 13.6538,
+                "ma_7": 13.734114,
+                "ma_25": 13.930388,
+                "ma_100": 13.98691,
+                "ma_300": 14.013976,
+                "ma_1440": 13.770135,
+                "ma_14400": 13.380853,
+                "ma_144000": 16.958604,
+                "open_ts": 1577577840000,
+            },
+            {
+                "kline_id": 1566,
+                "open_value": 13.6158,
+                "high": 13.6158,
+                "low": 13.6158,
+                "close_value": 13.6158,
+                "ma_7": 13.677771,
+                "ma_25": 13.915976,
+                "ma_100": 13.981304,
+                "ma_300": 14.012721,
+                "ma_1440": 13.770277,
+                "ma_14400": 13.380882,
+                "ma_144000": 16.95855,
+                "open_ts": 1577577900000,
+            },
+            {
+                "kline_id": 1567,
+                "open_value": 13.6385,
+                "high": 13.6385,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.623486,
+                "ma_25": 13.90214,
+                "ma_100": 13.975842,
+                "ma_300": 14.011514,
+                "ma_1440": 13.770403,
+                "ma_14400": 13.380911,
+                "ma_144000": 16.958496,
+                "open_ts": 1577577960000,
+            },
+            {
+                "kline_id": 1568,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.627286,
+                "ma_25": 13.888304,
+                "ma_100": 13.97038,
+                "ma_300": 14.010174,
+                "ma_1440": 13.770528,
+                "ma_14400": 13.380939,
+                "ma_144000": 16.958442,
+                "open_ts": 1577578020000,
+            },
+            {
+                "kline_id": 1569,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.631086,
+                "ma_25": 13.874152,
+                "ma_100": 13.964918,
+                "ma_300": 14.008786,
+                "ma_1440": 13.770654,
+                "ma_14400": 13.380966,
+                "ma_144000": 16.958388,
+                "open_ts": 1577578080000,
+            },
+            {
+                "kline_id": 1570,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.634886,
+                "ma_25": 13.86,
+                "ma_100": 13.960225,
+                "ma_300": 14.007398,
+                "ma_1440": 13.77078,
+                "ma_14400": 13.380995,
+                "ma_144000": 16.958334,
+                "open_ts": 1577578140000,
+            },
+            {
+                "kline_id": 1571,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.631514,
+                "ma_25": 13.845848,
+                "ma_100": 13.955532,
+                "ma_300": 14.00601,
+                "ma_1440": 13.770905,
+                "ma_14400": 13.381023,
+                "ma_144000": 16.95828,
+                "open_ts": 1577578200000,
+            },
+            {
+                "kline_id": 1572,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.628143,
+                "ma_25": 13.831696,
+                "ma_100": 13.951199,
+                "ma_300": 14.004622,
+                "ma_1440": 13.771031,
+                "ma_14400": 13.381052,
+                "ma_144000": 16.958225,
+                "open_ts": 1577578260000,
+            },
+            {
+                "kline_id": 1573,
+                "open_value": 13.6302,
+                "high": 13.6302,
+                "low": 13.6302,
+                "close_value": 13.6302,
+                "ma_7": 13.6302,
+                "ma_25": 13.816372,
+                "ma_100": 13.947065,
+                "ma_300": 14.003234,
+                "ma_1440": 13.771137,
+                "ma_14400": 13.381078,
+                "ma_144000": 16.958171,
+                "open_ts": 1577578320000,
+            },
+            {
+                "kline_id": 1574,
+                "open_value": 13.6354,
+                "high": 13.6354,
+                "low": 13.6074,
+                "close_value": 13.6074,
+                "ma_7": 13.626943,
+                "ma_25": 13.800136,
+                "ma_100": 13.942364,
+                "ma_300": 14.00177,
+                "ma_1440": 13.771252,
+                "ma_14400": 13.381103,
+                "ma_144000": 16.958117,
+                "open_ts": 1577578380000,
+            },
+            {
+                "kline_id": 1575,
+                "open_value": 13.6074,
+                "high": 13.6074,
+                "low": 13.6074,
+                "close_value": 13.6074,
+                "ma_7": 13.623686,
+                "ma_25": 13.7839,
+                "ma_100": 13.937663,
+                "ma_300": 14.000306,
+                "ma_1440": 13.771366,
+                "ma_14400": 13.381127,
+                "ma_144000": 16.958063,
+                "open_ts": 1577578440000,
+            },
+            {
+                "kline_id": 1576,
+                "open_value": 13.6074,
+                "high": 13.6074,
+                "low": 13.6074,
+                "close_value": 13.6074,
+                "ma_7": 13.620429,
+                "ma_25": 13.767664,
+                "ma_100": 13.932962,
+                "ma_300": 13.998842,
+                "ma_1440": 13.771481,
+                "ma_14400": 13.381152,
+                "ma_144000": 16.958008,
+                "open_ts": 1577578500000,
+            },
+            {
+                "kline_id": 1577,
+                "open_value": 13.6074,
+                "high": 13.6074,
+                "low": 13.6074,
+                "close_value": 13.6074,
+                "ma_7": 13.617171,
+                "ma_25": 13.749952,
+                "ma_100": 13.928141,
+                "ma_300": 13.997378,
+                "ma_1440": 13.771596,
+                "ma_14400": 13.381176,
+                "ma_144000": 16.957954,
+                "open_ts": 1577578560000,
+            },
+            {
+                "kline_id": 1578,
+                "open_value": 13.6074,
+                "high": 13.6074,
+                "low": 13.6074,
+                "close_value": 13.6074,
+                "ma_7": 13.613914,
+                "ma_25": 13.733104,
+                "ma_100": 13.92332,
+                "ma_300": 13.996122,
+                "ma_1440": 13.77171,
+                "ma_14400": 13.381201,
+                "ma_144000": 16.9579,
+                "open_ts": 1577578620000,
+            },
+            {
+                "kline_id": 1579,
+                "open_value": 13.6354,
+                "high": 13.6354,
+                "low": 13.6354,
+                "close_value": 13.6354,
+                "ma_7": 13.614657,
+                "ma_25": 13.717376,
+                "ma_100": 13.919637,
+                "ma_300": 13.99496,
+                "ma_1440": 13.771844,
+                "ma_14400": 13.381228,
+                "ma_144000": 16.957846,
+                "open_ts": 1577578680000,
+            },
+            {
+                "kline_id": 1580,
+                "open_value": 13.6354,
+                "high": 13.6354,
+                "low": 13.6354,
+                "close_value": 13.6354,
+                "ma_7": 13.6154,
+                "ma_25": 13.701648,
+                "ma_100": 13.915954,
+                "ma_300": 13.993798,
+                "ma_1440": 13.771978,
+                "ma_14400": 13.381255,
+                "ma_144000": 16.957792,
+                "open_ts": 1577578740000,
+            },
+        ]
+    ]
+
+
+@pytest.fixture
 def logger() -> Logger:
     return log.LoggerFactory.get_console_logger(__name__)
 
@@ -458,6 +767,24 @@ def env(vm) -> VecEnv:
 @pytest.fixture
 def insert_klines(db_manager, klines_data) -> None:
     db_manager.insert(klines_data)
+
+
+@pytest.fixture
+def insert_obs(db_manager, obs_data) -> None:
+    db_manager.insert_rows(table_name="observations", rows=[list(vars(od).values()) for od in obs_data])
+
+
+@pytest.fixture
+def create_obs_table(db_manager) -> None:
+    db_manager.create_table("observations", {k: "TEXT" for k in ObsData.__dataclass_fields__.keys()})
+
+
+@pytest.fixture
+def insert_obs_2ep(db_manager, create_obs_table, obs_data) -> None:
+    for i in range(10, 20):
+        obs_data[i].open_ts = pendulum.from_timestamp(obs_data[i].open_ts / 1_000).add(minutes=1).timestamp() * 1_000
+    # breakpoint()
+    db_manager.insert_rows(table_name="observations", rows=[vars(od) for od in obs_data])
 
 
 @pytest.fixture
