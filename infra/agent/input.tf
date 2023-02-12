@@ -17,3 +17,8 @@ variable "db_password" {
   type        = string
   description = "Database password."
 }
+
+variable "create_container" {
+  type        = bool
+  default = true
+}

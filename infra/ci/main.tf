@@ -16,6 +16,7 @@ module "agent" {
   db_host      = ""
   db_password  = ""
   db_user      = ""
+  create_container = false
 }
 
 resource "docker_container" "ci" {
