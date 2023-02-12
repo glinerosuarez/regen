@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from conf.consts import Position, Action
-from repository import AccountType, Observation
+from repository import AccountType
 from repository.db import Order, AccountInfo, EnvState, Kline
 
 
@@ -42,11 +42,6 @@ def acc_info() -> AccountInfo:
     )
 
 
-@pytest.fixture
-def observation(db_manager) -> Observation:
-    return Observation(execution_id=1, episode_id=1, klines=db_manager.select_all(Kline)[:2])
-
-
 def test_db_orders(db_manager, orders):
     db_manager.insert(orders[0])
     # Assert primary key
@@ -80,13 +75,6 @@ def test_env_state(db_manager, env_state):
     assert records[0] == env_state
     # Test select_max
     assert db_manager.select_max(EnvState.id) == 1
-
-
-def test_obs_kline_relationship(db_name, db_manager, insert_klines, observation):
-    db_manager.insert(observation)
-    obs = db_manager.select_all(Observation)
-    assert len(obs[0].klines) == 2
-    assert len(db_manager.select_all(Kline)) == 20
 
 
 def test_select_with_limit(insert_klines, db_manager):
