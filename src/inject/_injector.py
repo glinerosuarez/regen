@@ -15,7 +15,7 @@ from log import LoggerFactory
 from repository import TradingPair
 from repository.db import DataBaseManager, Execution, TrainSettings
 from repository.remote import BinanceClient
-from vm._obs_producer import ObsProducer, KlineProducer
+from vm import ObsProducer, ObsDataProducer
 from vm.crypto_vm import CryptoViewModel
 from exec import ExecutionContext
 
@@ -111,6 +111,14 @@ class EnvInjector:
     injector: DependencyInjector
     logger_level: int = field(converter=lambda x: logging.INFO if x == "INFO" else logging.DEBUG)
 
+    @property
+    def n_features(self) -> int:
+        return 11
+
+    @property
+    def db_schema(self) -> str:
+        return self.injector.settings.db_schema
+
     @cached_property
     def api_client(self) -> BinanceClient:
         return BinanceClient(
@@ -122,23 +130,22 @@ class EnvInjector:
         )
 
     @cached_property
-    def kline_producer(self) -> KlineProducer:
-        return KlineProducer(
+    def obs_data_producer(self) -> ObsDataProducer:
+        return ObsDataProducer(
             db_manager=self.injector.db_manager,
-            api_manager=self.api_client,
-            trading_pair=self.injector.trading_pair,
+            table=self.injector.settings.obs_table,
+            logger=self.injector.get_logger("ObsDataProducer", security_level=self.logger_level),
+            schema=self.db_schema,
             enable_live_mode=self.injector.settings.enable_live_mode,
-            get_data_from_db=self.injector.settings.get_data_from_db,
-            max_api_klines=self.injector.settings.max_api_klines,
-            klines_buffer_size=self.injector.settings.klines_buffer_size,
-            logger=self.injector.get_logger("KlineProducer", security_level=self.logger_level),
+            buffer_size=self.injector.settings.klines_buffer_size,
         )
 
     @cached_property
     def obs_producer(self) -> ObsProducer:
         return ObsProducer(
-            kline_producer=self.kline_producer,
+            obs_data_prod=self.obs_data_producer,
             window_size=self.injector.settings.window_size,
+            n_features=self.n_features,
             logger=self.injector.get_logger("ObsProducer", self.logger_level),
         )
 

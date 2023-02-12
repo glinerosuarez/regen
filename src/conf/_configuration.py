@@ -43,6 +43,8 @@ def load_settings(
             Validator("update_klines_db", is_type_of=bool, default=False),
             Validator("place_orders", is_type_of=bool, default=False),
             Validator("env_logging_lvl", is_type_of=str, default="INFO"),
+            Validator("obs_table", is_type_of=str, default="observations"),
+            Validator("db_schema", is_type_of=str),
         ],
     )
 

@@ -14,6 +14,8 @@ from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
+    TRADE_FEE_PERCENTAGE = 0.005  # EXPERIMENTAL
+
     def __init__(
         self,
         trading_pair: TradingPair,
@@ -221,19 +223,25 @@ class CryptoViewModel:
                 self.logger.debug("Placing sell order.")
                 return self.api_client.sell_at_market(self.next_env_state_id, self.trading_pair, self.base_balance)
         else:
-            price = self._get_price()
+            price = self._get_price(side)
             # The price and quantity will be returned by client.place_order.
             if side == Side.BUY:
+
                 return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
             else:
                 return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
 
-    def _get_price(self):
+    def _get_price(self, side: Optional[Side] = None):
         if self.place_orders is True:
             price = self.api_client.get_price(self.trading_pair)
             self.logger.debug(f"Got current price from api: {price}.")
             return price
         else:
+            price_fee = 0 if side is None else self.TRADE_FEE_PERCENTAGE
             price = self.last_observation[-1][3]
+            if side == Side.BUY:
+                price = price * (1 + price_fee)
+            else:
+                price = price * (1 - price_fee)
             self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
             return price

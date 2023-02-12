@@ -12,7 +12,7 @@ from repository.db.utils import get_table_generator
 
 
 class ObsDataProducer(threading.Thread):
-    """Provide klines from the database."""
+    """Provide observation data from the database."""
 
     def __init__(
         self,
