@@ -311,9 +311,9 @@ class DataBaseManager:
     def select_first_row(self, table: str, schema: str) -> int:
         return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
-    def execute_select(self, table: str, offset: int, limit: int, schema: Optional[str] = None) -> List[Tuple]:
+    def execute_select(self, table: str, order_by: str, offset: int, limit: int, schema: Optional[str] = None) -> List[Tuple]:
         return self.session.execute(
-            f"SELECT * FROM {self.build_table_name(table, schema)} LIMIT {limit} OFFSET {offset}"
+            f"SELECT * FROM {self.build_table_name(table, schema)} ORDER BY {order_by} ASC LIMIT {limit} OFFSET {offset}"
         ).fetchall()
 
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
@@ -563,7 +563,7 @@ class MovingAvgs(DataClass):
         "moving_avgs",
         DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
-        Column("kline_id", Integer, ForeignKey("kline.id")),
+        Column("kline_id", Integer, ForeignKey("kline.id"), unique=True),
         Column("ma_7", Float, nullable=False),
         Column("ma_25", Float, nullable=False),
         Column("ma_100", Float, nullable=False),
