@@ -122,12 +122,11 @@ class CryptoViewModel:
 
     def step(self, action: Action):
         # TODO: Finish episode if balance goes to 0
-        # breakpoint()
         self.done = False
 
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
-
+        breakpoint()
         self.position_history.append(self.position)
         self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
@@ -226,7 +225,6 @@ class CryptoViewModel:
             price = self._get_price(side)
             # The price and quantity will be returned by client.place_order.
             if side == Side.BUY:
-
                 return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
             else:
                 return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)

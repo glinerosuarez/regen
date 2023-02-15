@@ -2,16 +2,18 @@ import enum
 import json
 import logging
 from pathlib import Path
+from itertools import chain
 
 import attr
 import cattr
 import numpy as np
 import pendulum
+from more_itertools import batched
 from sqlalchemy.sql.elements import BinaryExpression
 
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
-from typing import List, Optional, Type, Any, Union, Tuple, Dict
+from typing import List, Optional, Type, Any, Union, Tuple, Dict, Iterator
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
@@ -233,6 +235,10 @@ class DataBaseManager:
 
         return [data[0] for data in self.session.execute(sql_statement)]
 
+    def select_lazy(self, table: Type[DataClass], batch_size: int = 10_000) -> Iterator[List]:
+        """Execute a SELECT statement from the SQL Object table and return rows loading batches of rows in memory."""
+        return map(lambda r: r[0], chain.from_iterable(batched(self.session.execute(select(table)), batch_size)))
+
     def select_all(self, table: Type[DataClass]) -> list:
         """
         Execute a SELECT * statement from the SQL Object table.
@@ -311,7 +317,9 @@ class DataBaseManager:
     def select_first_row(self, table: str, schema: str) -> int:
         return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
-    def execute_select(self, table: str, order_by: str, offset: int, limit: int, schema: Optional[str] = None) -> List[Tuple]:
+    def execute_select(
+        self, table: str, order_by: str, offset: int, limit: int, schema: Optional[str] = None
+    ) -> List[Tuple]:
         return self.session.execute(
             f"SELECT * FROM {self.build_table_name(table, schema)} ORDER BY {order_by} ASC LIMIT {limit} OFFSET {offset}"
         ).fetchall()
