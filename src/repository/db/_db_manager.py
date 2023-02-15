@@ -321,7 +321,11 @@ class DataBaseManager:
         self, table: str, order_by: str, offset: int, limit: int, schema: Optional[str] = None
     ) -> List[Tuple]:
         return self.session.execute(
-            f"SELECT * FROM {self.build_table_name(table, schema)} ORDER BY {order_by} ASC LIMIT {limit} OFFSET {offset}"
+            f"SELECT * "
+            f"FROM {self.build_table_name(table, schema)} "
+            f"ORDER BY {order_by} ASC "
+            f"LIMIT {limit} "
+            f"OFFSET {offset}"
         ).fetchall()
 
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
