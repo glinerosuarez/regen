@@ -126,7 +126,6 @@ class CryptoViewModel:
 
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
-        breakpoint()
         self.position_history.append(self.position)
         self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
