@@ -93,7 +93,7 @@ class CryptoViewModel:
         # TODO: does this break markov rules?
         # Normalize prices by computing the percentual change between the prices in the obs and the last trade price
         non_null_last_trade_price = self.init_price if self.last_trade_price is None else self.last_trade_price
-        prices = ((obs[:, :4] - non_null_last_trade_price) / non_null_last_trade_price).flatten()
+        prices = ((obs - non_null_last_trade_price) / non_null_last_trade_price).flatten()
         return prices
 
     def reset(self):

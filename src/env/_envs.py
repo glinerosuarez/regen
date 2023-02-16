@@ -40,9 +40,9 @@ class CryptoTradingEnv(gym.Env):
     def init_shape(self) -> Tuple[int]:
         # Shape of a single observation.
         # TODO: create a variable 'n_features' and replace the hardcoded value with it
-        return (
-            self.vm.window_size * 4,
-        )  # 4 here means number of features, atm: open, high, low, close and volume values
+        # 11 here means number of features, atm:
+        # open, high, low, ma_7, ma_25, ma_100, ma_300, ma_1440, ma_14400, ma_144000, values
+        return (self.vm.window_size * 11,)
 
     @action_space.default
     def init_action_space(self) -> spaces.Discrete:
