@@ -40,8 +40,8 @@ class ObsDataProducer(threading.Thread):
         if self.enable_live_mode is True:
             self.logger.info("Live mode is enabled.")
             raise NotImplementedError
-
-        for obs_data in self.db_manager.select_lazy(table=f"{self.schema}.{self.table}", sort_by=self.order_col):
+        table = self.table if self.schema is None else f"{self.schema}.{self.table}"
+        for obs_data in self.db_manager.select_lazy(table=table, sort_by=self.order_col):
             self.queue.put(ObsData(*obs_data))
 
     def get_obs_data(self) -> Iterator[ObsData]:
@@ -103,18 +103,18 @@ class ObsProducer:
         self.chunks_generator = self.get_obs_chunk()
         self.next_chunk = None
 
-    # def get_all_chunks(self):
-    #    breakpoint()
-    #    obs = [o for o in self.producer.db_manager.select_lazy(table=f"dev.observations", sort_by="open_ts")]
-    #    discontinuities = 0
-    #    repeated = []
-    #    for i, o in enumerate(obs):
-    #        if i + 1 < len(obs):
-    #            if o[-1] + 60_000 != obs[i + 1][-1]:
-    #                discontinuities += 1
-    #
-    #            if o[-1] == obs[i + 1][-1]:
-    #                repeated.append((i, o))
+    def get_all_chunks(self):
+        breakpoint()
+        obs = [o for o in self.producer.db_manager.select_lazy(table="dev.observations", sort_by="open_ts")]
+        discontinuities = 0
+        repeated = []
+        for i, o in enumerate(obs):
+            if i + 1 < len(obs):
+                if o[-1] + 60_000 != obs[i + 1][-1]:
+                    discontinuities += 1
+
+                if o[-1] == obs[i + 1][-1]:
+                    repeated.append((i, o))
 
     def get_observation(self) -> Tuple[np.ndarray, Optional[bool]]:
         """

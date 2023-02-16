@@ -8,7 +8,6 @@ import attr
 import cattr
 import numpy as np
 import pendulum
-from more_itertools import batched
 from sqlalchemy.sql.elements import BinaryExpression
 
 from attr import attrs, attrib, define, field
@@ -235,9 +234,21 @@ class DataBaseManager:
 
         return [data[0] for data in self.session.execute(sql_statement)]
 
-    def select_lazy(self, table: Type[DataClass], batch_size: int = 10_000) -> Iterator[List]:
-        """Execute a SELECT statement from the SQL Object table and return rows loading batches of rows in memory."""
-        return map(lambda r: r[0], chain.from_iterable(batched(self.session.execute(select(table)), batch_size)))
+    def select_lazy(
+        self,
+        table: Union[Type[DataClass], str],
+        sort_by: Union[InstrumentedAttribute, str] = None,
+        batch_size: int = 10_000,
+    ) -> Iterator[Union[DataClass, Tuple]]:
+        """Execute a SELECT statement from the SQL Object table and return all rows loading batches of in memory."""
+        if isinstance(table, str):
+            sort_statement = "" if sort_by is None else f" ORDER BY {sort_by}"
+            query = f"SELECT * FROM {table}" + sort_statement
+        else:
+            query = select(table) if sort_by is None else select(table).order_by(sort_by)
+
+        batches = self.session.execute(query).yield_per(batch_size)
+        return batches if isinstance(table, str) else chain.from_iterable(batches)
 
     def select_all(self, table: Type[DataClass]) -> list:
         """

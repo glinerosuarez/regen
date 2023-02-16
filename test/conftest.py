@@ -1,6 +1,6 @@
 import random
 from logging import Logger
-from typing import List, Optional
+from typing import List
 
 import pendulum
 import pytest
@@ -14,7 +14,7 @@ from env import build_crypto_trading_env
 from repository import TradingPair
 from repository.db import Kline, DataBaseManager, ObsData
 from repository.remote import BinanceClient
-from vm._obs_producer import ObsProducer, ObsDataProducer
+from vm import ObsProducer, ObsDataProducer
 from vm.crypto_vm import CryptoViewModel
 
 
