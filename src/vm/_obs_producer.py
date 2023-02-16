@@ -8,11 +8,10 @@ from typing import Optional, Iterator, Tuple
 import numpy as np
 
 from repository.db import DataBaseManager, ObsData
-from repository.db.utils import get_table_generator
 
 
 class ObsDataProducer(threading.Thread):
-    """Provide klines from the database."""
+    """Provide observation data from the database."""
 
     def __init__(
         self,
@@ -20,6 +19,7 @@ class ObsDataProducer(threading.Thread):
         table: str,
         logger: logging.Logger,
         schema: Optional[str] = None,
+        order_col: str = "open_ts",
         enable_live_mode: bool = False,
         buffer_size: int = 10_000,
         daemon: bool = True,
@@ -28,6 +28,7 @@ class ObsDataProducer(threading.Thread):
 
         self.table = table
         self.schema = schema
+        self.order_col = order_col
         self.db_manager = db_manager
         self.logger = logger
 
@@ -39,10 +40,8 @@ class ObsDataProducer(threading.Thread):
         if self.enable_live_mode is True:
             self.logger.info("Live mode is enabled.")
             raise NotImplementedError
-
-        for obs_data in get_table_generator(
-            self.db_manager, table=self.table, schema=self.schema, page_size=self.buffer_size
-        ):
+        table = self.table if self.schema is None else f"{self.schema}.{self.table}"
+        for obs_data in self.db_manager.select_lazy(table=table, sort_by=self.order_col):
             self.queue.put(ObsData(*obs_data))
 
     def get_obs_data(self) -> Iterator[ObsData]:
@@ -104,12 +103,26 @@ class ObsProducer:
         self.chunks_generator = self.get_obs_chunk()
         self.next_chunk = None
 
+    def get_all_chunks(self):
+        breakpoint()
+        obs = [o for o in self.producer.db_manager.select_lazy(table="dev.observations", sort_by="open_ts")]
+        discontinuities = 0
+        repeated = []
+        for i, o in enumerate(obs):
+            if i + 1 < len(obs):
+                if o[-1] + 60_000 != obs[i + 1][-1]:
+                    discontinuities += 1
+
+                if o[-1] == obs[i + 1][-1]:
+                    repeated.append((i, o))
+
     def get_observation(self) -> Tuple[np.ndarray, Optional[bool]]:
         """
         Deliver an observation.
         :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is
             a time gap between observations.
         """
+        # self.get_all_chunks()
         # TODO: trigger StopIteration when there isn't data
         while self.next_chunk is None:  # request a new chunk until we get a valid one
             self.next_chunk = next(self.chunks_generator)

@@ -2,6 +2,7 @@ import enum
 import json
 import logging
 from pathlib import Path
+from itertools import chain
 
 import attr
 import cattr
@@ -11,7 +12,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from attr import attrs, attrib, define, field
 import sqlalchemy.types as types
-from typing import List, Optional, Type, Any, Union, Tuple, Dict
+from typing import List, Optional, Type, Any, Union, Tuple, Dict, Iterator
 from attr.validators import instance_of
 from sqlalchemy.exc import IntegrityError
 
@@ -233,6 +234,22 @@ class DataBaseManager:
 
         return [data[0] for data in self.session.execute(sql_statement)]
 
+    def select_lazy(
+        self,
+        table: Union[Type[DataClass], str],
+        sort_by: Union[InstrumentedAttribute, str] = None,
+        batch_size: int = 10_000,
+    ) -> Iterator[Union[DataClass, Tuple]]:
+        """Execute a SELECT statement from the SQL Object table and return all rows loading batches of in memory."""
+        if isinstance(table, str):
+            sort_statement = "" if sort_by is None else f" ORDER BY {sort_by}"
+            query = f"SELECT * FROM {table}" + sort_statement
+        else:
+            query = select(table) if sort_by is None else select(table).order_by(sort_by)
+
+        batches = self.session.execute(query).yield_per(batch_size)
+        return batches if isinstance(table, str) else chain.from_iterable(batches)
+
     def select_all(self, table: Type[DataClass]) -> list:
         """
         Execute a SELECT * statement from the SQL Object table.
@@ -311,9 +328,15 @@ class DataBaseManager:
     def select_first_row(self, table: str, schema: str) -> int:
         return self.session.execute(f"SELECT * FROM {schema}.{table}").fetchone()
 
-    def execute_select(self, table: str, offset: int, limit: int, schema: Optional[str] = None) -> List[Tuple]:
+    def execute_select(
+        self, table: str, order_by: str, offset: int, limit: int, schema: Optional[str] = None
+    ) -> List[Tuple]:
         return self.session.execute(
-            f"SELECT * FROM {self.build_table_name(table, schema)} LIMIT {limit} OFFSET {offset}"
+            f"SELECT * "
+            f"FROM {self.build_table_name(table, schema)} "
+            f"ORDER BY {order_by} ASC "
+            f"LIMIT {limit} "
+            f"OFFSET {offset}"
         ).fetchall()
 
     def execute_count_rows(self, table: str, schema: Optional[str] = None) -> int:
@@ -563,7 +586,7 @@ class MovingAvgs(DataClass):
         "moving_avgs",
         DataBaseManager._mapper_registry.metadata,
         Column("id", Integer, primary_key=True, nullable=False, autoincrement="auto"),
-        Column("kline_id", Integer, ForeignKey("kline.id")),
+        Column("kline_id", Integer, ForeignKey("kline.id"), unique=True),
         Column("ma_7", Float, nullable=False),
         Column("ma_25", Float, nullable=False),
         Column("ma_100", Float, nullable=False),
