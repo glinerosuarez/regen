@@ -103,8 +103,7 @@ class ObsProducer:
         self.chunks_generator = self.get_obs_chunk()
         self.next_chunk = None
 
-    def get_all_chunks(self):
-        breakpoint()
+    def __get_all_chunks(self):
         obs = [o for o in self.producer.db_manager.select_lazy(table="dev.observations", sort_by="open_ts")]
         discontinuities = 0
         repeated = []
@@ -115,6 +114,7 @@ class ObsProducer:
 
                 if o[-1] == obs[i + 1][-1]:
                     repeated.append((i, o))
+        breakpoint()
 
     def get_observation(self) -> Tuple[np.ndarray, Optional[bool]]:
         """
@@ -122,7 +122,6 @@ class ObsProducer:
         :return: Observation data and a flag to identify the end of an episode, which in this case occurs when there is
             a time gap between observations.
         """
-        # self.get_all_chunks()
         # TODO: trigger StopIteration when there isn't data
         while self.next_chunk is None:  # request a new chunk until we get a valid one
             self.next_chunk = next(self.chunks_generator)

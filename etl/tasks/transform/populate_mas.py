@@ -1,6 +1,11 @@
+# import sys
+
+# sys.path.append("/home/airflow/.local/bin")
+
+
 from collections import deque
 from itertools import chain, tee, starmap
-from typing import List, Tuple
+from typing import List
 
 import pendulum
 from airflow.decorators import task
@@ -8,7 +13,7 @@ from airflow.decorators import task
 import conf
 from log import LoggerFactory
 from repository import Interval, TradingPair
-from repository.db import Kline, get_db_generator, DataBaseManager, MovingAvgs
+from repository.db import Kline, DataBaseManager, MovingAvgs
 from repository.remote import BinanceClient
 
 
@@ -111,11 +116,12 @@ def get_historical_values() -> List[float]:
 
 @task
 def populate_mas():
+    # breakpoint()
     buffer = MABuffer(db_manager)
 
     historical_values = get_historical_values()
 
-    db_klines = get_db_generator(db_manager, Kline, page_size=10_000)
+    db_klines = db_manager.select_lazy(Kline, sort_by=Kline.open_time)
 
     window_sizes = [144_000, 14_400, 1_440, 300, 100, 25, 7]
     print(f"len(cv_before_first_kline): {len(historical_values)}")
@@ -136,3 +142,7 @@ def populate_mas():
         buffer.append(moving_avgs)
 
     buffer.flush()
+
+
+# if __name__ == "__main__":
+#    populate_mas()
