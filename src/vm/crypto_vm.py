@@ -2,7 +2,6 @@ import time
 import random
 from logging import Logger
 from typing import Optional
-from collections import defaultdict
 
 import numpy as np
 
@@ -14,7 +13,7 @@ from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
-    TRADE_FEE_PERCENTAGE = 0.005  # EXPERIMENTAL
+    TRADE_FEE_PERCENTAGE = 0.001  # EXPERIMENTAL
 
     def __init__(
         self,
@@ -49,6 +48,7 @@ class CryptoViewModel:
 
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
+        self.init_base_balance = base_balance
         self.base_balance = base_balance
         self.quote_balance = quote_balance
         # The ask price represents the minimum price that a seller is willing to take for that same security, so this is
@@ -69,8 +69,6 @@ class CryptoViewModel:
         self.current_tick = None
         self.total_reward = 0.0
         self.done = None
-        self.position_history = (self.window_size * [None]) + [self.position]
-        self.history = defaultdict(list)
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
@@ -112,12 +110,15 @@ class CryptoViewModel:
             else:
                 self.position = Position.Short
 
-        self.position_history = (self.window_size * [None]) + [self.position]
         self.total_reward = 0.0
         self.last_price = None if self.last_price is None else self.last_price
         self.last_trade_price = None if self.last_trade_price is None else self.last_trade_price
         self.episode_id = 1 if self.last_episode_id is None else self.last_episode_id + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
+
+        if self.train_mode and self.position == Position.Long:  # to better visualize results during training
+            self.base_balance = self.init_base_balance
+            self.quote_balance = 0
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation()
@@ -130,7 +131,6 @@ class CryptoViewModel:
 
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
-        self.position_history.append(self.position)
         self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
             total_reward=self.total_reward,
@@ -138,7 +138,6 @@ class CryptoViewModel:
             quote_balance=self.quote_balance,
             position=self.position.value,
         )
-        self._update_history(info)
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
@@ -188,7 +187,7 @@ class CryptoViewModel:
                 h_reward = ((self.last_trade_price - h_price) / self.last_trade_price) * 100  # pp
                 if h_reward > 0:
                     step_reward -= h_reward
-            #else:
+            # else:
             #    if self.last_price > self.last_trade_price * (1 + self.TRADE_FEE_PERCENTAGE):
 
         self.logger.debug("Saving env state without reward.")
@@ -222,10 +221,6 @@ class CryptoViewModel:
         else:
             self.base_balance = o_data.base_qty + self.base_balance
             self.quote_balance = o_data.quote_qty
-
-    def _update_history(self, info):
-        for key, value in info.items():
-            self.history[key].append(value)
 
     def _place_order(self, side: Side) -> Optional[OrderData]:
         if self.place_orders is True:
