@@ -516,6 +516,8 @@ class EnvState(DataClass):
         Column("tick", BigInteger, nullable=False),
         Column("price", Float, nullable=False),
         Column("position", Enum(Position, name="tradingposition"), nullable=False),
+        Column("base_balance", Float, nullable=False),
+        Column("quote_balance", Float, nullable=False),
         Column("action", Enum(Action), nullable=False),
         Column("is_trade", Boolean, nullable=False),
         Column("reward", Float, nullable=True),
@@ -529,6 +531,8 @@ class EnvState(DataClass):
     tick: int = attrib(converter=int)
     price: float = attrib(converter=float)
     position: Position = attrib()
+    base_balance: float = attrib(converter=float)
+    quote_balance: float = attrib(converter=float)
     action: Action = attrib()
     is_trade: bool = attrib()
     reward: float = attrib()

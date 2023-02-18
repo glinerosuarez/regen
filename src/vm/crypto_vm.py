@@ -25,6 +25,7 @@ class CryptoViewModel:
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
+        train_mode: bool,
         logger: Logger,
         base_balance: float = 10,
         quote_balance: float = 0,
@@ -43,6 +44,9 @@ class CryptoViewModel:
         self.execution_id = execution_id
         self.ticks_per_episode = ticks_per_episode
         self.trading_pair = trading_pair
+
+        self.train_mode = train_mode
+
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
         self.base_balance = base_balance
@@ -178,8 +182,17 @@ class CryptoViewModel:
                 return step_reward
 
         # No trade was done or unsuccessful order.
+        if self.train_mode:  # compute opportunity cost (cost of no action)
+            if self.position == Position.Short:
+                h_price = self._get_price_training(Side.BUY)
+                h_reward = ((self.last_trade_price - h_price) / self.last_trade_price) * 100  # pp
+                if h_reward > 0:
+                    step_reward -= h_reward
+            #else:
+            #    if self.last_price > self.last_trade_price * (1 + self.TRADE_FEE_PERCENTAGE):
+
         self.logger.debug("Saving env state without reward.")
-        self.last_price = self._get_price()
+        self.last_price = self._get_price_training() if self.train_mode else self._get_price()
         self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
@@ -192,6 +205,8 @@ class CryptoViewModel:
                 tick=self.current_tick,
                 price=self.last_price,
                 position=self.position,
+                base_balance=self.base_balance,
+                quote_balance=self.quote_balance,
                 action=action,
                 is_trade=is_trade,
                 reward=reward,
@@ -221,24 +236,24 @@ class CryptoViewModel:
                 self.logger.debug("Placing sell order.")
                 return self.api_client.sell_at_market(self.next_env_state_id, self.trading_pair, self.base_balance)
         else:
-            price = self._get_price(side)
+            price = self._get_price_training(side)
             # The price and quantity will be returned by client.place_order.
             if side == Side.BUY:
                 return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
             else:
-                return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
+                return OrderData(0, self.base_balance * price * (1 - self.trade_fee_ask_percent), price)
 
-    def _get_price(self, side: Optional[Side] = None):
-        if self.place_orders is True:
-            price = self.api_client.get_price(self.trading_pair)
-            self.logger.debug(f"Got current price from api: {price}.")
-            return price
+    def _get_price(self):
+        price = self.api_client.get_price(self.trading_pair)
+        self.logger.debug(f"Got current price from api: {price}.")
+        return price
+
+    def _get_price_training(self, side: Optional[Side] = None) -> float:
+        price_fee = 0 if side is None else self.TRADE_FEE_PERCENTAGE
+        price = self.last_observation[-1][3]
+        if side == Side.BUY:
+            price = price * (1 + price_fee)
         else:
-            price_fee = 0 if side is None else self.TRADE_FEE_PERCENTAGE
-            price = self.last_observation[-1][3]
-            if side == Side.BUY:
-                price = price * (1 + price_fee)
-            else:
-                price = price * (1 - price_fee)
-            self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
-            return price
+            price = price * (1 - price_fee)
+        self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
+        return price

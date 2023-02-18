@@ -2,11 +2,11 @@
 
 import argparse
 
-from inject import injector
+from inject import DependencyInjector
 
 
 def train():
-    context = injector.execution_context
+    context = DependencyInjector(train_mode=True).execution_context
     context.train()
 
 

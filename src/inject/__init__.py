@@ -1,3 +1,3 @@
-from inject._injector import injector
+from inject._injector import DependencyInjector
 
-__all__ = ["injector"]
+__all__ = ["DependencyInjector"]
