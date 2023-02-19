@@ -14,6 +14,8 @@ def env_state() -> EnvState:
         tick=1,
         price=100.0,
         position=Position.Long,
+        base_balance=10,
+        quote_balance=0,
         action=Action.Sell,
         is_trade=False,
         reward=0.01,

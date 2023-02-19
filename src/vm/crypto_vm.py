@@ -2,7 +2,6 @@ import time
 import random
 from logging import Logger
 from typing import Optional
-from collections import defaultdict
 
 import numpy as np
 
@@ -14,7 +13,7 @@ from repository import EnvState, TradingPair
 
 
 class CryptoViewModel:
-    TRADE_FEE_PERCENTAGE = 0.005  # EXPERIMENTAL
+    TRADE_FEE_PERCENTAGE = 0.001  # EXPERIMENTAL
 
     def __init__(
         self,
@@ -25,6 +24,7 @@ class CryptoViewModel:
         ticks_per_episode: int,
         execution_id: str,
         window_size: int,
+        train_mode: bool,
         logger: Logger,
         base_balance: float = 10,
         quote_balance: float = 0,
@@ -43,8 +43,12 @@ class CryptoViewModel:
         self.execution_id = execution_id
         self.ticks_per_episode = ticks_per_episode
         self.trading_pair = trading_pair
+
+        self.train_mode = train_mode
+
         # Number of ticks (current and previous ticks) returned as an observation.
         self.window_size = window_size
+        self.init_base_balance = base_balance
         self.base_balance = base_balance
         self.quote_balance = quote_balance
         # The ask price represents the minimum price that a seller is willing to take for that same security, so this is
@@ -65,8 +69,6 @@ class CryptoViewModel:
         self.current_tick = None
         self.total_reward = 0.0
         self.done = None
-        self.position_history = (self.window_size * [None]) + [self.position]
-        self.history = defaultdict(list)
         self.last_observation = None
         self.last_price = None
         self.last_trade_price = None
@@ -108,12 +110,15 @@ class CryptoViewModel:
             else:
                 self.position = Position.Short
 
-        self.position_history = (self.window_size * [None]) + [self.position]
         self.total_reward = 0.0
         self.last_price = None if self.last_price is None else self.last_price
         self.last_trade_price = None if self.last_trade_price is None else self.last_trade_price
         self.episode_id = 1 if self.last_episode_id is None else self.last_episode_id + 1
         self.logger.debug(f"Updating episode_id, new value: {self.episode_id}")
+
+        if self.train_mode and self.position == Position.Long:  # to better visualize results during training
+            self.base_balance = self.init_base_balance
+            self.quote_balance = 0
 
         # TODO: episodes should have a min num of steps i.e. it doesn't make sense to have an episode with only 2 steps
         self.last_observation, done = self.obs_producer.get_observation()
@@ -126,7 +131,6 @@ class CryptoViewModel:
 
         step_reward = self._calculate_reward(action)
         self.total_reward += step_reward
-        self.position_history.append(self.position)
         self.last_observation, self.done = self.obs_producer.get_observation()
         info = dict(
             total_reward=self.total_reward,
@@ -134,7 +138,6 @@ class CryptoViewModel:
             quote_balance=self.quote_balance,
             position=self.position.value,
         )
-        self._update_history(info)
 
         # TODO: for now, an episode has a fixed length of _TICKS_PER_EPISODE ticks.
         self.current_tick += 1
@@ -178,8 +181,17 @@ class CryptoViewModel:
                 return step_reward
 
         # No trade was done or unsuccessful order.
+        if self.train_mode:  # compute opportunity cost (cost of no action)
+            if self.position == Position.Short:
+                h_price = self._get_price_training(Side.BUY)
+                h_reward = ((self.last_trade_price - h_price) / self.last_trade_price) * 100  # pp
+                if h_reward > 0:
+                    step_reward -= h_reward
+            # else:
+            #    if self.last_price > self.last_trade_price * (1 + self.TRADE_FEE_PERCENTAGE):
+
         self.logger.debug("Saving env state without reward.")
-        self.last_price = self._get_price()
+        self.last_price = self._get_price_training() if self.train_mode else self._get_price()
         self._store_env_state_data(action, step_reward, is_trade=False)
 
         return step_reward
@@ -192,6 +204,8 @@ class CryptoViewModel:
                 tick=self.current_tick,
                 price=self.last_price,
                 position=self.position,
+                base_balance=self.base_balance,
+                quote_balance=self.quote_balance,
                 action=action,
                 is_trade=is_trade,
                 reward=reward,
@@ -208,10 +222,6 @@ class CryptoViewModel:
             self.base_balance = o_data.base_qty + self.base_balance
             self.quote_balance = o_data.quote_qty
 
-    def _update_history(self, info):
-        for key, value in info.items():
-            self.history[key].append(value)
-
     def _place_order(self, side: Side) -> Optional[OrderData]:
         if self.place_orders is True:
             if side == side.BUY:
@@ -221,24 +231,24 @@ class CryptoViewModel:
                 self.logger.debug("Placing sell order.")
                 return self.api_client.sell_at_market(self.next_env_state_id, self.trading_pair, self.base_balance)
         else:
-            price = self._get_price(side)
+            price = self._get_price_training(side)
             # The price and quantity will be returned by client.place_order.
             if side == Side.BUY:
                 return OrderData(self.quote_balance * (1 - self.trade_fee_bid_percent) / price, 0, price)
             else:
-                return OrderData(0, self.base_balance * (1 - self.trade_fee_ask_percent), price)
+                return OrderData(0, self.base_balance * price * (1 - self.trade_fee_ask_percent), price)
 
-    def _get_price(self, side: Optional[Side] = None):
-        if self.place_orders is True:
-            price = self.api_client.get_price(self.trading_pair)
-            self.logger.debug(f"Got current price from api: {price}.")
-            return price
+    def _get_price(self):
+        price = self.api_client.get_price(self.trading_pair)
+        self.logger.debug(f"Got current price from api: {price}.")
+        return price
+
+    def _get_price_training(self, side: Optional[Side] = None) -> float:
+        price_fee = 0 if side is None else self.TRADE_FEE_PERCENTAGE
+        price = self.last_observation[-1][3]
+        if side == Side.BUY:
+            price = price * (1 + price_fee)
         else:
-            price_fee = 0 if side is None else self.TRADE_FEE_PERCENTAGE
-            price = self.last_observation[-1][3]
-            if side == Side.BUY:
-                price = price * (1 + price_fee)
-            else:
-                price = price * (1 - price_fee)
-            self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
-            return price
+            price = price * (1 - price_fee)
+        self.logger.debug(f"Returning price: {price} for last_observation: {self.last_observation}")
+        return price

@@ -20,7 +20,10 @@ from vm.crypto_vm import CryptoViewModel
 from exec import ExecutionContext
 
 
+@define(slots=False)
 class DependencyInjector:
+    train_mode: bool = field()
+
     def get_logger(self, name: str, security_level: int = logging.INFO) -> Logger:
         return LoggerFactory.get_file_logger(
             name, self.output_dir / str(self.execution.id) / "logs/", security_level=security_level
@@ -160,6 +163,7 @@ class EnvInjector:
             execution_id=str(self.injector.execution.id),
             window_size=self.injector.settings.window_size,
             place_orders=self.injector.settings.place_orders,
+            train_mode=self.injector.train_mode,
             logger=self.injector.get_logger("vm", self.logger_level),
         )
 
@@ -172,6 +176,3 @@ class EnvInjector:
         else:
             logger.info(f"Loading environment from {self.injector.execution.load_env_path}.")
             return load_crypto_trading_env(self.injector.execution.load_env_path, self.vm)
-
-
-injector = DependencyInjector()
