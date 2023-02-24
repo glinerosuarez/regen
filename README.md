@@ -106,3 +106,9 @@ model from.
 **obs_table:** Name of the observations table.
 
 **db_schema:** Name of the schema where the observations table is.
+
+## Disclaimer
+This software is for educational purposes only. It is not intended to be used with real money.
+Do not risk money which you are afraid to lose. 
+USE THE SOFTWARE AT YOUR OWN RISK. 
+THE AUTHOR ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS.
